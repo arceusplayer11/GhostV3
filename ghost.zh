@@ -1,0 +1,1376 @@
+// See ghost_zh_readme.txt for documentation.
+
+// World settings
+const int GH_DRAWOVERTHRESHOLD= 32;
+const float GH_GRAVITY= 0.16;
+const float GH_TERMINAL_VELOCITY= 3.2;
+
+// ffc->Misc[] indices
+// Set these constants so they don't conflict with other scripts.
+// Legal values are 0-15. They must all be different.
+const int GHI_KNOCKBACK_COUNTER= 11;
+const int GHI_BASE_CSET=         12;
+const int GHI_FLASH_COUNTER=     13;
+const int GHI_FLAGS=         14;
+const int GHI_PREV_HP=           15;
+
+// eweapon->Misc[] indices
+// Like the above, these must be unique numbers between 0 and 15.
+const int EWI_STEP=         5;
+const int EWI_XPOS=         6;
+const int EWI_YPOS=         7;
+const int EWI_WORK=         8;
+const int EWI_MOVEMENT=     9;
+const int EWI_MOVEMENT_ARG= 10; 
+const int EWI_LIFESPAN=     11;
+const int EWI_LIFESPAN_ARG= 12;
+const int EWI_ON_DEATH=     13;
+const int EWI_ON_DEATH_ARG= 14;
+const int EWI_FLAGS=        15;
+
+// Arguments to SetFlags()
+const int GHF_STUN=           000001b;
+const int GHF_KNOCKBACK=      000010b;
+const int GHF_NO_FALL=        000100b;
+const int GHF_SET_DIRECTION=  001000b;
+const int GHF_SET_OVERLAY=    010000b;
+const int GHF_NORMAL=         001011b;
+
+const int GHF_GOT_HIT=        100000b; // Internal use
+
+// Arguments to SetEWeaponMovement()
+const int EWM_SINE_WAVE=      1;
+const int EWM_SINE_WAVE_FAST= 2;
+const int EWM_HOMING=         3;
+const int EWM_HOMING_REAIM=   4;
+const int EWM_RANDOM=         5;
+const int EWM_RANDOM_REAIM=   6;
+const int EWM_VEER_UP=        7;
+const int EWM_VEER_DOWN=      8;
+const int EWM_VEER_LEFT=      9;
+const int EWM_VEER_RIGHT=     10;
+const int EWM_THROW=          11;
+
+// Arguments to SetEWeaponLifespan()
+const int EWL_TIMER=        1;
+const int EWL_NEAR_LINK=    2;
+const int EWL_SLOW_TO_HALT= 3;
+
+// Arguments to SetEWeaponDeathEffect()
+const int EWD_VANISH=             1;
+const int EWD_AIM_AT_LINK=        2;
+const int EWD_EXPLODE=            3;
+const int EWD_SBOMB_EXPLODE=      4;
+const int EWD_4_FIREBALLS_HV=     5;
+const int EWD_4_FIREBALLS_DIAG=   6;
+const int EWD_4_FIREBALLS_RANDOM= 7;
+const int EWD_8_FIREBALLS=        8;
+const int EWD_4_FIRES_HV=         9;
+const int EWD_4_FIRES_DIAG=       10;
+const int EWD_4_FIRES_RANDOM=     11;
+const int EWD_8_FIRES=            12;
+const int EWD_SPAWN_NPC=          13;
+
+// EWeapon flags
+const int EWF_UNBLOCKABLE=    100b;
+const int EWF_ROTATE=         010b;
+const int EWF_DEAD=           001b;
+
+// Setup functions
+
+void GhostInit(ffc this, npc ghost)
+{
+    ghost->Extend=3;
+    ghost->HitWidth=16*this->TileWidth;
+    ghost->HitHeight=16*this->TileHeight;
+    ghost->X=this->X;
+    ghost->Y=this->Y;
+    this->Misc[GHI_BASE_CSET]=this->CSet;
+    this->Misc[GHI_FLASH_COUNTER]=0;
+    this->Misc[GHI_PREV_HP]=ghost->HP;
+}
+
+npc GhostInitCreate(ffc this, int enemyID)
+{
+    npc ghost=Screen->CreateNPC(enemyID);
+    GhostInit(this, ghost);
+    return ghost;
+}
+
+npc GhostInitWait(ffc this, int enemyIndex, bool useEnemyPos, int combo)
+{
+    for(int i=0; i<4; i++)
+    {
+        if(Screen->NumNPCs()>=enemyIndex)
+        {
+            npc ghost=Screen->LoadNPC(enemyIndex);
+            ghost->Extend=3;
+            ghost->HitWidth=16*this->TileWidth;
+            ghost->HitHeight=16*this->TileHeight;
+            this->Misc[GHI_BASE_CSET]=this->CSet;
+            this->Misc[GHI_FLASH_COUNTER]=0;
+            this->Misc[GHI_PREV_HP]=ghost->HP;
+            this->Data=combo;
+            
+            if(useEnemyPos)
+            {
+                this->X=ghost->X;
+                this->Y=ghost->Y;
+            }
+            else
+            {
+                ghost->X=this->X;
+                ghost->Y=this->Y;
+            }
+            
+            return ghost;
+        }
+        Waitframe();
+    }
+    // Timed out
+    Quit();
+}
+
+npc GhostInitSpawn(ffc this, int enemyID)
+{
+    npc ghost=SpawnNPC(enemyID);
+    ghost->Extend=3;
+    ghost->HitWidth=16*this->TileWidth;
+    ghost->HitHeight=16*this->TileHeight;
+    this->Misc[GHI_BASE_CSET]=this->CSet;
+    this->Misc[GHI_FLASH_COUNTER]=0;
+    this->Misc[GHI_PREV_HP]=ghost->HP;
+    return ghost;
+}
+
+void SetFlags(ffc this, int flags)
+{
+    this->Misc[GHI_FLAGS]=flags|(this->Misc[GHI_FLAGS]&GHF_GOT_HIT);
+}
+
+// Waitframe functions
+
+bool GhostWaitframeM(ffc this, npc ghost, float x, float y, float z, bool clearOnDeath, bool quitOnDeath)
+{
+    // Set direction
+    if((this->Misc[GHI_FLAGS]&GHF_SET_DIRECTION)!=0 && (this->X!=x || (this->Y+ghost->Z)!=y))
+    {
+        if(Abs(this->X-x)>Abs((this->Y+ghost->Z)-y))
+        {
+            if(this->X>x)
+                ghost->Dir=DIR_LEFT;
+            else
+                ghost->Dir=DIR_RIGHT;
+        }
+        else
+        {
+            if(this->Y+ghost->Y>y)
+                ghost->Dir=DIR_UP;
+            else
+                ghost->Dir=DIR_DOWN;
+        }
+    }
+    
+    // Draw over if high enough
+    if((this->Misc[GHI_FLAGS]&GHF_SET_OVERLAY)!=0)
+    {
+        if(z>=GH_DRAWOVERTHRESHOLD && !this->Flags[FFCF_OVERLAY])
+            this->Flags[FFCF_OVERLAY]=true;
+        else if(z<GH_DRAWOVERTHRESHOLD && this->Flags[FFCF_OVERLAY])
+            this->Flags[FFCF_OVERLAY]=false;
+    }
+    
+    if((this->Misc[GHI_FLAGS]&GHF_NO_FALL)!=0)
+        ghost->Jump=0;
+    
+    // Set position
+    ghost->X=x;
+    ghost->Y=y;
+    ghost->Z=z;
+    this->X=x;
+    this->Y=Max(y-z, -31); // Don't let the FFC go too high, or it may vanish
+    
+    Waitframe();
+    
+    CheckHit(this, ghost);
+    if((this->Misc[GHI_FLAGS]&GHF_STUN)!=0)
+        CheckStun(this, ghost);
+    
+    // Dead?
+    if(!ghost->isValid() || ghost->HP==0)
+    {
+        if(clearOnDeath)
+        {
+            ghost->X=this->X+8*(this->TileWidth-1);
+            ghost->Y=this->Y+8*(this->TileHeight-1);
+            this->Data=0;
+        }
+        
+        if(quitOnDeath)
+            Quit();
+        else
+            return false;
+    }
+    
+    return true;
+}
+
+bool GhostWaitframeN(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
+{
+    GhostWaitframeM(this, ghost, ghost->X, ghost->Y, ghost->Z, clearOnDeath, quitOnDeath);
+}
+
+bool GhostWaitframeF(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
+{
+    GhostWaitframeM(this, ghost, this->X, this->Y, 0, clearOnDeath, quitOnDeath);
+}
+
+bool GhostWaitframesM(ffc this, npc ghost, float x, float y, float z, bool clearOnDeath, bool quitOnDeath, int numFrames)
+{
+    while(numFrames-->0)
+        GhostWaitframeM(this, ghost, x, y, z, clearOnDeath, quitOnDeath);
+}
+
+bool GhostWaitframesN(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
+{
+    while(numFrames-->0)
+        GhostWaitframeM(this, ghost, ghost->X, ghost->Y, ghost->Z, clearOnDeath, quitOnDeath);
+}
+
+bool GhostWaitframesF(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
+{
+    while(numFrames-->0)
+        GhostWaitframeM(this, ghost, this->X, this->Y, 0, clearOnDeath, quitOnDeath);
+}
+
+// Update functions
+
+void CheckHit(ffc this, npc ghost)
+{
+    // Just got hit - set flash and knockback counters
+    if(ghost->HP<this->Misc[GHI_PREV_HP])
+    {
+        this->Misc[GHI_FLAGS]|=GHF_GOT_HIT;
+        this->Misc[GHI_PREV_HP]=ghost->HP;
+        this->Misc[GHI_FLASH_COUNTER]=32;
+        
+        // Set knockback
+        if((this->Misc[GHI_FLAGS]&GHF_KNOCKBACK)!=0)
+        {
+            int xDiff=Link->X-ghost->X;
+            int yDiff=Link->Y-ghost->Y;
+            
+            // The direction can't be checked the proper way, so guess based on Link's position
+            
+            // If close, use Link's direction
+            if(Sqrt(xDiff*xDiff+yDiff*yDiff)<32)
+            {
+                if((Link->Dir&10b)==(ghost->Dir&10b)) // Both horizontal or vertical
+                    this->Misc[GHI_KNOCKBACK_COUNTER]=Link->Dir<<5|16;
+            }
+            // If far, use relative positions
+            else
+            {
+                if(Abs(xDiff)<Abs(yDiff)) // Up or down
+                {
+                    if(ghost->Dir==DIR_UP || ghost->Dir==DIR_DOWN)
+                    {
+                        if(yDiff>0)
+                            this->Misc[GHI_KNOCKBACK_COUNTER]=(DIR_UP<<5)|16;
+                        else
+                            this->Misc[GHI_KNOCKBACK_COUNTER]=(DIR_DOWN<<5)|16;
+                    }
+                }
+                else // Left or right
+                {
+                    if(ghost->Dir==DIR_LEFT || ghost->Dir==DIR_RIGHT)
+                    {
+                        if(xDiff>0)
+                            this->Misc[GHI_KNOCKBACK_COUNTER]=(DIR_LEFT<<5)|16;
+                        else
+                            this->Misc[GHI_KNOCKBACK_COUNTER]=(DIR_RIGHT<<5)|16;
+                    }
+                }
+            }
+        }
+    }
+    else if((this->Misc[GHI_FLAGS]&GHF_GOT_HIT)!=0) // Not hit - unset flag
+        this->Misc[GHI_FLAGS]&=(~GHF_GOT_HIT);
+    
+    // Flash
+    if(this->Misc[GHI_FLASH_COUNTER]>1)
+    {
+        this->CSet=9-(this->Misc[GHI_FLASH_COUNTER]&3);
+        this->Misc[GHI_FLASH_COUNTER]--;
+    }
+    // Stop flashing
+    else if(this->Misc[GHI_FLASH_COUNTER]==1)
+    {
+        this->Misc[GHI_FLASH_COUNTER]=0;
+        this->CSet=this->Misc[GHI_BASE_CSET];
+    }
+    
+    if(this->Misc[GHI_KNOCKBACK_COUNTER]!=0)
+    {
+        int dir=this->Misc[GHI_KNOCKBACK_COUNTER]>>5;
+        int counter=this->Misc[GHI_KNOCKBACK_COUNTER]&31;
+        
+        if(CanMove(this, ghost, dir, 4, 0))
+        {
+            counter--;
+            if(counter>0)
+                this->Misc[GHI_KNOCKBACK_COUNTER]=(dir<<5)|counter;
+            else
+                this->Misc[GHI_KNOCKBACK_COUNTER]=0;
+            
+            if(dir==DIR_UP)
+            {
+                this->Y-=4;
+                ghost->Y-=4;
+            }
+            else if(dir==DIR_DOWN)
+            {
+                this->Y+=4;
+                ghost->Y+=4;
+            }
+            else if(dir==DIR_LEFT)
+            {
+                this->X-=4;
+                ghost->X-=4;
+            }
+            else // Right
+            {
+                this->X+=4;
+                ghost->X+=4;
+            }
+        }
+        else
+        {
+            this->Misc[GHI_KNOCKBACK_COUNTER]=0;
+            
+            if(dir==DIR_UP)
+            {
+                ghost->Y&=~7;
+                this->Y=ghost->Y-ghost->Z;
+            }
+            else if(dir==DIR_DOWN)
+            {
+                if(ghost->Y%8!=0)
+                {
+                    ghost->Y=(ghost->Y&~7)+8;
+                    this->Y=ghost->Y-ghost->Z;
+                }
+            }
+            else if(dir==DIR_LEFT)
+            {
+                ghost->X&=~7;
+                this->X=ghost->X;
+            }
+            else // Right
+            {
+                if(ghost->X%8!=0)
+                {
+                    ghost->X=(ghost->X&~7)+8;
+                    this->X=ghost->X;
+                }
+            }
+        }
+    }
+}
+
+bool CheckStun(ffc this, npc ghost)
+{
+    if(CheckStunWeaponCollision(ghost))
+    {
+        // Stop all movement
+        float vxBackup=this->Vx;
+        float vyBackup=this->Vy;
+        float axBackup=this->Ax;
+        float ayBackup=this->Ay;
+        
+        this->Vx=0;
+        this->Vy=0;
+        this->Ax=0;
+        this->Ay=0;
+        
+        // Do nothing except get hit until recovered
+        for(int timer=160; timer>0; timer--)
+        {
+            Waitframe();
+            if(!ghost->isValid() || ghost->HP<=0)
+                return false;
+            CheckHit(this, ghost);
+            if(CheckStunWeaponCollision(ghost))
+                timer=160;
+        }
+        
+        // Restore movement
+        this->Vx=vxBackup;
+        this->Vy=vyBackup;
+        this->Ax=axBackup;
+        this->Ay=ayBackup;
+    }
+    return true;
+}
+
+bool CheckStunWeaponCollision(npc ghost)
+{
+    lweapon wpn;
+    for(int i=1; i<=Screen->NumLWeapons(); i++)
+    {
+        wpn=Screen->LoadLWeapon(i);
+        if((wpn->Damage==0 || wpn->ID==LW_BRANG) &&
+           wpn->X+15>ghost->X && wpn->X<ghost->X+ghost->HitWidth &&
+           wpn->Y+15>ghost->Y && wpn->Y<ghost->Y+ghost->HitHeight &&
+           Abs(wpn->Z-ghost->Z)<16)
+            return true;
+    }
+    return false;
+}
+
+// Other ghost functions
+
+bool GotHit(ffc this)
+{
+    return (this->Misc[GHI_FLAGS]&GHF_GOT_HIT)!=0;
+}
+
+bool CanMove(ffc this, npc ghost, int dir, float step, int imprecision)
+{
+    int y=this->Y+ghost->Z;
+    
+    if(dir==DIR_UP)
+    {
+        // Screen edges
+        if((Screen->Flags[SF_ROOMTYPE]&010b)!=0 && y-step<32)
+            return false;
+        else if(y-step<0)
+            return false;
+        
+        int combo;
+        int y2=y-step;
+        
+        // Solidity, pit or water
+        for(int i=imprecision; i<this->TileWidth*16-imprecision; i+=8)
+        {
+            combo=ComboAt(this->X+i, y2);
+            if(Screen->isSolid(this->X+i, y2))
+                return false;
+            else if(IsWater(combo))
+                return false;
+            else if(IsPit(combo))
+                return false;
+        }
+        
+        // One last pixel...
+        combo=ComboAt(this->X+16*this->TileWidth-1-imprecision, y2);
+        if(Screen->isSolid(this->X+16*this->TileWidth-1-imprecision, y2))
+            return false;
+        else if(IsWater(combo))
+            return false;
+        else if(IsPit(combo))
+            return false;
+        
+        return true;
+    }
+    else if(dir==DIR_DOWN)
+    {
+        if((Screen->Flags[SF_ROOMTYPE]&010b)!=0 && y+16*this->TileHeight+step>=144)
+            return false;
+        else if(y+16*this->TileHeight+step>=176)
+            return false;
+        
+        int combo;
+        int y2=y+16*this->TileHeight+step;
+        
+        for(int i=imprecision; i<this->TileWidth*16-imprecision; i+=8)
+        {
+            combo=ComboAt(this->X+i, y2);
+            if(Screen->isSolid(this->X+i, y2))
+                return false;
+            else if(IsWater(combo))
+                return false;
+            else if(IsPit(combo))
+                return false;
+        }
+        
+        combo=ComboAt(this->X+16*this->TileWidth-1-imprecision, y2);
+        if(Screen->isSolid(this->X+16*this->TileWidth-1-imprecision, y2))
+            return false;
+        else if(IsWater(combo))
+            return false;
+        else if(IsPit(combo))
+            return false;
+        
+        return true;
+    }
+    else if(dir==DIR_LEFT)
+    {
+        if((Screen->Flags[SF_ROOMTYPE]&010b)!=0 && this->X-step<32)
+            return false;
+        else if(this->X-step<0)
+            return false;
+        
+        int combo;
+        int x2=this->X-step;
+        for(int i=imprecision; i<this->TileHeight*16-imprecision; i+=8)
+        {
+            combo=ComboAt(x2, y+i);
+            if(Screen->isSolid(x2, y+i))
+                return false;
+            else if(IsWater(combo))
+                return false;
+            else if(IsPit(combo))
+                return false;
+        }
+        
+        combo=ComboAt(x2, y+16*this->TileHeight-1-imprecision);
+        if(Screen->isSolid(x2, y+16*this->TileHeight-1-imprecision))
+            return false;
+        else if(IsWater(combo))
+            return false;
+        else if(IsPit(combo))
+            return false;
+        
+        return true;
+    }
+    else if(dir==DIR_RIGHT)
+    {
+        if((Screen->Flags[SF_ROOMTYPE]&010b)!=0 && this->X+16*this->TileWidth+step>=192)
+            return false;
+        else if(this->X+16*this->TileWidth+step>=256)
+            return false;
+        
+        int combo;
+        int x2=this->X+16*this->TileWidth+step;
+        for(int i=imprecision; i<this->TileHeight*16-imprecision; i+=8)
+        {
+            combo=ComboAt(x2, y+i);
+            if(Screen->isSolid(x2, y+i))
+                return false;
+            else if(IsWater(combo))
+                return false;
+            else if(IsPit(combo))
+                return false;
+        }
+        
+        combo=ComboAt(x2, y+16*this->TileHeight-1-imprecision);
+        if(Screen->isSolid(x2, y+16*this->TileHeight-1-imprecision))
+            return false;
+        else if(IsWater(combo))
+            return false;
+        else if(IsPit(combo))
+            return false;
+        
+        return true;
+    }
+    else
+        return false;
+}
+
+void Move(ffc this, npc ghost, float xStep, float yStep, int imprecision)
+{
+    if((this->Misc[GHI_FLAGS]&GHF_SET_DIRECTION)!=0)
+    {
+        if(Abs(yStep)>Abs(xStep))
+        {
+            if(yStep<0)
+                ghost->Dir=DIR_UP;
+            else
+                ghost->Dir=DIR_DOWN;
+        }
+        else
+        {
+            if(xStep<0)
+                ghost->Dir=DIR_LEFT;
+            else
+                ghost->Dir=DIR_RIGHT;
+        }
+    }
+
+    if(yStep<0)
+    {
+        if(CanMove(this, ghost, DIR_UP, -yStep, imprecision))
+        {
+            this->Y+=yStep;
+            ghost->Y+=yStep;
+        }
+    }
+    else if(yStep>0)
+    {
+        if(CanMove(this, ghost, DIR_DOWN, yStep, imprecision))
+        {
+            this->Y+=yStep;
+            ghost->Y+=yStep;
+        }
+    }
+    if(xStep<0)
+    {
+        if(CanMove(this, ghost, DIR_LEFT, -xStep, imprecision))
+        {
+            this->X+=xStep;
+            ghost->X+=xStep;
+        }
+    }
+    else if(xStep>0)
+    {
+        if(CanMove(this, ghost, DIR_RIGHT, xStep, imprecision))
+        {
+            this->X+=xStep;
+            ghost->X+=xStep;
+        }
+    }
+}
+
+void Transform(ffc this, npc ghost, int combo, int cset, int tileWidth, int tileHeight)
+{
+    int diff;
+    
+    if(combo>=0)
+        this->Data=combo;
+
+    if(cset>=0)
+    {
+        this->CSet=cset;
+        this->Misc[GHI_BASE_CSET]=cset;
+    }
+    
+    if(tileWidth>0)
+    {
+        diff=8*(this->TileWidth-tileWidth);
+        this->X=this->X+diff;
+        this->TileWidth=tileWidth;
+        ghost->X=ghost->X+diff;
+        ghost->HitWidth=16*tileWidth;
+    }
+    
+    if(tileHeight>0)
+    {
+        diff=8*(this->TileHeight-tileHeight);
+        this->Y=this->Y+diff;
+        this->TileHeight=tileHeight;
+        ghost->Y=ghost->Y+diff;
+        ghost->HitHeight=16*tileHeight;
+    }
+}
+
+void SwapGhost(npc oldGhost, npc newGhost, bool copyHP)
+{
+    newGhost->X=oldGhost->X;
+    newGhost->Y=oldGhost->Y;
+    newGhost->Z=oldGhost->Z;
+    newGhost->Jump=oldGhost->Jump;
+    newGhost->Dir=oldGhost->Dir;
+    
+    newGhost->Extend=oldGhost->Extend;
+    newGhost->HitWidth=oldGhost->HitWidth;
+    newGhost->HitHeight=oldGhost->HitHeight;
+    
+    for(int i=0; i<16; i++)
+        newGhost->Misc[i]=oldGhost->Misc[i];
+    
+    if(copyHP)
+        newGhost->HP=oldGhost->HP;
+    
+    newGhost->HitXOffset=0;
+    oldGhost->HitXOffset=32768;
+}
+
+void ReplaceGhost(npc oldGhost, npc newGhost, bool copyHP)
+{
+    newGhost->X=oldGhost->X;
+    newGhost->Y=oldGhost->Y;
+    newGhost->Z=oldGhost->Z;
+    newGhost->Jump=oldGhost->Jump;
+    newGhost->Dir=oldGhost->Dir;
+    
+    newGhost->Extend=oldGhost->Extend;
+    newGhost->HitWidth=oldGhost->HitWidth;
+    newGhost->HitHeight=oldGhost->HitHeight;
+    
+    for(int i=0; i<16; i++)
+        newGhost->Misc[i]=oldGhost->Misc[i];
+    
+    if(copyHP)
+        newGhost->HP=oldGhost->HP;
+    
+    newGhost->HitXOffset=0;
+    oldGhost->X=256;
+    oldGhost->HP=-1000;
+}
+
+// EWeapon functions
+
+eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step, int damage, bool blockable, int sprite, bool rotate, int sound)
+{
+    eweapon wpn=Screen->CreateEWeapon(weaponID);
+    wpn->X=x;
+    wpn->Y=y;
+    wpn->Step=step;
+    wpn->Misc[EWI_STEP]=step;
+    wpn->Damage=damage;
+    wpn->Angular=true;
+    wpn->Angle=angle;
+    SetEWeaponDir(wpn);
+    
+    if(sprite>=0)
+        wpn->UseSprite(sprite);
+    if(rotate)
+    {
+        wpn->Misc[EWI_FLAGS]|=EWF_ROTATE;
+        SetEWeaponRotation(wpn);
+    }
+    
+    if(!blockable)
+        wpn->Misc[EWI_FLAGS]|=EWF_UNBLOCKABLE;
+    
+    Game->PlaySound(sound);
+    
+    return wpn;
+}
+
+eweapon FireAimedEWeapon(int weaponID, int x, int y, float angle, int step, int damage, bool blockable, int sprite, bool rotate, int sound)
+{
+    return FireEWeapon(weaponID, x, y, ArcTan(Link->X-x, Link->Y-y)+angle, step, damage, blockable, sprite, rotate, sound);
+}
+
+eweapon FireNonAngularEWeapon(int weaponID, int x, int y, int direction, int step, int damage, int sprite, bool rotate, int sound)
+{
+    eweapon wpn=Screen->CreateEWeapon(weaponID);
+    wpn->X=x;
+    wpn->Y=y;
+    wpn->Dir=direction;
+    wpn->Step=step;
+    wpn->Misc[EWI_STEP]=step;
+    wpn->Damage=damage;
+    if(sprite>=0)
+        wpn->UseSprite(sprite);
+    
+    if(rotate)
+    {
+        wpn->Misc[EWI_FLAGS]|=EWF_ROTATE;
+        SetEWeaponRotation(wpn);
+    }
+    
+    Game->PlaySound(sound);
+    return wpn;
+}
+
+void SetEWeaponMovement(eweapon wpn, int type, int arg)
+{
+    wpn->Misc[EWI_XPOS]=wpn->X;
+    wpn->Misc[EWI_YPOS]=wpn->Y;
+    wpn->Misc[EWI_WORK]=0;
+    wpn->Misc[EWI_MOVEMENT]=type;
+    wpn->Misc[EWI_MOVEMENT_ARG]=arg;
+}
+
+void SetEWeaponLifespan(eweapon wpn, int type, int arg)
+{
+    wpn->Misc[EWI_LIFESPAN]=type;
+    wpn->Misc[EWI_LIFESPAN_ARG]=arg;
+}
+
+void SetEWeaponDeathEffect(eweapon wpn, int type, int arg)
+{
+    wpn->Misc[EWI_ON_DEATH]=type;
+    wpn->Misc[EWI_ON_DEATH_ARG]=arg;
+}
+
+void UpdateEWeapons()
+{
+    eweapon wpn;
+    
+    for(int i=1; i<=Screen->NumEWeapons(); i++)
+    {
+        wpn=Screen->LoadEWeapon(i);
+        
+        if((wpn->Misc[EWI_FLAGS]&EWF_UNBLOCKABLE)!=0)
+        {
+            // A weapon is made unblockable by setting its direction to match Link's each frame.
+            wpn->Dir=Link->Dir;
+            if((wpn->Misc[EWI_FLAGS]&EWF_ROTATE)!=0)
+                SetEWeaponRotation(wpn);
+        }
+        
+        // Still moving?
+        if((wpn->Misc[EWI_FLAGS]&EWF_DEAD)==0)
+        {
+            if(wpn->Misc[EWI_MOVEMENT]!=0)
+            {
+                // Split in half to reduce checks
+                if(wpn->Misc[EWI_MOVEMENT]<7)
+                {
+                    if(wpn->Misc[EWI_MOVEMENT]==EWM_SINE_WAVE)
+                    {
+                        float offset;
+                        wpn->Misc[EWI_WORK]+=15;
+                        offset=wpn->Misc[EWI_MOVEMENT_ARG]*Sin(wpn->Misc[EWI_WORK]);
+                        wpn->Misc[EWI_XPOS]+=(wpn->Misc[EWI_STEP]/100)*RadianCos(wpn->Angle);
+                        wpn->Misc[EWI_YPOS]+=(wpn->Misc[EWI_STEP]/100)*RadianSin(wpn->Angle);
+                        wpn->X=wpn->Misc[EWI_XPOS]+offset*RadianCos(wpn->Angle+1.5708);
+                        wpn->Y=wpn->Misc[EWI_YPOS]+offset*RadianSin(wpn->Angle+1.5708);
+                    }
+                    else if(wpn->Misc[EWI_MOVEMENT]==EWM_SINE_WAVE_FAST)
+                    {
+                        float offset;
+                        wpn->Misc[EWI_WORK]+=36;
+                        offset=wpn->Misc[EWI_MOVEMENT_ARG]*Sin(wpn->Misc[EWI_WORK]);
+                        wpn->Misc[EWI_XPOS]+=(wpn->Misc[EWI_STEP]/100)*RadianCos(wpn->Angle);
+                        wpn->Misc[EWI_YPOS]+=(wpn->Misc[EWI_STEP]/100)*RadianSin(wpn->Angle);
+                        wpn->X=wpn->Misc[EWI_XPOS]+offset*RadianCos(wpn->Angle+1.5708);
+                        wpn->Y=wpn->Misc[EWI_YPOS]+offset*RadianSin(wpn->Angle+1.5708);
+                    }
+                    else if(wpn->Misc[EWI_MOVEMENT]==EWM_HOMING)
+                    {
+                        float angle1=wpn->Angle%6.2832;    
+                        if(angle1<0)
+                            angle1+=6.2832;
+                        
+                        float angle2=RadianAngle(wpn->X, wpn->Y, Link->X, Link->Y);
+                        if(angle2<0)
+                            angle2+=6.2832;
+                        
+                        float diff=Abs(angle1-angle2);
+                        
+                        if(diff<wpn->Misc[EWI_MOVEMENT_ARG] || diff>6.2832-wpn->Misc[EWI_MOVEMENT_ARG])
+                            wpn->Angle=angle2;
+                        else if(Sign(angle1-angle2)==Sign(diff-PI)) // if angle1>angle2 and diff>pi or angle1<angle2 and diff<pi
+                            wpn->Angle+=wpn->Misc[EWI_MOVEMENT_ARG];
+                        else
+                            wpn->Angle-=wpn->Misc[EWI_MOVEMENT_ARG];
+                    }
+                    else if(wpn->Misc[EWI_MOVEMENT]==EWM_HOMING_REAIM)
+                    {
+                        if(wpn->Misc[EWI_WORK]==0)
+                            wpn->Misc[EWI_WORK]=45;
+
+                        if(wpn->Misc[EWI_WORK]>0) // If positive, wpn is moving
+                        {
+                            wpn->Misc[EWI_WORK]--;
+                            if(wpn->Misc[EWI_WORK]==0)
+                            {
+                                if(wpn->Misc[EWI_MOVEMENT_ARG]<=0) // No more aims left
+                                    wpn->Misc[EWI_FLAGS]|=EWF_DEAD;
+                                else // Stop
+                                {
+                                    wpn->Misc[EWI_MOVEMENT_ARG]--;
+                                    wpn->Step=0;
+                                    wpn->Misc[EWI_WORK]=-20;
+                                }
+                            }
+                        }
+                        else // If negative, it's stopped to aim
+                        {
+                            wpn->Misc[EWI_WORK]++;
+                            if(wpn->Misc[EWI_WORK]==0) // Start up again
+                            {
+                                wpn->Misc[EWI_WORK]=45;
+                                wpn->Angle=RadianAngle(wpn->X, wpn->Y, Link->X, Link->Y);
+                                wpn->Step=wpn->Misc[EWI_STEP];
+                                SetEWeaponDir(wpn);
+                                if((wpn->Misc[EWI_FLAGS]&EWF_ROTATE)!=0)
+                                    SetEWeaponRotation(wpn);
+                            }
+                            // Spin while waiting
+                            else if((wpn->Misc[EWI_FLAGS]&EWF_ROTATE)!=0)
+                            {
+                                int dir=-wpn->Misc[EWI_WORK]&110b;
+                                if(dir==110b)
+                                    SetEWeaponRotation(wpn, DIR_UP);
+                                else if(dir==100b)
+                                    SetEWeaponRotation(wpn, DIR_RIGHT);
+                                else if(dir==010b)
+                                    SetEWeaponRotation(wpn, DIR_DOWN);
+                                else
+                                    SetEWeaponRotation(wpn, DIR_LEFT);
+                            }
+                        }
+                    }
+                    else if(wpn->Misc[EWI_MOVEMENT]==EWM_RANDOM)
+                    {
+                        wpn->Angle+=Randf(2*wpn->Misc[EWI_MOVEMENT_ARG])-wpn->Misc[EWI_MOVEMENT_ARG]; // Rand2f(-arg, arg) doesn't work right...?
+                        SetEWeaponDir(wpn);
+                        if((wpn->Misc[EWI_FLAGS]&EWF_ROTATE)!=0)
+                            SetEWeaponRotation(wpn);
+                    }
+                    else if(wpn->Misc[EWI_MOVEMENT]==EWM_RANDOM_REAIM) // Almost the same as homing re-aim
+                    {
+                        if(wpn->Misc[EWI_WORK]==0)
+                            wpn->Misc[EWI_WORK]=45;
+
+                        if(wpn->Misc[EWI_WORK]>0) // If positive, wpn is moving
+                        {
+                            wpn->Misc[EWI_WORK]--;
+                            if(wpn->Misc[EWI_WORK]==0)
+                            {
+                                if(wpn->Misc[EWI_MOVEMENT_ARG]<=0) // No more aims left
+                                    wpn->Misc[EWI_FLAGS]|=EWF_DEAD;
+                                else // Stop
+                                {
+                                    wpn->Misc[EWI_MOVEMENT_ARG]--;
+                                    wpn->Step=0;
+                                    wpn->Misc[EWI_WORK]=-20;
+                                }
+                            }
+                        }
+                        else // If negative, it's stopped to aim
+                        {
+                            wpn->Misc[EWI_WORK]++;
+                            if(wpn->Misc[EWI_WORK]==0) // Start up again
+                            {
+                                wpn->Misc[EWI_WORK]=45;
+                                wpn->Angle=Rand(31416)/5000;
+                                wpn->Step=wpn->Misc[EWI_STEP];
+                                SetEWeaponDir(wpn);
+                                if((wpn->Misc[EWI_FLAGS]&EWF_ROTATE)!=0)
+                                    SetEWeaponRotation(wpn);
+                            }
+                            // Spin while waiting
+                            else if((wpn->Misc[EWI_FLAGS]&EWF_ROTATE)!=0)
+                            {
+                                int dir=-wpn->Misc[EWI_WORK]&110b;
+                                if(dir==110b)
+                                    SetEWeaponRotation(wpn, DIR_UP);
+                                else if(dir==100b)
+                                    SetEWeaponRotation(wpn, DIR_RIGHT);
+                                else if(dir==010b)
+                                    SetEWeaponRotation(wpn, DIR_DOWN);
+                                else
+                                    SetEWeaponRotation(wpn, DIR_LEFT);
+                            }
+                        }
+                    }
+                }
+                else // wpn->Misc[EWI_MOVEMENT]>=7
+                {
+                    if(wpn->Misc[EWI_MOVEMENT]==EWM_VEER_UP)
+                    {
+                        wpn->Y-=wpn->Misc[EWI_WORK];
+                        wpn->Misc[EWI_WORK]+=wpn->Misc[EWI_MOVEMENT_ARG];
+                    }
+                    else if(wpn->Misc[EWI_MOVEMENT]==EWM_VEER_DOWN)
+                    {
+                        wpn->Y+=wpn->Misc[EWI_WORK];
+                        wpn->Misc[EWI_WORK]+=wpn->Misc[EWI_MOVEMENT_ARG];
+                    }
+                    else if(wpn->Misc[EWI_MOVEMENT]==EWM_VEER_LEFT)
+                    {
+                        wpn->X-=wpn->Misc[EWI_WORK];
+                        wpn->Misc[EWI_WORK]+=wpn->Misc[EWI_MOVEMENT_ARG];
+                    }
+                    else if(wpn->Misc[EWI_MOVEMENT]==EWM_VEER_RIGHT)
+                    {
+                        wpn->X+=wpn->Misc[EWI_WORK];
+                        wpn->Misc[EWI_WORK]+=wpn->Misc[EWI_MOVEMENT_ARG];
+                    }
+                    else if(wpn->Misc[EWI_MOVEMENT]==EWM_THROW)
+                    {
+                        wpn->Jump=0; // Override engine handling of Z movement for the few weapon types that have it
+                        if(wpn->Misc[EWI_WORK]==0 && EWI_MOVEMENT_ARG!=0)
+                        {
+                            wpn->Misc[EWI_WORK]=wpn->Misc[EWI_MOVEMENT_ARG];
+                            wpn->Misc[EWI_MOVEMENT_ARG]=0;
+                        }
+                        
+                        wpn->Z=Max(wpn->Z+wpn->Misc[EWI_WORK], wpn->Z-GH_TERMINAL_VELOCITY);
+                        if(wpn->Z<=0)
+                            wpn->Misc[EWI_FLAGS]|=EWF_DEAD;
+                        else
+                            wpn->Misc[EWI_WORK]-=GH_GRAVITY;
+                    }
+                }
+            }
+            
+            if(wpn->Misc[EWI_LIFESPAN]!=0)
+            {
+                if(wpn->Misc[EWI_LIFESPAN]==EWL_TIMER)
+                {
+                    wpn->Misc[EWI_LIFESPAN_ARG]-=1;
+                    if(wpn->Misc[EWI_LIFESPAN_ARG]<=0)
+                        wpn->Misc[EWI_FLAGS]|=EWF_DEAD;
+                }
+                else if(wpn->Misc[EWI_LIFESPAN]==EWL_NEAR_LINK)
+                {
+                    if(Distance(wpn->X, wpn->Y, Link->X, Link->Y)<wpn->Misc[EWI_LIFESPAN_ARG])
+                        wpn->Misc[EWI_FLAGS]|=EWF_DEAD;
+                }
+                else if(wpn->Misc[EWI_LIFESPAN]==EWL_SLOW_TO_HALT)
+                {
+                    wpn->Misc[EWI_STEP]=Max(0, wpn->Misc[EWI_STEP]-wpn->Misc[EWI_LIFESPAN_ARG]);
+                    wpn->Step=wpn->Misc[EWI_STEP];
+                    if(wpn->Misc[EWI_STEP]<=0)
+                        wpn->Misc[EWI_FLAGS]|=EWF_DEAD;
+                }
+            }
+        }
+        
+        // Dead?
+        else
+        {
+            // Split in half to reduce checks
+            if(wpn->Misc[EWI_ON_DEATH]<8)
+            {
+                if(wpn->Misc[EWI_ON_DEATH]==EWD_VANISH)
+                    wpn->DeadState=0;
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_AIM_AT_LINK)
+                {
+                    wpn->Step=0;
+                    wpn->Misc[EWI_ON_DEATH_ARG]-=1;
+                    if(wpn->Misc[EWI_ON_DEATH_ARG]<=0)
+                    {
+                        wpn->Angle=RadianAngle(wpn->X, wpn->Y, Link->X, Link->Y);
+                        SetEWeaponDir(wpn);
+                        SetEWeaponRotation(wpn);
+                        wpn->Step=300;
+                        wpn->Misc[EWI_ON_DEATH]=0;
+                    }
+                    // Spin while waiting
+                    else if((wpn->Misc[EWI_FLAGS]&EWF_ROTATE)!=0)
+                    {
+                        int dir=wpn->Misc[EWI_ON_DEATH_ARG]&110b;
+                        if(dir==110b)
+                            SetEWeaponRotation(wpn, DIR_UP);
+                        else if(dir==100b)
+                            SetEWeaponRotation(wpn, DIR_RIGHT);
+                        else if(dir==010b)
+                            SetEWeaponRotation(wpn, DIR_DOWN);
+                        else
+                            SetEWeaponRotation(wpn, DIR_LEFT);
+                    }
+                }
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_EXPLODE)
+                {
+                    FireNonAngularEWeapon(EW_BOMBBLAST, wpn->X, wpn->Y, wpn->Dir, 0, wpn->Misc[EWI_ON_DEATH_ARG], -1, false, 0);
+                    wpn->DeadState=0;
+                }
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_SBOMB_EXPLODE)
+                {
+                    FireNonAngularEWeapon(EW_SBOMBBLAST, wpn->X, wpn->Y, wpn->Dir, 0, wpn->Misc[EWI_ON_DEATH_ARG], -1, false, 0);
+                    wpn->DeadState=0;
+                }
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_4_FIREBALLS_HV)
+                {
+                    for(int i=0; i<4; i++)
+                        FireNonAngularEWeapon(EW_FIREBALL, wpn->X, wpn->Y, i, 200, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    wpn->DeadState=0;
+                }
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_4_FIREBALLS_DIAG)
+                {
+                    for(int i=4; i<8; i++)
+                        FireNonAngularEWeapon(EW_FIREBALL, wpn->X, wpn->Y, i, 200, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    wpn->DeadState=0;
+                }
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_4_FIREBALLS_RANDOM)
+                {
+                    if(Rand(2)==1)
+                    {
+                        for(int i=0; i<4; i++)
+                            FireNonAngularEWeapon(EW_FIREBALL, wpn->X, wpn->Y, i, 200, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    }
+                    else
+                    {
+                        for(int i=4; i<8; i++)
+                            FireNonAngularEWeapon(EW_FIREBALL, wpn->X, wpn->Y, i, 200, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    }
+                    wpn->DeadState=0;
+                }
+            }
+            else
+            {
+                if(wpn->Misc[EWI_ON_DEATH]==EWD_8_FIREBALLS)
+                {
+                    for(int i=0; i<8; i++)
+                        FireNonAngularEWeapon(EW_FIREBALL, wpn->X, wpn->Y, i, 200, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    wpn->DeadState=0;
+                }
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_4_FIRES_HV)
+                {
+                    for(int i=0; i<4; i++)
+                        FireNonAngularEWeapon(EW_FIRE, wpn->X, wpn->Y, i, 100, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    Game->PlaySound(SFX_FIRE); // Only play sound once
+                    wpn->DeadState=0;
+                }
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_4_FIRES_DIAG)
+                {
+                    for(int i=4; i<8; i++)
+                        FireNonAngularEWeapon(EW_FIRE, wpn->X, wpn->Y, i, 71, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    Game->PlaySound(SFX_FIRE);
+                    wpn->DeadState=0;
+                }
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_4_FIRES_RANDOM)
+                {
+                    if(Rand(2)==1)
+                    {
+                        for(int i=0; i<4; i++)
+                            FireNonAngularEWeapon(EW_FIRE, wpn->X, wpn->Y, i, 100, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    }
+                    else
+                    {
+                        for(int i=4; i<8; i++)
+                            FireNonAngularEWeapon(EW_FIRE, wpn->X, wpn->Y, i, 71, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    }
+                    Game->PlaySound(SFX_FIRE);
+                    wpn->DeadState=0;
+                }            
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_8_FIRES)
+                {
+                    for(int i=0; i<4; i++)
+                        FireNonAngularEWeapon(EW_FIRE, wpn->X, wpn->Y, i, 100, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    for(int i=4; i<8; i++)
+                        FireNonAngularEWeapon(EW_FIRE, wpn->X, wpn->Y, i, 71, wpn->Damage/2, wpn->Misc[EWI_ON_DEATH_ARG], false, 0);
+                    Game->PlaySound(SFX_FIRE);
+                    wpn->DeadState=0;
+                }
+                else if(wpn->Misc[EWI_ON_DEATH]==EWD_SPAWN_NPC)
+                {
+                    npc enemy=Screen->CreateNPC(wpn->Misc[EWI_ON_DEATH_ARG]);
+                    enemy->X=wpn->X;
+                    enemy->Y=wpn->Y;
+                    wpn->DeadState=0;
+                }
+            }
+        }
+    }
+}
+
+void SetEWeaponDir(eweapon wpn)
+{
+    float angle=wpn->Angle%6.2832;    
+    if(angle<0)
+        angle+=6.2832;
+        
+    if(angle<0.3927 || angle>5.8905)
+        wpn->Dir=DIR_RIGHT;
+    else if(angle<1.1781)
+        wpn->Dir=DIR_RIGHTDOWN;
+    else if(angle<1.9635)
+        wpn->Dir=DIR_DOWN;
+    else if(angle<2.7489)
+        wpn->Dir=DIR_LEFTDOWN;
+    else if(angle<3.5343)
+        wpn->Dir=DIR_LEFT;
+    else if(angle<4.3197)
+        wpn->Dir=DIR_LEFTUP;
+    else if(angle<5.1051)
+        wpn->Dir=DIR_UP;
+    else
+        wpn->Dir=DIR_RIGHTUP;
+}
+
+void SetEWeaponRotation(eweapon wpn)
+{
+    if(wpn->Angular)
+    {
+        float angle=wpn->Angle%6.2832;    
+        if(angle<0)
+            angle+=6.2832;
+            
+        if(angle<0.7854 || angle>5.4978) // Right
+            wpn->Flip=4;
+        else if(angle<=2.3562) // Down
+            wpn->Flip=3;
+        else if(angle<3.927) // Left
+            wpn->Flip=7;
+        else // Up
+            wpn->Flip=0;
+    }
+    else
+    {
+        if(wpn->Dir==DIR_UP || wpn->Dir==DIR_RIGHTUP || wpn->Dir==DIR_LEFTUP)
+            wpn->Flip=0;
+        else if(wpn->Dir==DIR_DOWN || wpn->Dir==DIR_RIGHTDOWN || wpn->Dir==DIR_LEFTDOWN)
+            wpn->Flip=3;
+        else if(wpn->Dir==DIR_LEFT)
+            wpn->Flip=7;
+        else // Right
+            wpn->Flip=4;
+    }
+}
+
+void SetEWeaponRotation(eweapon wpn, int direction)
+{
+    if(direction==DIR_UP || direction==DIR_RIGHTUP || direction==DIR_LEFTUP)
+        wpn->Flip=0;
+    else if(direction==DIR_DOWN || direction==DIR_RIGHTDOWN || direction==DIR_LEFTDOWN)
+        wpn->Flip=3;
+    else if(direction==DIR_LEFT)
+        wpn->Flip=7;
+    else // Right
+        wpn->Flip=4;
+}
+
+
+// Utility functions
+
+npc SpawnNPC(int id)
+{
+    // First, rate tiles for suitability. Lower is better, but negative means it's strictly off-limits.
+    int tileRatings[176];
+    int checkCombo;
+    int bestRating;
+    int bestCount;
+    int counter;
+    int choice;
+    
+    npc checkNPC;
+    npc theNPC;
+    
+    // Tiles used by or next to other NPCs are undesirable
+    for(int i=1; i<=Screen->NumNPCs(); i++)
+    {
+        checkNPC=Screen->LoadNPC(i);
+        checkCombo=ComboAt(checkNPC->X, checkNPC->Y);
+        tileRatings[checkCombo]+=3;
+        
+        if(checkCombo>15)
+            tileRatings[checkCombo-16]+=1;
+        if(checkCombo<160)
+            tileRatings[checkCombo+16]+=1;
+        if(checkCombo%16>0)
+            tileRatings[checkCombo-1]+=1;
+        if(checkCombo%16<15)
+            tileRatings[checkCombo+1]+=1;
+    }
+    
+    
+    // Tiles right next to Link are off-limits
+    checkCombo=ComboAt(Link->X, Link->Y);
+    tileRatings[checkCombo]=-1;
+    
+    if(checkCombo>15)
+    {
+        tileRatings[checkCombo-16]=-1;
+        if(checkCombo%16>0)
+            tileRatings[checkCombo-17]=-1;
+        if(checkCombo%16<15)
+            tileRatings[checkCombo-15]=-1;
+    }
+    if(checkCombo<160)
+    {
+        tileRatings[checkCombo+16]=-1;
+        if(checkCombo%16>0)
+            tileRatings[checkCombo+15]=-1;
+        if(checkCombo%16<15)
+            tileRatings[checkCombo+17]=-1;
+    }
+    if(checkCombo%16>0)
+        tileRatings[checkCombo-1]=-1;
+    if(checkCombo%16<15)
+        tileRatings[checkCombo+1]=-1;
+    
+    // Mark other prohibited tiles
+    for(int i=0; i<176; i++)
+    {
+        // Screen edges in NES dungeon
+        if((Screen->Flags[SF_ROOMTYPE]&010b)!=0 && (i<32 || i>143 || i%16<2 || i%16>13))
+            tileRatings[i]=-1;
+        // "No enemy" flag and combos
+        else if(Screen->ComboF[i]==CF_NOENEMY || Screen->ComboT[i]==CT_NOENEMY || Screen->ComboT[i]==CT_NOFLYZONE || Screen->ComboT[i]==CT_NOJUMPZONE)
+            tileRatings[i]=-1;
+        // Water and pits
+        else if(IsWater(i) || IsPit(i))
+            tileRatings[i]=-1;
+        // Solid combos
+        else if(Screen->ComboS[i]!=0)
+            tileRatings[i]=-1;
+    }
+    
+    // Find the best rating and count the number of tiles with that rating
+    bestRating=10000;
+    bestCount=0;
+    for(int i=0; i<176; i++)
+    {
+        if(tileRatings[i]<0)
+            continue;
+        
+        if(tileRatings[i]==bestRating)
+            bestCount++;
+        else if(tileRatings[i]<bestRating)
+        {
+            bestRating=tileRatings[i];
+            bestCount=1;
+        }
+    }
+    
+    // Pick at random from the best rated tiles
+    counter=Rand(bestCount)+1;
+    for(choice=0; counter>0; choice++)
+    {
+        if(tileRatings[choice]==bestRating)
+            counter--;
+    }
+    
+    theNPC=Screen->CreateNPC(id);
+    theNPC->X=ComboX(choice-1);
+    theNPC->Y=ComboY(choice-1);
+    return theNPC;
+}
+
+bool IsWater(int position)
+{
+    int combo=Screen->ComboT[position];
+    if(combo==3 || combo==18 || combo==19 || (combo>=86 && combo<=91))
+        return true;
+    else
+        return false;
+}
+
+bool IsPit(int position)
+{
+    int combo=Screen->ComboT[position];
+    if(combo==41 || combo==93 || (combo>=80 && combo<=82))
+        return true;
+    else
+        return false;
+}
+
+int CenterX(ffc anFFC)
+{
+    return anFFC->X+8*anFFC->TileWidth;
+}
+
+int CenterY(ffc anFFC)
+{
+    return anFFC->Y+8*anFFC->TileHeight;
+}
+
+int CenterX(npc anNPC)
+{
+    return anNPC->X+8*anNPC->HitWidth;
+}
+
+int CenterY(npc anNPC)
+{
+    return anNPC->Y+8*anNPC->HitHeight;
+}
+
+int CenterX(eweapon anEWeapon)
+{
+    return anEWeapon->X+8*anEWeapon->HitWidth;
+}
+
+int CenterY(eweapon anEWeapon)
+{
+    return anEWeapon->Y+8*anEWeapon->HitHeight;
+}
+
+int CenterX(lweapon anLWeapon)
+{
+    return anLWeapon->X+8*anLWeapon->HitWidth;
+}
+
+int CenterY(lweapon anLWeapon)
+{
+    return anLWeapon->Y+8*anLWeapon->HitHeight;
+}
+
+int CenterLinkX()
+{
+    return Link->X+8;
+}
+
+int CenterLinkY()
+{
+    return Link->Y+8;
+}

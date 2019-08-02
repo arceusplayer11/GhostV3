@@ -1,0 +1,120 @@
+// import "std.zh"
+// import "ghost.zh"
+
+// Moves up and down the left side of the screen creating Stalfos and firing a variety of projectiles.
+// Appears on screen 3 in the demo quest.
+const int LICH_FIREBALL_SPRITE_1=11;
+const int LICH_FIREBALL_SPRITE_2=89;
+const int LICH_FIREBALL_SPRITE_3=17;
+const int LICH_STALFOS_BOMB_SPRITE=88;
+const int LICH_COMBO=25;
+const int LICH_ATTACK_COMBO=26;
+
+ffc script Lich
+{
+    void run()
+    {
+        npc ghost;
+        eweapon wpn;
+        int attackType;
+        
+        // Switch to invisible combo at screen init
+        this->Data=0;
+        ghost=GhostInitWait(this, 1, false, LICH_COMBO);
+        this->TileWidth=3; // For the hand
+        
+        // Wait for three seconds initially, unless Link comes too close or attacks
+        for(int i=0; i<180 && Distance(this->X, this->Y, Link->X, Link->Y)>64 && !GotHit(this); i++)
+            LichWaitframe(this, ghost, 1);
+        
+        while(true)
+        {
+            if(Screen->NumNPCs()<4) // Always keep a few Stalfos around
+                attackType=2;
+            else
+                attackType=Rand(2);
+            
+            // Arcing icicles
+            if(attackType==0)
+            {
+                this->Data=LICH_ATTACK_COMBO;
+                
+                for(int i=0; i<8; i++)
+                {
+                    if(i%2==1)
+                        wpn=FireEWeapon(EW_FIREBALL, this->X+24, this->Y+16, -PI/4, 250, 2, true,  LICH_FIREBALL_SPRITE_1, true, SFX_FIREBALL); 
+                    else
+                        wpn=FireEWeapon(EW_FIREBALL, this->X+24, this->Y+16, PI/4, 250, 2, true,  LICH_FIREBALL_SPRITE_1, true, SFX_FIREBALL);
+                    SetEWeaponMovement(wpn, EWM_VEER_RIGHT, 0.075);
+                    SetEWeaponLifespan(wpn, EWL_TIMER, 45);
+                    SetEWeaponDeathEffect(wpn, EWD_AIM_AT_LINK, 30);
+                    
+                    LichWaitframe(this, ghost, 15);
+                }
+            }
+            // Homing and waving projectiles
+            else if(attackType==1)
+            {
+                this->Data=LICH_ATTACK_COMBO;
+                
+                wpn=FireEWeapon(EW_SCRIPT1, this->X+24, this->Y+8, -PI/8, 250, 2, true,  LICH_FIREBALL_SPRITE_2, false, SFX_FIREBALL);
+                SetEWeaponMovement(wpn, EWM_HOMING_REAIM, 4);
+                SetEWeaponLifespan(wpn, EWL_NEAR_LINK, 16);
+                SetEWeaponDeathEffect(wpn, EWD_EXPLODE, 4);
+                
+                wpn=FireEWeapon(EW_SCRIPT1, this->X+24 , this->Y+24, PI/8, 250, 2, true,  LICH_FIREBALL_SPRITE_2, false, SFX_FIREBALL);
+                SetEWeaponMovement(wpn, EWM_HOMING_REAIM, 4);
+                SetEWeaponLifespan(wpn, EWL_NEAR_LINK, 16);
+                SetEWeaponDeathEffect(wpn, EWD_EXPLODE, 4);
+                
+                for(int i=0; i<6; i++)
+                {
+                    wpn=FireEWeapon(EW_SCRIPT1, this->X+24, this->Y+16, 0, 300, 2, true,  LICH_FIREBALL_SPRITE_3, false, SFX_FIREBALL);
+                    SetEWeaponMovement(wpn, EWM_SINE_WAVE, 24);
+                    
+                    LichWaitframe(this, ghost, 30);
+                }
+            }
+            // Throw projectiles that turn into Stalfos when they land
+            else
+            {
+                // Wait until near the vertical center of the screen
+                while(Abs(this->Y-64)>8)
+                    LichWaitframe(this, ghost, 1);
+                
+                this->Data=LICH_ATTACK_COMBO;
+                
+                for(int i=0; i<5; i++)
+                {
+                    wpn=FireEWeapon(EW_SCRIPT1, this->X+24, this->Y+16, Rand2(-60, 60)/100, 100, 2, true, LICH_STALFOS_BOMB_SPRITE, false, 0);
+                    wpn->CollDetection=false;
+                    SetEWeaponMovement(wpn, EWM_THROW, Rand2(25, 60)/10);
+                    SetEWeaponDeathEffect(wpn, EWD_SPAWN_NPC, NPC_STALFOS1);
+                }
+                LichWaitframe(this, ghost, 10);
+            }
+            
+            this->Data=LICH_COMBO;
+            LichWaitframe(this, ghost, 90);
+        }
+    }
+
+    void LichWaitframe(ffc this, npc ghost, int numFrames)
+    {
+        while(numFrames-->0)
+        {
+            // Float about
+            if(this->Y<64)
+                this->Vy=Min(this->Vy+0.02, 2);
+            else
+                this->Vy=Max(this->Vy-0.02, -2);
+            
+            if(this->X<56)
+                this->Vx=Min(this->Vx+0.015, 1.5);
+            else
+                this->Vx=Max(this->Vx-0.015, -1.5);
+    
+            GhostWaitframeF(this, ghost, true, true);
+        }    
+    }
+}

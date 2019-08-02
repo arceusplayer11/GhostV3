@@ -1,0 +1,42 @@
+// import "std.zh"
+// import "ghost.zh"
+
+// A simple enemy that moves straight toward Link, periodically shooting
+// fireballs off to his sides. Not much of an enemy, just a script example.
+// Appears on screen 1 in the demo quest.
+
+ffc script SimpleGhostZHExample
+{
+    void run()
+    {
+        npc ghost;
+        int angle;
+        int timer;
+        float moveX;
+        float moveY;
+        
+        ghost=GhostInitCreate(this, 177);
+        SetFlags(this, GHF_NORMAL);
+        
+        timer=Rand2(120, 180);
+        for(int i=0; true; i++)
+        {
+            // Fire every 2-3 seconds
+            if(i==timer)
+            {
+                i=0;
+                timer=Rand2(120, 180);
+                FireAimedEWeapon(EW_SCRIPT1, this->X, this->Y, 0.35, 200, 2, true, 17, false, SFX_FIREBALL);
+                FireAimedEWeapon(EW_SCRIPT1, this->X, this->Y, -0.35, 200, 2, true, 17, false, 0);
+            }
+            
+            // Move slowly toward Link
+            moveX=VectorX(0.25, Angle(this->X, this->Y, Link->X, Link->Y));
+            moveY=VectorY(0.25, Angle(this->X, this->Y, Link->X, Link->Y));
+            Move(this, ghost, moveX, moveY, 2);
+            
+            GhostWaitframeF(this, ghost, true, true);
+        }
+    }
+}   
+
