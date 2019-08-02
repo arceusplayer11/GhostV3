@@ -32,6 +32,7 @@ ffc script Iflyte
         hand2->Data=0;
         
         ghost=GhostInitWait(this, 1, false);
+        DrawSpawnAnimation(this, ghost);
         hand1->Data=IFL_HAND1_COMBO;
         hand2->Data=IFL_HAND2_COMBO;
         
@@ -195,9 +196,9 @@ ffc script Iflyte
         
         // Stop moving, stop flashing, turn off collision detection
         ghost->CollDetection=false;
-        this->CSet=this->Misc[GHI_BASE_CSET];
-        hand1->CSet=this->Misc[GHI_BASE_CSET];
-        hand2->CSet=this->Misc[GHI_BASE_CSET];
+        RevertCSet(this, ghost);
+        hand1->CSet=this->CSet;
+        hand2->CSet=this->CSet;
         this->Vx=0;
         this->Vy=0;
         

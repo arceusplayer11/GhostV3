@@ -18,10 +18,11 @@ ffc script Lich
         npc ghost;
         
         ghost=GhostInitWait(this, 1, false);
+        DrawSpawnAnimation(this, ghost);
         SetOffsets(this, ghost, 0, 0, 0, 16); // The right column is just the hand
         
         // Wait for three seconds initially, unless Link comes too close or attacks
-        for(int i=0; i<180 && Distance(this->X, this->Y, Link->X, Link->Y)>64 && !GotHit(this); i++)
+        for(int i=0; i<180 && Distance(this->X, this->Y, Link->X, Link->Y)>64 && !GotHit(ghost); i++)
             LichWaitframe(this, ghost, 1);
         
         while(true)

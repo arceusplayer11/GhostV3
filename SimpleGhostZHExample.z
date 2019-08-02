@@ -19,6 +19,7 @@ ffc script SimpleGhostZHExample
         
         // Initialize
         ghost=GhostInitCreate(this, SGZE_ENEMY_ID, GHF_NORMAL|GHF_4WAY);
+        DrawSpawnAnimation(this, ghost);
         timer=Rand(120, 180);
         
         while(true)

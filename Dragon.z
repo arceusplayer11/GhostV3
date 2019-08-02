@@ -17,6 +17,7 @@ ffc script Dragon
         
         // Initialize
         ghost=GhostInitCreate(this, DRG_ENEMY_ID);
+        DrawSpawnAnimation(this, ghost);
         SetOffsets(this, ghost, 16, 0, 0, 0);
         
         this->Vx=0.2;

@@ -251,7 +251,7 @@ ffc script Julius
                     this->Vx-=0.065*Sign(this->Vx);
                 
                 // If hit, fire some lightning
-                if(GotHit(this))
+                if(GotHit(ghost))
                 {
                     FireBigEWeapon(EW_SCRIPT1, this->X, this->Y+32, 5*PI/6, 250, 4, JUL_BOLT_SPRITE_L, JUL_SFX_LIGHTNING, EWF_UNBLOCKABLE, 2, 1);
                     FireBigEWeapon(EW_SCRIPT1, this->X+24, this->Y+40, PI/2, 250, 4, JUL_BOLT_SPRITE_C, 0, EWF_UNBLOCKABLE, 1, 2);
@@ -291,7 +291,7 @@ ffc script Julius
             if(i%2==0)
             {
                 if(this->CSet==JUL_GLOW_CSET)
-                    this->CSet=this->Misc[GHI_BASE_CSET];
+                    RevertCSet(this, ghost);
                 else
                     this->CSet=JUL_GLOW_CSET;
             }
@@ -308,7 +308,7 @@ ffc script Julius
             JulWaitframe(this, ghost);
         }
         
-        this->CSet=this->Misc[GHI_BASE_CSET];
+        RevertCSet(this, ghost);
         this->Data=JUL_FLOAT_COMBO;
     }
  
@@ -357,7 +357,7 @@ ffc script Julius
             Game->PlayMIDI(0);
             this->Vx=0;
             this->Vy=0;
-            ghost->X=256; // Move it offscreen so its death isn't visible
+            SetHP(this, ghost, 1); // Keep it alive - need to remember its CSet
             Die(this, ghost);
         }
         // Still alive; are fireballs enabled?
@@ -390,7 +390,7 @@ ffc script Julius
         // Spawn fires randomly over Julius's body, 5 at a time
         for(int i=0; i<3; i++)
         {
-            FlashWait(this, 90);
+            FlashWait(this, ghost, 90);
             
             Game->PlaySound(SFX_FIRE);
             for(int j=0; j<5; j++)
@@ -404,7 +404,7 @@ ffc script Julius
             }
         }
         
-        FlashWait(this, 180);
+        FlashWait(this, ghost, 180);
         
         // Start the music and drop the Triforce piece
         Game->PlayMIDI(JUL_VICTORY_MIDI);
@@ -418,6 +418,8 @@ ffc script Julius
         for(int i=0; i<15; i++)
             fires[i]->DeadState=0;
         this->Data=0;
+        ghost->X=256;
+        ghost->HP=-1000;
         
         // Play the sound and make the screen flash
         Game->PlaySound(JUL_SFX_EXPLODE);
@@ -453,12 +455,12 @@ ffc script Julius
     
     
     // Waitframe used by Die(). Makes Julius flash.
-    void FlashWait(ffc this, int numFrames)
+    void FlashWait(ffc this, npc ghost, int numFrames)
     {
         while(numFrames-->0)
         {
             if(this->CSet==JUL_GLOW_CSET)
-                this->CSet=this->Misc[GHI_BASE_CSET];
+                RevertCSet(this, ghost);
             else
                 this->CSet=JUL_GLOW_CSET;
             

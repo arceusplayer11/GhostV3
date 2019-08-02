@@ -14,6 +14,7 @@ ffc script Grell
     {
         eweapon electricity;
         npc grell=GhostInitWait(this, enemyID, true);
+        DrawSpawnAnimation(this, grell);
         
         while(true)
         {

@@ -10,14 +10,15 @@ const float TWA_JUMP_SPEED=2;
 
 ffc script TwinAmoeba
 {
-    void run(int pos)
+    void run()
     {
         npc ghost;
         npc slime[2];
         int currentSlime;
         
         // Initialize
-        ghost=GhostInitWait2(this, TWA_CORE_ID, pos, true, GHF_NO_FALL);
+        ghost=GhostInitWait2(this, TWA_CORE_ID, true, GHF_NO_FALL);
+        DrawSpawnAnimation(this, ghost);
         currentSlime=0;
         
         // Create the first slime at the core's position; the second is randomly placed
@@ -29,7 +30,7 @@ ffc script TwinAmoeba
         while(true)
         {
             // If the core just got hit, jump to the other slime
-            if(GotHit(this))
+            if(GotHit(ghost))
             {
                 SlimeJump(this, ghost, slime[currentSlime], slime[currentSlime^1], true);
                 currentSlime^=1; // Switch index between 0 and 1
@@ -41,7 +42,7 @@ ffc script TwinAmoeba
                     currentSlime^=1;
             }
             
-            TwaWaitframe(this, ghost, slime[currentSlime]->X, slime[currentSlime]->Y, 0, slime[0], slime[1]);
+            TwAWaitframe(this, ghost, slime[currentSlime]->X, slime[currentSlime]->Y, 0, slime[0], slime[1]);
         }
     }
     
@@ -88,14 +89,14 @@ ffc script TwinAmoeba
             currentDist=Distance(xPos, yPos, targetX, targetY);
             zPos=totalDist/2*Sin(currentDist/totalDist*180);
             
-            TwaWaitframe(this, ghost, xPos, yPos, zPos, startSlime, destSlime);
+            TwAWaitframe(this, ghost, xPos, yPos, zPos, startSlime, destSlime);
         } while(currentDist>1);
         
         return true;
     }
     
     
-    void TwaWaitframe(ffc this, npc ghost, int x, int y, int z, npc slime1, npc slime2)
+    void TwAWaitframe(ffc this, npc ghost, int x, int y, int z, npc slime1, npc slime2)
     {
         // If the core is dead, kill the slimes as well
         if(!GhostWaitframeM(this, ghost, x, y, z, true, false))
