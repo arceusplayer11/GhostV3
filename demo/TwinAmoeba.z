@@ -25,10 +25,15 @@ ffc script TwinAmoeba
         int i;
         
         // Initialize
-        ghost=Ghost_InitAutoGhost(this, enemyID, GHF_NO_FALL|GHF_CLOCK|GHF_SET_OVERLAY);
-        Ghost_SpawnAnimationPuff(this, ghost);
-        currentSlime=0;
+        ghost=Ghost_InitAutoGhost(this, enemyID);
+        Ghost_SetFlag(GHF_NO_FALL);
+        Ghost_SetFlag(GHF_CLOCK);
+        Ghost_SetFlag(GHF_SET_OVERLAY);
+        
         jumpy=ghost->Attributes[TWA_ATTR_JUMPY]!=0;
+        currentSlime=0;
+        
+        Ghost_SpawnAnimationPuff(this, ghost);
         
         // Create the first slime at the core's position; the second is randomly placed
         slime[0]=Screen->CreateNPC(ghost->Attributes[TWA_ATTR_SLIME_ID]);

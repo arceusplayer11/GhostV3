@@ -19,7 +19,10 @@ ffc script SimpleGhostZHExample
         int timer;
         
         // Initialize
-        ghost=Ghost_InitCreate(this, SGZE_ENEMY_ID, GHF_NORMAL|GHF_4WAY);
+        ghost=Ghost_InitCreate(this, SGZE_ENEMY_ID);
+        Ghost_SetFlag(GHF_NORMAL);
+        Ghost_SetFlag(GHF_4WAY);
+        
         Ghost_SpawnAnimationPuff(this, ghost);
         timer=Rand(120, 180);
         

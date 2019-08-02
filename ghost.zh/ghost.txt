@@ -1,94 +1,123 @@
 ghost.zh
-Version 2.2.0
+Version 2.3.2
+
+
+This file is documentation for script writers. If you just want to set up
+existing scripts, see AutoGhost.txt.
+
 
 +-------+
 | USAGE |
 +-------+
 
-ghost.zh is used to create "ghosted enemy" FFC scripts. These combine an FFC and a built-in enemy
-to create what seems to be a scripted enemy. The enemy handles collision detection, defense,
-and HP. The FFC runs the script and, typically, is what is actually visible on the screen.
+ghost.zh is used to create "ghosted enemy" FFC scripts. These combine an FFC
+and a built-in enemy to create what seems to be a scripted enemy. The enemy
+handles collision detection, defense. The FFC runs the script and,typically,
+is what is actually visible on the screen.
 
-A ghost.zh script should begin by calling one of the Ghost_Init functions to find the enemy
-the FFC should be associated with and set up internal data. Instead of Waitframe, Ghost_Waitframe
-should be used. This will handle most of the standard enemy behavior, such as reacting to damage.
-Most of the standard enemy data is manipulated by using the global variables and functions listed
-below, but some things must things - particularly collision detection, defenses, draw offsets, and
+A ghost.zh script should begin by calling one of the Ghost_Init functions to
+find the enemy the FFC should be associated with and set up internal data.
+Instead of Waitframe, Ghost_Waitframe should be used. This will handle most of
+the standard enemy behavior, such as reacting to damage. Most of the standard
+enemy data is manipulated by using the global variables and functions listed
+below, but some things - particularly defenses, draw offsets, and misc.
 attributes - must still be accessed via the npc pointer.
 
-The enemy used can be of any type and with any settings. Its HP, damage, and defenses will be used
-normally. Its regular tiles and animation will be used if the FFC is set to use GH_INVISIBILE_COMBO;
-otherwise, it will be made invisible. Other enemy data can be used as you see fit.
+The enemy used can be of any type and with any settings. Its HP, damage, and
+defenses will be used normally. Its regular tiles and animation will be used
+if the FFC is set to use GH_INVISIBILE_COMBO; otherwise, it will be made
+invisible. Other enemy data can be used as you see fit.
 
-There are also a number of functions used to create and control eweapons. They can be assigned
-a number of simple movements and can be made to vanish and spawn additional eweapons. These
-behaviors require the weapons to be passed into UpdateEWeapon each frame; the simplest way
-to do this is to put UpdateEWeapons in the global script.
+There are also a number of functions used to create and control eweapons. They
+can be assigned a number of simple movements and can be made to vanish and
+spawn additional eweapons. These behaviors require the weapons to be passed
+into UpdateEWeapon each frame; the simplest way to do this is to put
+UpdateEWeapons in the global script.
 
-For scripted enemies to be susceptible to clocks, StartClock and UpdateClock must be called in
-the global script, and the included item script GhostZHClockScript must be set as any clock items'
-pickup script, with D0 set to match the clock's duration.
+For scripted enemies to be susceptible to clocks, StartClock and UpdateClock
+must be called in the global script, and the included item script
+GhostZHClockScript must be set as any clock items' pickup script, with D0 set
+to match the clock's duration.
 
-It is possible to write enemy scripts such that scripted enemies can simply be placed on the screen
-like normal ones; see the AutoGhost section below for details.
-
-Functions, variables, and constants whose names start with __ are for internal use and may be
-changed or removed without warning.
+Functions, variables, and constants whose names start with __ are for internal
+use and may be changed or removed in future versions without warning.
 
 
 +-----------+
 | AUTOGHOST |
 +-----------+
 
-With appropriately written scripts, it is possible to place scripted enemies without any manual
-FFC setup. The AutoGhost function will scan the screen for enemies that should be handled by
-scripts and set up FFCs automatically when it finds them. AutoGhost should come after WaitDraw
-in the global script.
+With appropriately written scripts, it is possible to place scripted enemies
+without any manual FFC setup. The AutoGhost function will scan the screen for
+enemies that should be handled by scripts and set up FFCs automatically when
+it finds them. AutoGhost should come after WaitDraw in the global script.
 
-An AutoGhost FFC script's run function should take a single argument. This is the enemy ID, which
-should be passed to the AutoGhostInit function. AutoGhost will not set any other arguments, but
-you can use them if your script runs additional instances of the same script.
+An AutoGhost FFC script's run function should take an enemy ID as argument D0,
+which should be passed to the AutoGhostInit function. AutoGhost will not set
+any other arguments, but they can be used if your script runs additional
+instances of the same script.
 
-The corresponding enemy needs misc. attribute 11 set to the number of the combo the FFC will use
-and attribute 12 set to the number of the script. The enemy's CSet will be assigned to the FFC. Its
-other settings will not be used automatically, but it's a good idea to write scripts to take
-advantage of them rather than using constants and hardcoded numbers.
+The corresponding enemy needs misc. attribute 11 set to the number of the
+combo the FFC will use and attribute 12 set to the number of the script.
+The enemy's CSet will be assigned to the FFC. Its other settings will not be
+used automatically, but it's a good idea to write scripts to take advantage
+of them rather than using constants and hardcoded numbers.
 
 
 +------------------+
 | GLOBAL VARIABLES |
 +------------------+
 
-These control most aspects of the enemy. They're set by the Init function and kept consistent
-between frames by the Waitframe functions. Therefore, don't use regular Waitframes between
-initialization and death.
+These control most aspects of the enemy. They're set by the Init function
+and kept consistent between frames by the Waitframe functions. Therefore,
+don't use regular Waitframes between initialization and death.
 
-Position: Ghost_X, Ghost_Y, Ghost_Z
-Velocity: Ghost_Vx, Ghost_Vy, Ghost_Jump
-Acceleration: Ghost_Ax, Ghost_Ay
-Direction: Ghost_Dir
-Appearance: Ghost_Data, Ghost_CSet
-Size: Ghost_TileWidth, Ghost_TileHeight
-HP: Ghost_HP
+float Ghost_X
+float Ghost_Y
+float Ghost_Z
+ * The X, Y, and Z position of the enemy.
 
- * Ghost_Vx and Ghost_Vy use Ghost_MoveXY, so they respect solidity, water, pits, and screen edges.
- * If GHF_4WAY or GHF_8WAY is set, set Ghost_Data to the upward-facing combo. 
- * Ghost_CSet will be initialized to the npc's CSet by Ghost_InitAutoGhost; all others will use
- *    the FFC's CSet.
- * Setting Ghost_TileWidth and Ghost_TileHeight will change the enemy's size, but will not
- *    reposition it like Transform will.
+float Ghost_Vx
+float Ghost_Vy
+float Ghost_Jump
+ * The X, Y, and Z velocity of the enemy.
+ * Ghost_Vx and Ghost_Vy are handled by Ghost_MoveXY, so they will respect
+ * solidity, water, pits, and screen edges.
+
+float Ghost_Ax
+float Ghost_Ay
+ * The X and Y acceleration of the enemy.
+
+int Ghost_Dir
+ * The direction the enemy is facing.
+ 
+int Ghost_Data
+int Ghost_CSet
+ * The current combo and CSet of the enemy.
+ * If Ghost_InitAutoGhost is used, Ghost_CSet will be set to the enemy's CSet.
+ * All other initializion functions will use the FFC's CSet.
+ * If GHF_4WAY or GHF_8WAY are used, Ghost_Data should always be set to
+ * the upward-facing combo.
+
+int Ghost_TileWidth
+int Ghost_TileHeight
+ * The width and height of the enemy in tiles. These must be between 1 and 4.
+
+int Ghost_HP
+ * The enemy's current HP.
 
 
 +----------------+
 | INITIALIZATION |
 +----------------+
 
-Call one of the init functions at the start of the script. It will set the ffc's and npc's
-properties and initialize the global variables.
-Normally, ghost->OriginalTile will be set to GH_BLANK_TILE to make the enemy invisible,
-ghost->Extend will be set to 3, and Ghost_TileWidth and Ghost_TileHeight will be set to the size of
-the FFC. These will not happen if the FFC's combo is GH_INVISIBLE_COMBO, or, in the case of
-AutoGhost enemies, if that's the combo they're set to use.
+Call one of the init functions at the start of the script. It will set
+the ffc's and npc's properties and initialize the global variables.
+Normally, ghost->OriginalTile will be set to GH_BLANK_TILE to make the enemy
+invisible, ghost->Extend will be set to 3, and Ghost_TileWidth and
+Ghost_TileHeight will be set to the size of the FFC. These will not happen
+if the FFC's combo is GH_INVISIBLE_COMBO, or, in the case of AutoGhost
+enemies, if that's the combo they're set to use.
 
 void Ghost_Init(ffc this, npc ghost)
  * The basic initialization function. Provide your own npc.
@@ -98,125 +127,190 @@ npc Ghost_InitCreate(ffc this, int enemyID)
 
 npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos)
  * This function will select an enemy on the screen as the ghost.
- * enemyIndex is the number to pass to Screen->LoadNPC(), normally the npc's position in the
- * screen's enemy list. If useEnemyPos is true, the FFC will be moved to the enemy's position
- * instead of the other way around. The function will only wait 4 frames for the enemy to
- * appear to minimize the possibility of incorrectly using an enemy that is spawned by other
- * means. The FFC will be set to combo 0 when the function is called, and will switch back to
- * the original combo before it returns.
+ * enemyIndex is the number to pass to Screen->LoadNPC(), normally the npc's
+ * position in the screen's enemy list. If useEnemyPos is true, the FFC will
+ * be moved to the enemy's position; otherwise, the opposite will happen.
+ * The function will only wait 4 frames for the enemy to appear to minimize
+ * the possibility of incorrectly using an enemy that is spawned later on. If
+ * the expected enemy does not appear in that time, it will call Quit().
 
 npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos)
- * Similar to Ghost_InitWait, except this loads the first enemy of a given type that is not already
- * in use by another ghost.zh script. This is especially helpful if enemies are present other than
- * those placed by Screen > Enemies, since you can't always be certain what index an enemy will be
- * assigned.
+ * Similar to Ghost_InitWait, except this loads the first enemy of a given
+ * type that is not already in use by another ghost.zh script. This is
+ * especially helpful if enemies are present other than those placed by
+ * Screen > Enemies, since you can't always be certain what index an enemy
+ * will be assigned.
 
 npc Ghost_InitSpawn(ffc this, int enemyID)
  * This will create the ghosted enemy in a random location.
 
 npc Ghost_InitAutoGhost(ffc this, int enemyID)
- * This should only be used with a global script that calls AutoGhost() every frame.
- * Similar to Ghost_InitWait2, this will load the first unused enemy of the given type. The enemy
- * must already be on the screen when the function is called, or it will log an error and
- * call Quit().
+ * This should only be used with a global script that are meant to be
+ * set up automatically by the AutoGhost function. Similar to Ghost_InitWait2,
+ * this will load the first unused enemy of the given type. The enemy must
+ * already be on the screen when the function is called, or it will log
+ * an error and call Quit().
 
-void Ghost_Init(ffc this, npc ghost, int flags)
-npc Ghost_InitCreate(ffc this, int enemyID, int flags)
-npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos, int flags)
-npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos, int flags)
-npc Ghost_InitSpawn(ffc this, int enemyID, int flags)
-npc Ghost_InitAutoGhost(ffc this, int enemyID, int flags)
- * These simply combine an Init function and Ghost_SetFlags() into a single function call.
++-------+
+| FLAGS |
++-------+
 
-void Ghost_SetFlags(int flags)
- * Set flags that control the behavior of update functions. Use GHF constants ORed together for the
- * flags argument.
+void Ghost_SetFlag(int flag)
+void Ghost_UnsetFlag(int flag)
+ * Set or unset a flag that controls details of the enemy's behavior.
+ * Valid arguments are:
+ * 
+ * GHF_KNOCKBACK
+ *    The enemy can be knocked back when hit.
+ * 
+ * GHF_KNOCKBACK_4WAY
+ *    The enemy will be knocked back when hit, even if its direction and
+ *    Link's are not suitably aligned. It is not necessary to use
+ *    GHF_KNOCKBACK along with this flag.
+ * 
+ * GHF_REDUCED_KNOCKBACK
+ *    The enemy will be knocked back 2 pixels per frame instead of 4.
+ *    It is not necessary to use GHF_KNOCKBACK along with this flag.
+ * 
+ * GHF_STUN
+ *    Stunning will be handled automatically; Waitframe functions will not
+ *    return while the enemy is stunned.
+ * 
+ * GHF_CLOCK
+ *    The enemy will be affected by clocks; Waitframe functions will not
+ *    return while a clock is active. This requires that StartClock and
+ *    UpdateClock be used in the active global script and GhostZHClockScript
+ *    be set as the pickup script of any clocks.
+ * 
+ * GHF_NO_FALL
+ *    ghost->Jump will be set to 0 each frame and Ghost_Jump will be ignored.
+ *    If GHF_NO_FALL is not used, Ghost_CanMove(DIR_UP) will always be false
+ *    on sideview screens.
+ * 
+ * GHF_SET_DIRECTION
+ *    The enemy's direction will automatically be set based on which way
+ *    it moves. Unless GHF_8WAY is set, this will only use up, down, left,
+ *    and right.
+ * 
+ * GHF_SET_OVERLAY
+ *    Set or unset the "Draw Over" flag each frame based on Z position. The
+ *    height at which it changes is determined by GH_DRAW_OVER_THRESHOLD.
+ * 
+ * GHF_FAKE_Z
+ *    Ghost_Z and Ghost_Jump will affect the enemy's position on the Y axis
+ *    rather than Z. A shadow will be drawn under it according to the
+ *    GH_SHADOW_ settings. If the global setting GH_FAKE_Z is enabled, all
+ *    Z movement will behave this way, and this flag will have no effect.
+ * 
+ * GHF_4WAY
+ *    Change the FFC's combo based on Ghost_Dir. This requires a particular
+ *    setup. There must be four consecutive combos in the list, one for each
+ *    direction: up, down, left, and right, in order. Set Ghost_Data to the
+ *    upward-facing combo.
+ * 
+ * GHF_8WAY
+ *    Set the FFC's combo based on direction, inclusing diagonals. This will
+ *    also cause GHF_SET_DIRECTION to use all eight directions. The combo
+ *    order is up, down, left, right, up-left, up-right, down-left, down-right.
+ * 
+ * GHF_MOVE_OFFSCREEN
+ *    Movement functions will not stop the enemy at the screen edges.
+ * 
+ * GHF_NORMAL
+ *    Combines GHF_KNOCKBACK, GHF_STUN, GHF_CLOCK, and GHF_SET_DIRECTION.
+ * 
+ * GHF_IGNORE_SOLIDITY
+ *    The enemy can move over solid combos, as long as they are not pits or
+ *    water. This only affects movement via the Ghost_Move functions and
+ *    Ghost_Vx and Ghost_Vy; if Ghost_X and Ghost_Y are set directly, the
+ *    enemy can move anywhere.
+ * 
+ * GHF_IGNORE_WATER
+ *    The enemy can move over water, regardless of solidity.
+ * 
+ * GHF_IGNORE_PITS
+ *    The enemy can move over direct warps, regardless of solidity.
+ * 
+ * GHF_IGNORE_ALL_TERRAIN
+ *    Combines GHF_IGNORE_SOLIDITY, GHF_IGNORE_WATER, and GHF_IGNORE_PITS.
+ * 
+ * GHF_WATER_ONLY
+ *    The enemy can only move in water, including shallow water. This overrides
+ *    the above terrain flags.
  *
- * GHF_KNOCKBACK: The enemy can be knocked back when hit.
- * GHF_KNOCKBACK_4WAY: The enemy will be knocked back when hit, even if its direction and Link's
- *    are not suitably aligned. It is not necessary to use GHF_KNOCKBACK along with this flag.
- * GHF_REDUCED_KNOCKBACK: The enemy will be knocked back 2 pixels per frame instead of 4. It is
- *    not necessary to use GHF_KNOCKBACK along with this flag.
- * GHF_STUN: Stunning will be handled automatically; Waitframe functions will not return while the
- *    enemy is stunned.
- * GHF_CLOCK: The enemy will be affected by clocks; Waitframe functions will not return while
- *    a clock is active. This requires StartClock and UpdateClock to be used in the active global
- *    script and GhostZHClockScript to be set as the pickup script of any clocks.
- * GHF_NO_FALL: ghost->Jump will be set to 0 each frame and Ghost_Jump will be ignored.
- * GHF_SET_DIRECTION: The enemy's direction will automatically be set based on which way it moves.
- *    Unless GHF_8WAY is set, this will only use up, down, left, and right.
- * GHF_SET_OVERLAY: Set or unset the "Draw Over" flag each frame based on Z position. The height
- *    at which it changes is determined by GH_DRAW_OVER_THRESHOLD.
- * GHF_FAKE_Z: Ghost_Z and Ghost_Jump will affect the enemy's position on the Y axis rather than Z.
- *    A shadow will be drawn under it according to the GH_SHADOW settings.
- * GHF_4WAY: Change the FFC's combo based on Ghost_Dir. This requires a particular setup. There must
- *    be four consecutive combos in the list, one for each direction: up, down, left, and right,
- *    in order. Set Ghost_Data to the upward-facing combo.
- * GHF_8WAY: Set the FFC's combo based on direction using all eight. This will also cause
- *    GHF_SET_DIRECTION to use all eight directions. The combo order is up, down, left, right, 
- *    up-left, up-right, down-left, down-right.
- * GHF_MOVE_OFFSCREEN: Movement functions will not stop the enemy at the screen edges.
- * GHF_NORMAL: Combines GHF_KNOCKBACK, GHF_STUN, GHF_CLOCK, and GHF_SET_DIRECTION.
- * GHF_IGNORE_SOLIDITY: The enemy can move over solid combos, as long as they are not pits or water.
- *    This only affects movement via the Ghost_Move functions and Ghost_Vx and Ghost_Vy;
- *    if Ghost_X and Ghost_Y are set directly, the enemy can move anywhere.
- * GHF_IGNORE_WATER: The enemy can move over water, regardless of solidity.
- * GHF_IGNORE_PITS: The enemy can move over pits, regardless of solidity.
- * GHF_IGNORE_ALL_TERRAIN: Combines GHF_IGNORE_SOLIDITY, GHF_IGNORE_WATER, and GHF_IGNORE_PITS.
- * GHF_FULL_TILE_MOVEMENT: The enemy will not walk onto a tile unless the entire tile is walkable.
- *    This is particularly useful for enemies using walking functions along with other movement.
+ * GHF_DEEP_WATER_ONLY
+ *    The enemy can only move in deep water. This overrides the above
+ *    terrain flags.
+ * 
+ * GHF_FULL_TILE_MOVEMENT
+ *    The enemy will not walk onto a tile unless the entire tile is walkable.
+ *    This is particularly useful for enemies using walking functions along
+ *    with other movement.
+ * 
+ * GHF_FLYING_ENEMY
+ *    The enemy will be blocked by the "No Flying Enemies" combo type.
+ *    If this flag is not set, it will be blocked by "No Ground Enemies" if
+ *    Ghost_Z == 0 or "No Jumping Enemies" if Ghost_Z > 0.
+ *    This flag does not imply any others that a flying enemy would likely use,
+ *    such as GHF_IGNORE_PITS or GHF_NO_FALL. Those must be set separately.
+ * 
+ * GHF_IGNORE_NO_ENEMY
+ *    The enemy will ignore all enemy blocking flags and combos.
 
-void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
- * The initialization functions interrupt the normal enemy spawning animation; this function makes
- * up for that. It draws a series of GH_SPAWN_SPRITE at the enemy's position and returns after the
- * animation completes.
+void Ghost_ClearFlags()
+ * Unsets all flags.
 
-void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
- * Draws the other spawn animation, in which the enemy flickers for 64 frames. The timing won't be
- * quite right with a visible enemy unless it's a walking enemy that spawns instantly.
+bool Ghost_FlagIsSet(int flag)
+ * Returns true if the given flag is set and false if not.
 
 
 +--------+
 | UPDATE |
 +--------+
 
-Use the Ghost_Waitframe functions instead of Waitframe to keep the global variables consistent and
-maintain the illusion of a real enemy.
+Use the Ghost_Waitframe functions instead of Waitframe to keep the global
+variables consistent and maintain the illusion of a real enemy.
 
 bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
- * This is a replacement function for Waitframe(). In addition to waiting a frame, it will handle
- * the necessary routine updates. These include setting the npc's and ffc's positions and movement
- * and dealing with clocks, stunning, flashing, knockback, and death.
- * If the enemy is stunned or frozen by a clock, Ghost_Waitframe will not return until the enemy
- * recovers or dies.
- * If clearOnDeath is true, when the npc dies, this->Data will be set to 0 and the npc will be
- * moved so that its death animation and dropped item are centered.
- * If quitOnDeath is true, Quit() will be called when the npc dies; if false, the function will
- * return true if the npc is alive and false otherwise.
+ * This is a replacement function for Waitframe. In addition to waiting a frame,
+ * it will handle the necessary routine updates. These include setting the npc's
+ * and ffc's positions and movement and dealing with clocks, stunning, flashing,
+ * knockback, and death. If the enemy is stunned or frozen by a clock,
+ * Ghost_Waitframe will not return until the enemy recovers or dies.
+ * If clearOnDeath is true, when the npc dies, this->Data will be set to 0,
+ * Ghost_ClearAttachedFFCs will be called, and the npc will be moved so that
+ * its death animation and dropped item are centered. If quitOnDeath is true,
+ * Quit() will be called when the npc dies; if false, the function will retaturn
+ * true if the npc is alive and false
+ * otherwise.
 
 bool Ghost_Waitframe2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
- * Like the above, except this ignores the position and movement variables and uses the npc's
- * instead. Use this if you want to use built-in enemy movement.
+ * Like the above, except this ignores the position and movement variables and
+ * uses the npc's instead. Use this if you want to use built-in enemy movement.
 
-void Ghost_WaitframeLight()
- * Waits a frame and ensures the global variables have the same values afterward, but does
- * nothing else.
+void Ghost_WaitframeLight(ffc this, npc ghost)
+ * Minimal waitframe function. Aside from waiting a frame, this only keeps the
+ * global variables consistent, positions attached FFCs, and draws the enemy if
+ * __GH_USE_DRAWCOMBO is enabled.
 
-bool Ghost_Waitframes(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
-bool Ghost_Waitframes2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
-void Ghost_WaitframesLight(int numFrames)
+bool Ghost_Waitframes(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath,
+                      int numFrames)
+bool Ghost_Waitframes2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath,
+                       int numFrames)
+void Ghost_WaitframesLight(ffc this, npc ghost, int numFrames)
  * These simply call the corresponding Ghost_Waitframe function numFrames times.
 
 void Ghost_CheckHit(ffc this, npc ghost)
  * This will cause the enemy to flash and be knocked back when it is damaged.
- * Used internally by the Ghost_Waitframe functions; if you use one of those, you don't need to use
- * this as well.
+ * Used internally by Ghost_Waitframe and Ghost_Waitframe2; if you use one of
+ * those, you don't need to use this as well.
 
 bool Ghost_CheckFreeze(ffc this, npc ghost)
- * Checks whether the npc has been stunned or frozen by a clock. If so, the function does not
- * return until the npc either recovers or dies. CheckHit() will be called each frame during that
- * time. The return value is true if the npc is still alive and false if it's dead.
- * Used internally by the Ghost_Waitframe functions; if you use one of those, you don't need to use
+ * Checks whether the npc has been stunned or frozen by a clock. If so, the
+ * function does not return until the npc either recovers or dies. CheckHit()
+ * will be called each frame during that time. The return value is true if the
+ * npc is still alive and false if it's dead. Used internally by the
+ * Ghost_Waitframe functions; if you use one of those, you don't need to use
  * this as well.
 
 
@@ -228,95 +322,106 @@ void Ghost_Move(int dir, float step, int imprecision)
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
 void Ghost_MoveAtAngle(float angle, float step, int imprecision)
 void Ghost_MoveTowardLink(float step, int imprecision)
- * Makes the enemy move. Ghost_CanMove() will be checked automatically. The imprecision argument
- * lets you ignore a couple of pixels at the edges so the enemy doesn't get stuck on corners.
- * If the GHF_SETDIRECTION flag is set, the npc's direction will be changed accordingly unless
+ * Makes the enemy move. Ghost_CanMove() will be checked automatically. The
+ * imprecision argument makes the function ignore a couple of pixels at the
+ * edges so the enemy doesn't get stuck on corners. If the GHF_SETDIRECTION
+ * flag is set, the npc's direction will be changed accordingly unless
  * Ghost_ForceDir was called beforehand. 
 
 bool Ghost_CanMove(int dir, float step, int imprecision)
+bool Ghost_CanMove(int dir, float step, int imprecision, bool inAir)
  * Determines whether the enemy can move in the given direction and distance.
- * On sideview screens, a direction of DIR_UP will always return false unless GHF_NO_FALL is set.
+ * On sideview screens, a direction of DIR_UP will always return false unless
+ * GHF_NO_FALL is set.
 
 bool Ghost_CanMovePixel(int x, int y)
- * Used internally by Ghost_CanMove(). Returns true if the enemy can move onto the given pixel.
+bool Ghost_CanMovePixel(int x, int y, bool inAir)
+ * Used internally by Ghost_CanMove(). Returns true if the enemy can move onto
+ * the given pixel.
 
-float Ghost_HaltingWalk4(int counter, int step, int rate, int homing, int hunger, int haltRate,
-                         int haltTime)
+float Ghost_HaltingWalk4(int counter, int step, int rate, int homing,
+                         int hunger, int haltRate, int haltTime)
  * This function mimics the built-in movement function used by walking enemies.
- * step corresponds to npc->Step.
+ * step corresponds to npc->Step; it represents speed in hundredths of a pixel
+ * per frame.
  * rate corresponds to npc->Rate and should be between 0 and 16.
  * homing corresponds to npc->Homing and should be between 0 and 256.
  * hunger should be between 0 and 4.
  * haltRate corresponds to npc->Haltrate and should be between 0 and 16.
- * The haltTime argument determines how long the enemy will stand still when it halts. Zols use
- * Rand(8)<<4, Gels use (Rand(8)<<3)+2, Goriyas use 1, and all others use 48.
- * The counter argument should initially be -1, then set to the function's return value each frame.
- * While the enemy is halted, the return value will be the remaining halt time, which you can use to
- * determine when to fire. So:
+ * The haltTime argument determines how long the enemy will stand still when it
+ * halts. Zols use Rand(8)<<4, Gels use (Rand(8)<<3)+2, Goriyas use 1, and all
+ * others use 48.
+ * The counter argument should initially be -1, then set to the function's
+ * return value each frame. While the enemy is halted, the return value will be
+ * the remaining halt time, which you can use to determine when to fire. So:
  *
  * int counter = -1;
  * while(true)
  * {
- *     counter=Ghost_HaltingWalk4(counter, step, rate, homing, hunger, haltRate, 48);
+ *     counter=Ghost_HaltingWalk4(counter, step, rate, homing, hunger,
+ *                                haltRate, 48);
  *     if(counter==16) // Fire after halted for 32 frames
  *         FireEWeapon(...);
  *     Ghost_Waitframe(...);
  * }
  *
- * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION is not used. It will
- * also set Ghost_Dir to -1 if the enemy is trapped.
+ * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION
+ * is not used. It will also set Ghost_Dir to -1 if the enemy is trapped.
 
 int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
- * This is the movement function used by Dodongos and Lanmolas. The arguments are the same as above.
- * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION is not used. It will
- * also set Ghost_Dir to -1 if the enemy is trapped.
+ * This is the movement function used by Dodongos and Lanmolas. The arguments
+ * are the same as above. This function depends on Ghost_Dir and will set it
+ * even if GHF_SET_DIRECTION is not used. It will also set Ghost_Dir to -1 if
+ * the enemy is trapped.
  
 int Ghost_ConstantWalk8(int counter, int step, int rate, int homing, int hunger)
- * This is the movement function used by Moldorms. The arguments are the same as above.
- * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION is not used. It will
- * also set Ghost_Dir to -1 if the enemy is trapped.
+ * This is the movement function used by Moldorms. The arguments are the same as
+ * above.
+ * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION
+ * is not used. It will also set Ghost_Dir to -1 if the enemy is trapped.
 
-int Ghost_VariableWalk8(int counter, int step, int rate, int homing, int hunger, int turnCheckTime)
- * This is the movement function used by Digdoggers, Manhandlas, Patras, and fairies. The
- * turnCheckTime argument deterines how many frames the enemy moves before checking whether it
- * should change direction. The other arguments are the same as above.
- * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION is not used. It will
- * also set Ghost_Dir to -1 if the enemy is trapped.
+int Ghost_VariableWalk8(int counter, int step, int rate, int homing, int hunger,
+
+                        int turnCheckTime)
+ * This is the movement function used by Digdoggers, Manhandlas, Patras, and
+ * fairies. The turnCheckTime argument deterines how many frames the enemy moves
+ * before checking whether it should change direction. The other arguments are
+ * the same as above. This function depends on Ghost_Dir and will set it even
+ * if GHF_SET_DIRECTION is not used. It will also set Ghost_Dir to -1 if the
+ * enemy is trapped.
 
 
 +--------------+
 | MODIFICATION |
 +--------------+
 
-void Ghost_Transform(ffc this, npc ghost, int combo, int cset, int tileWidth, int tileHeight)
- * Change the FFC to a new combo and CSet and resize the FFC and npc. The new width and height
- * are given in tiles and must be between 1 and 4. The FFC's and npc's positions will be adjusted
- * so that they're centered on the same spot. For all four numeric arguments, pass in -1 if you
- * don't want to change the existing value.
- * If you called Ghost_SetHitOffsets() previously, it will be undone. The enemy's size and position
- * will be set to match the FFC's.
+void Ghost_Transform(ffc this, npc ghost, int combo, int cset, int tileWidth,
+                     int tileHeight)
+ * Change the FFC to a new combo and CSet and resize the FFC and npc. The new
+ * width and height are given in tiles and must be between 1 and 4. The FFC's
+ * and npc's positions will be adjusted so that they're centered on the same
+ * spot. For all four numeric arguments, pass in -1 if you don't want to change
+ * the existing value. If you called Ghost_SetHitOffsets() previously, it will
+ * be undone; the enemy's size and position will be set to match the FFC's.
+ * Attached FFCs will not be affected.
 
-void Ghost_SetHitOffsets(npc ghost, float top, float bottom, float left, float right)
- * If you want the enemy's hitbox to be smaller than the FFC, use this function to adjust it. Each
- * argument will cause the hitbox to shrink away from the corresponding edge. This applies to both
- * collision detection and movement.
- * For each argument, if the number is 1 or greater, it will be interpreted as the difference
- * in pixels; if the number is between 0 and 1, it will be treated as a fraction of the FFC's full
- * size. So, for instance, a top argument of 0.25 would shrink the hitbox by 1/4 of the FFC's
- * height.
+void Ghost_SetHitOffsets(npc ghost, float top, float bottom, float left,
+                         float right)
+ * If you want the enemy's hitbox to be smaller than the FFC, use this function
+ * to adjust it. Each argument will cause the hitbox to shrink away from the
+ * corresponding edge. This applies to both collision detection and movement.
+ * For each argument, if the number is 1 or greater, it will be interpreted as
+ * the difference in pixels; if the number is between 0 and 1, it will be
+ * treated as a fraction of the FFC's full size. So, for instance, a top
+ * argument of 0.25 would shrink the hitbox by 1/4 of the FFC's height.
 
 void Ghost_SwapNPC(npc oldGhost, npc newGhost, bool copyHP)
- * Copies size, position, Misc[], and HP (optionally) from the old ghost to the new one, then moves
- * the old one out of the way.
+ * Copies size, position, Misc[], and HP (optionally) from the old ghost to the
+ * new one, then moves the old one out of the way.
 
 void Ghost_ReplaceNPC(npc oldGhost, npc newGhost, bool copyHP)
- * Copies data from the old ghost to the new one, then silently kills the old one.
-
-void Ghost_SetFlag(int flag)
- * Sets a single flag. See Ghost_SetFlags for the full list.
-
-void Ghost_UnsetFlag(int flag)
- * Unsets a single flag.
+ * Copies data from the old ghost to the new one, then silently kills the
+ * old one.
 
 void Ghost_StoreDefenses(npc ghost, int storedDefense[])
  * Copies ghost->Defense into storedDefense. The array size must be at least 18.
@@ -325,67 +430,142 @@ void Ghost_SetDefenses(npc ghost, int defense[])
  * Copies defense into ghost->Defense. The array size must be at least 18.
 
 void Ghost_SetAllDefenses(npc ghost, int defType)
- * Sets all of the enemy's defenses to the given type, which should be an NPCDT constant.
+ * Sets all of the enemy's defenses to the given type, which should be an
+ * NPCDT constant.
 
 void Ghost_ForceDir(int dir)
- * Sets Ghost_Dir and stops it from being changed automatically until the next frame.
+ * Sets Ghost_Dir and stops it from being changed automatically until the
+ * next frame.
 
 void Ghost_ForceCSet(int cset)
- * Sets Ghost_CSet and stops flashing until the next frame. This won't work with scripts that use
- * a visible enemy and invisible FFC.
+ * Sets Ghost_CSet and stops flashing until the next frame. This won't work
+ * with scripts that use a visible enemy and invisible FFC.
 
 void Ghost_StartFlashing()
 void Ghost_StartFlashing(int time)
- * Makes the enemy start flashing as though it had been hit. If an argument is given, the enemy
- * will flash for that many frames instead of the standard 32.
+ * Makes the enemy start flashing as though it had been hit. If an argument is
+ * given, the enemy will flash for that many frames instead of the standard 32.
+ * This won't work with scripts that use a visible enemy and invisible FFC.
 
 void Ghost_StopFlashing()
  * Makes the enemy stop flashing.
+ * This won't work with scripts that use a visible enemy and invisible FFC.
 
 void Ghost_StopKnockback()
  * Stops the enemy from being knocked back.
 
+
++---------------+
+| MULTIPLE FFCS |
++---------------+
+
+bool Ghost_SetAttachedFFCs(float attachedFFCs[], bool forceTrueFFCs)
+ * Set one or more additional FFCs to be attached to the primary one. These
+ * FFCs will automatically move and flash along with the main one. This is
+ * cosmetic; the attached FFCs will not have hitboxes and will not be taken
+ * into account when checking where the enemy can move.
+ * The array passed in must contain seven elements per FFC, arranged as follows:
+ * 
+ * FFC 0 ID, data, X, Y, tile width, tile height, flags,
+ * FFC 1 ID, data, X, Y, tile width, tile height, flags,
+ * etc.
+ * 
+ * If 0 is given as an FFC's ID, one will be found automatically. In this case,
+ * the function will return false if an unused FFC could not be found.
+ * X and Y are interpreted as offsets from the primary FFC.  By default, data
+ * is interpreted as a number to be added to or subtracted from Ghost_Data
+ * rather than an absolute combo ID.
+ * Flags should be one or more of the following ORed together:
+ *
+ * GH_FFCF_FIXED_DATA
+ *    The FFC's data is interpreted as an absolute combo ID rather than an
+ *    offset from Ghost_Data.
+ *
+ * GH_FFCF_NO_FLASH
+ *    The FFC will not flash or flicker when the primary one does.
+ *
+ * GH_FFGF_HIDDEN
+ *    The FFC is invisible.
+ * 
+ * If __GH_USE_DRAWCOMBO is enabled, Actual FFCs are not required and will not
+ * be used. If you need real FFCs for some reason, pass in true for the
+ * forceTrueFFCs argument. Even if you do so, do not count on the FFC's data
+ * being what you would normally expect.
+
+void Ghost_ModifyAttachedFFC(int whichFFC, int whichDatum, int newValue)
+ * Change one of the properties of an attached FFC. Attached FFCs are counted
+ * starting from 0. whichDatum should be one of the following:
+ * GH_FFC_ID, GH_FC_DATA, GH_FFC_X, GH_FFC_Y, GH_FFC_TILE_WIDTH,
+ * GH_FFC_TILE_HEIGHT, GH_FFC_FLAGS.
+
+void Ghost_HideAttachedFFCs()
+ * Makes all attached FFCs invisible.
+
+void Ghost_UnhideAttachedFFCs()
+ * Makes all attached FFCs visible.
+
+void Ghost_ClearAttachedFFCs()
+ * Detaches all FFCs and sets the combo of any that were attached to 0.
+
+int Ghost_GetAttachedFFC(int whichFFC)
+ * Returns the ID number of the nth attached FFC. Attached FFCs are counted
+ * from 0. If no FFCs are attached or real FFCs are not being used, this will
+ * be 0.
 
 +-------+
 | OTHER |
 +-------+
 
 void AutoGhost()
- * Call this every frame in the global script to use AutoGhost enemies. It's preferable to do this
- * after WaitDraw(); otherwise, the enemy's spawn animation will appear for a single frame before
- * the script activates.
+ * Call this every frame in the global script to use AutoGhost enemies. It's
+ * preferable to do this after WaitDraw(); otherwise, the enemy's spawn
+ * animation will appear for a single frame before the script activates.
 
 void CleanUpGhostFFCs()
- * This makes ghosted enemy FFCs invisible when Link dies. This should be used in the global script
- * before Waitdraw(). This happens as soon as the function sees Link->HP<=0, so it should come after
- * anything that might restore his HP.
+ * This makes ghosted enemy FFCs invisible when Link dies. This should be used
+ * in the global script before Waitdraw(). This happens as soon as the function
+ * sees Link->HP<=0, so it should come after anything that might restore his HP.
 
 npc SpawnNPC(int id)
- * Spawns an npc with the given ID in a random location. This will avoid solid combos, pits, water,
- * "no enemy" combos and flags, Link, and screen edges on NES dungeon screens. The spawn location is
- * undefined if no suitable location exists, but that will not happen unless there is almost no
- * space available on the screen.
+ * Spawns an npc with the given ID in a random location. This will avoid solid
+ * combos, pits, water, "no enemy" combos and flags, Link, and screen edges on
+ * NES dungeon screens. The spawn location is undefined if no suitable location
+ * exists, but that will not happen unless there is almost no space available
+ * on the screen.
 
 int FindUnusedFFC()
 int FindUnusedFFC(int startingFrom)
- * Returns the ID number of an FFC that is not currently in use in the range AUTOGHOST_MIN_FFC to
- * AUTOGHOST_MAX_FFC. Returns 0 if no FFC is available in that range. If an argument is given, the
- * ID returned will be at least startingFrom+1.
+ * Returns the ID number of an FFC that is not currently in use in the range
+ * AUTOGHOST_MIN_FFC to AUTOGHOST_MAX_FFC. Returns 0 if no FFC is available in
+ * that range. If an argument is given, the ID returned will be at least
+ * startingFrom+1.
+
+void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
+ * The initialization functions interrupt the normal enemy spawning animation;
+ * this function makes up for that. It draws a series of sprites (lweapons)
+ * using sprite number GH_SPAWN_SPRITE at the enemy's position and returns
+ * after the animation completes.
+
+void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
+ * Draws the other spawn animation, in which the enemy flickers for 64 frames.
+ * The timing won't be quite right with a visible enemy unless it's spawn type
+ * is instant.
 
 bool Ghost_GotHit()
  * Returns true if the enemy was hit in the last frame.
 
 void Ghost_Explode(ffc this, npc ghost)
- * A simple death animation. Creates several harmless explosions over the enemy, then removes it and
- * sets the FFC's combo to 0.
+ * A simple death animation. Creates several harmless explosions over the enemy,
+ * then removes it and sets the FFC's combo to 0.
 
 void Ghost_SetPosition(ffc this, npc ghost)
- * Positions the NPC and FFC according to the position variables and ghost->Draw*Offset. If you use
- * GhostWaitframe, you shouldn't need to use this as well.
+ * Positions the NPC and FFC according to the position variables and
+ * ghost->Draw*Offset. If you use GhostWaitframe, you shouldn't need to use
+ * this as well.
 
 void Ghost_MarkAsInUse(npc ghost)
- * Mark an enemy as being in use by a script. This allows you to create additional enemies without
- * AutoGhost or Ghost_InitWait2 trying to use them.
+ * Mark an enemy as being in use by a script. This allows you to create
+ * additional enemies without AutoGhost or Ghost_InitWait2 trying to use them.
 
 bool Ghost_IsInUse(npc ghost)
  * Returns true if the given enemy is in use by a ghost.zh script.
@@ -395,178 +575,274 @@ bool Ghost_IsInUse(npc ghost)
 | EWEAPONS |
 +----------+
 
-eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step, int damage, int sprite,
-                    int sound, int flags)
- * Create an eweapon with the given properties. The angle is given in radians. The sprite argument
- * should be the ID of a sprite from Quest > Graphics > Sprites > Weapons/Misc. The sprite will not
- * be set if this argument is -1. If you don't want any sound to be played, pass in 0 for that
- * argument. The flags argument should be one or more EWF constants ORed together, or 0 for none.
+eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step,
+                    int damage, int sprite, int sound, int flags)
+ * Create an eweapon with the given properties. The angle is given in radians.
+ * The sprite argument should be the ID of a sprite from Quest > Graphics >
+ * Sprites > Weapons/Misc. The sprite will not be set if this argument is -1.
+ * If you don't want any sound to be played, pass in 0 for that argument. The
+ * flags argument should be one or more EWF constants ORed together, or 0
+ * for none.
  *
- * EWF_UNBLOCKABLE: The weapon is unblockable.
- * EWF_ROTATE: The weapon's sprite will be rotated and flipped according to the weapon's direction.
- * EWF_SHADOW: The weapon will cast a shadow if it's Z is greater than 0.
- * EWF_FLICKER: The weapon will be invisible every other frame.
- * EWF_NO_COLLISION: The weapon's collision detection will be disabled.
+ * EWF_UNBLOCKABLE
+ *    The weapon is unblockable.
+ *
+ * EWF_ROTATE
+ *    The weapon's sprite will be rotated and flipped according to the
+ *    weapon's direction.
+ *
+ * EWF_SHADOW
+ *    The weapon will cast a shadow if its Z position is greater than 0.
+ * 
+ * EWF_FLICKER
+ *    The weapon will be invisible every other frame.
+ * 
+ * EWF_NO_COLLISION
+ *    The weapon's collision detection will be disabled.
 
-eweapon FireAimedEWeapon(int weaponID, int x, int y, float angle, int step, int damage, int sprite,
-                         int sound, int flags)
- * Fire a projectile aimed at Link. The angle argument is an offset, so, for instance, an angle of
- * 0.2 will aim slightly away from Link.
+eweapon FireAimedEWeapon(int weaponID, int x, int y, float angle, int step,
+                         int damage, int sprite, int sound, int flags)
+ * Fire a projectile aimed at Link. The angle argument is an offset, so,
+ * for instance, an angle of 0.2 will aim slightly away from Link.
 
-eweapon FireNonAngularEWeapon(int weaponID, int x, int y, int direction, int step, int damage,
-                              int sprite, int sound, int flags)
- * Use this to fire non-angular projectiles. EWF_UNBLOCKABLE can't be used with this function,
- * because a weapon is made unblockable by changing its direction.
+eweapon FireNonAngularEWeapon(int weaponID, int x, int y, int direction,
+                              int step, int damage, int sprite, int sound,
+                              int flags)
+ * Use this to fire non-angular projectiles. EWF_UNBLOCKABLE can't be used with
+ * this function, because a weapon is made unblockable by setting its direction.
 
-eweapon FireBigEWeapon(int weaponID, int x, int y, float angle, int step, int damage, int sprite,
-                       int sound, int flags, int width, int height)
-eweapon FireBigAimedEWeapon(int weaponID, int x, int y, float angle, int step, int damage,
-                            int sprite, int sound, int flags, int width, int height)
-eweapon FireBigNonAngularEWeapon(int weaponID, int x, int y, int direction, int step, int damage,
-                                 int sprite, int sound, int flags, int width, int height)
- * These are the same as the three above, except they also allow you to set the eweapon's size.
- * The width and height are given in tiles.
+eweapon FireBigEWeapon(int weaponID, int x, int y, float angle, int step,
+                       int damage, int sprite, int sound, int flags, int width,
+                       int height)
+eweapon FireBigAimedEWeapon(int weaponID, int x, int y, float angle, int step,
+                            int damage, int sprite, int sound, int flags,
+                            int width, int height)
+eweapon FireBigNonAngularEWeapon(int weaponID, int x, int y, int direction,
+                                 int step, int damage, int sprite, int sound,
+                                 int flags, int width, int height)
+ * These are the same as the three above, except they also allow you to set the
+ * eweapon's size. The width and height are given in tiles.
 
-eweapon CreateDummyEWeapon(int weaponID, int step, int damage, int sprite, int sound, int flags)
- * This will create a dummy eweapon to be used as a prototype for SetEWeaponDeathEffect. The dummy
- * weapon will be invisible and will have collision detection disabled. It can have a movement,
- * lifespan, and death effect set, but the dummy weapon itself will not make use of them - only
+eweapon CreateDummyEWeapon(int weaponID, int step, int damage, int sprite,
+                           int sound, int flags)
+ * This will create a dummy eweapon to be used as a prototype for
+ * SetEWeaponDeathEffect. The dummy weapon will be invisible and will have
+ * collision detection disabled. It can have a movement, lifespan, and death
+ * effect set, but the dummy weapon itself will not make use of them - only
  * its copies will.
- * A dummy weapon will never be removed automatically. If reaching the eweapon ceiling is a concern,
- * you should destroy the weapon yourself when it's no longer needed.
+ * A dummy weapon will never be removed automatically. If reaching the weapon
+ * limit is a concern, you should destroy the weapon yourself when it's no
+ * longer needed.
 
-eweapon CreateBigDummyEWeapon(int weaponID, int step, int damage, int sprite, int sound,
-                              int flags, int width, int height)
+eweapon CreateBigDummyEWeapon(int weaponID, int step, int damage, int sprite,
+                              int sound, int flags, int width, int height)
  * Creates a dummy eweapon larger than 1x1. Width and height are given in tiles.
 
 void SetEWeaponMovement(eweapon wpn, int type, int arg)
- * This sets an eweapon's movement pattern. The type argument should be one of the EWM constants.
- * The second argument's effect varies depending on the type of movement.
+ * This sets an eweapon's movement pattern. The type argument should be one of
+ * the EWM constants. The effect of arg varies depending on the type of
+ * movement.
  *
- * EWM_SINE_WAVE: Move in a sine wave.
+ * EWM_SINE_WAVE
+ *    Move in a sine wave.
  *    arg: Amplitude
- * EWM_SINE_WAVE_FAST: Move in a sine wave with a shorter wavelength.
+ * 
+ * EWM_SINE_WAVE_FAST
+ *    Move in a sine wave with a shorter wavelength.
  *    arg: Amplitude
- * EWM_HOMING: Turn toward Link each frame.
+ * 
+ * EWM_HOMING
+ *    Turn toward Link each frame.
  *    arg: Maximum rotation per frame in radians
- * EWM_HOMING_REAIM: Move in straight lines, stopping and re-aiming at Link.
+ * 
+ * EWM_HOMING_REAIM
+ *   Move in straight lines, stopping and re-aiming at Link.
  *   arg: Number of re-aims
- * EWM_RANDOM: Turn randomly each frame.
+ * 
+ * EWM_RANDOM
+ *   Turn randomly each frame.
  *   arg: Maximum rotation per frame in radians
+ * 
  * EWM_RANDOM_REAIM: Stop frequently and aim in a random direction
  *    arg: Number of re-aims
- * EWM_VEER + dir: Accelerate in a given direction. You can add a direction to the type argument:
+ * 
+ * EWM_VEER + dir
+ *    Accelerate in a given direction. You can add a direction to the type
+ *    argument:
  *      SetEWeaponMovement(wpn, EWM_VEER + DIR_LEFT, 0.025);
- *    There are also eight additional constants that combine the two, one for each direction:
+ *    There are also eight additional constants that combine the two, one for
+ *    each direction:
  *      SetEWeaponMovement(wpn, EWM_VEER_RIGHTDOWN, 0.01);
  *    arg: Acceleration
- * EWM_DRIFT + dir: Drift in the given direction at a constant speed. Like EWM_VEER, you can add a
- *    direction to the type argument or use EWM_DRIFT_*.
+ * 
+ * EWM_DRIFT + dir
+ *    Drift in the given direction at a constant speed. Like EWM_VEER, you can
+ *    add a direction to the type argument or use EWM_DRIFT_*.
  *    arg: Drift speed
- * EWM_DRIFT_WAIT + dir: Drift in the given direction at a constant speed and wait 16 frames before
- *    beginning normal movement. This copies the behavior of boss fireballs. Again, you can add a
- *    direction to the type argument or use EWM_DRIFT_WAIT_*.
+ * 
+ * EWM_DRIFT_WAIT + dir
+ *    Drift in the given direction at a constant speed and wait 16 frames before
+ *    beginning normal movement. This copies the behavior of boss fireballs.
+ *    Again, you can add a direction to the type argument or use
+ *    EWM_DRIFT_WAIT_*.
  *    arg: Drift speed
- * EWM_THROW: Arc through the air as if thrown. The weapon dies (see below) when it hits the ground.
+ * 
+ * EWM_THROW
+ *    Arc through the air as if thrown. The weapon dies (see below) when it
+ *    hits the ground.
  *    arg: Initial upward velocity
- * EWM_THROW_STOP: Like EWM_THROW, except the weapon only stops moving when it hits the ground.
+ * 
+ * EWM_THROW_STOP
+ *    Like EWM_THROW, except the weapon only stops moving when it hits the
+ *    ground.
  *    arg: Initial upward velocity
- * EWM_THROW_BOUNCE: Like EWM_THROW, plus the weapon bounces when it hits the ground. The weapon
- *    dies when it stops bouncing.
+ * 
+ * EWM_THROW_BOUNCE
+ *    Like EWM_THROW, plus the weapon bounces when it hits the ground. The
+ *    weapon dies when it stops bouncing.
  *    arg: Initial upward velocity
- * EWM_THROW_BOUNCE_STOP: Like EWM_THROW_BOUNCE, except the weapon only stops moving when it
+ * 
+ * EWM_THROW_BOUNCE_STOP
+ *    Like EWM_THROW_BOUNCE, except the weapon only stops moving when it
  *    finishes bouncing.
  *    arg: Initial upward velocity
- * EWM_FALL: Fall straight down. The weapon dies when it hits the ground.
+ * 
+ * EWM_FALL
+ *    Fall straight down. The weapon dies when it hits the ground.
  *    arg: Initial height
 
 void SetEWeaponLifespan(eweapon wpn, int type, int arg)
- * This controls the conditions under which a weapon dies. "Dying" does not mean the weapon is
- * removed, but that its scripted movement is no longer handled, and, optionally, a death effect is
- * activated. Use one of the EWL constants for the type argument.
+ * This controls the conditions under which a weapon dies. "Dying" does not mean
+ * the weapon is removed, but that its scripted movement is no longer handled,
+ * and, optionally, a death effect is activated. Use one of the EWL_ constants
+ * for the type argument. The effect of arg depends on the type.
  * 
- * EWL_TIMER: Die after a certain amount of time.
+ * EWL_TIMER
+ *    Die after a certain amount of time.
  *    arg: Time, in frames
- * EWL_NEAR_LINK: Die when within a certain distance of Link.
+ * 
+ * EWL_NEAR_LINK
+ *    Die when within a certain distance of Link.
  *    arg: Distance, in pixels
- * EWL_SLOW_TO_HALT: Slow down until stopped, then die. This can behave oddly if movement is set.
+ * 
+ * EWL_SLOW_TO_HALT
+ *    Slow down until stopped, then die. This can behave oddly if movement
+ *    is set.
  *    arg: Step per frame
 
 void SetEWeaponDeathEffect(eweapon wpn, int type, int arg)
- * This determines what happens when the weapon dies. Use the EWD constants for the type argument.
+ * This determines what happens when the weapon dies. The type argument should
+ * be one of the EWD_ constants. The effect of arg depends on the type.
  *
- * EWD_VANISH: The weapon is removed.
+ * EWD_VANISH
+ *    The weapon is removed.
  *    arg: No effect
- * EWD_AIM_AT_LINK: The weapon pauses for a moment, then aims at Link.
+ * 
+ * EWD_AIM_AT_LINK
+ *    The weapon pauses for a moment, then aims at Link.
  *    arg: Delay
- * EWD_EXPLODE: The weapon explodes.
+ * 
+ * EWD_EXPLODE
+ *    The weapon explodes.
  *    arg: Explosion damage
- * EWD_SBOMB_EXPLODE: The weapon explodes like a super bomb.
+ * 
+ * EWD_SBOMB_EXPLODE
+ *    The weapon explodes like a super bomb.
  *    arg: Explosion damage
- * EWD_4_FIREBALLS_HV: Shoots fireballs horizontally and vertically.
+ * 
+ * EWD_4_FIREBALLS_HV
+ *    Shoots fireballs horizontally and vertically.
  *    arg: Fireball sprite
- * EWD_4_FIREBALLS_DIAG: Shoots fireballs at 45-degree angles.
+ * 
+ * EWD_4_FIREBALLS_DIAG
+ *    Shoots fireballs at 45-degree angles.
  *    arg: Fireball sprite
- * EWD_4_FIREBALLS_RANDOM: Randomly shoots fireballs either vertically and horizontally or at
+ * 
+ * EWD_4_FIREBALLS_RANDOM
+ *    Randomly shoots fireballs either vertically and horizontally or at
  *    45-degree angles.
  *    arg: Fireball sprite
- * EWD_8_FIREBALLS: Shoots fireballs horizontally, vertically, and at 45-degree angles
+ * 
+ * EWD_8_FIREBALLS
+ *    Shoots fireballs horizontally, vertically, and at 45-degree angles
  *    arg: Fireball sprite
- * EWD_FIRE: Leaves a single immobile fire
+ * 
+ * EWD_FIRE
+ *    Leaves a single, immobile fire
  *    arg: Fire sprite
- * EWD_4_FIRES_HV: Shoots fires horizontally and vertically.
+ * 
+ * EWD_4_FIRES_HV
+ *    Shoots fires horizontally and vertically.
  *    arg: Fire sprite
- * EWD_4_FIRES_DIAG: Shoots fires at 45-degree angles.
+ * 
+ * EWD_4_FIRES_DIAG
+ *    Shoots fires at 45-degree angles.
  *    arg: Fire sprite
- * EWD_4_FIRES_RANDOM: Randomly shoots fires either vertically and horizontally or at
+ * 
+ * EWD_4_FIRES_RANDOM
+ *    Randomly shoots fires either vertically and horizontally or at
  *    45-degree angles.
  *    arg: Fire sprite
- * EWD_8_FIRES: Shoots fires horizontally, vertically, and at 45-degree angles
+ * 
+ * EWD_8_FIRES
+ *    Shoots fires horizontally, vertically, and at 45-degree angles
  *    arg: Fire sprite
- * EWD_SPAWN_NPC: Creates an npc at the weapon's location. This is done without regard for the
- *    suitability of the location.
+ * 
+ * EWD_SPAWN_NPC
+ *    Creates an npc at the weapon's location. This is done without regard for
+ *    the suitability of the location.
  *    arg: npc to spawn
- * EWD_RUN_SCRIPT: Loads an unused FFC, positions it at the weapons position, and runs a script.
- *    The weapon will not be removed; it should be loaded by the script with GetAssociatedEWeapon.
- *    The number to pass into it will be given to the script as argument D0. If no FFC is free,
- *    the weapon will simply be removed. Keep in mind the limited number of FFCs available.
+ * 
+ * EWD_RUN_SCRIPT
+ *    Loads an unused FFC, positions it at the weapons position, and runs a
+ *    script. The weapon will not be removed; it should be loaded by the script
+ *    with GetAssociatedEWeapon. The number to pass into it will be given to
+ *    the script as argument D0. If no FFC is free, the weapon will simply be
+ *    removed. Keep in mind the limited number of FFCs available.
  *    arg: Script to run
 
-void SetEWeaponDeathEffect(eweapon wpn, eweapon prototype, int numShots, int spreadType,
-                           float angle)
- * This will make a weapon spawn copies of a prototype weapon when it dies. The prototype must be
- * a dummy eweapon.
- *
+void SetEWeaponDeathEffect(eweapon wpn, eweapon prototype, int numShots, int
+                           spreadType, float angle)
+ * This will make a weapon spawn copies of a prototype weapon when it dies.
+ * The prototype must be a dummy eweapon.
  * spreadType is one of the following:
- * EWD_EVEN: Weapons are evenly spaced
+ * 
+ * EWD_EVEN
+ *    Weapons are evenly spaced
  *    angle: first weapon's offset from 0 
- * EWD_AIMED: Weapons are aimed at Link
+ * 
+ * EWD_AIMED
+ *    Weapons are aimed at Link
  *    angle: Angle range of spawned weapons
- * EWD_RANDOM: Weapons are fired at random angles
+ * 
+ * EWD_RANDOM
+ *    Weapons are fired at random angles
  *    angle: No effect
 
 void UpdateEWeapon(eweapon wpn)
- * If an eweapon uses any of the special features provided by the functions above, including flags,
- * this function must be called each frame to enable them.
+ * If an eweapon uses any of the special features provided by the functions
+ * above, including flags, this function must be called each frame to
+ * enable them.
 
 void UpdateEWeapons()
  * Calls UpdateEWeapon on each eweapon.
 
 void SetEWeaponDir(eweapon wpn)
- * Set the direction of an angled eweapon so that it interacts correctly with shields. This should
- * not be used on unblockable weapons.
+ * Set the direction of an angled eweapon so that it interacts correctly with
+ * shields. This should not be used on unblockable weapons.
 
 void SetEWeaponRotation(eweapon wpn)
 void SetEWeaponRotation(eweapon wpn, int direction)
- * Rotate the weapon's sprite. If the direction argument is not given, this is done according to
- * the weapon's direction.
+ * Rotate the weapon's sprite. If the direction argument is not given, this is
+ * done according to the weapon's direction.
 
 void KillEWeapon(eweapon wpn)
- * Kill the eweapon, stopping scripted movement and activating any death effects.
+ * Kill the eweapon, stopping scripted movement and activating any
+ * death effects.
 
 void DrawEWeaponShadow(eweapon wpn)
- * Draws a shadow under the eweapon according to the GH_SHADOW constants. This is used internally
- * when EWF_SHADOW is set.
+ * Draws a shadow under the eweapon according to the GH_SHADOW constants. This
+ * is used internally when EWF_SHADOW is set.
 
 int GetDefaultEWeaponSprite(int weaponID)
  * Returns the sprite normally used by the given weapon type.
@@ -575,9 +851,10 @@ int GetDefaultEWeaponSound(int weaponID)
  * Returns the sound normally used by the given weapon type.
 
 eweapon GetAssociatedEWeapon(int weaponID)
- * Finds an eweapon using an internal ID number. This should be used by scripts launched by
- * EWD_RUN_SCRIPT, and the weaponID argument should be the number passed to the script as D0.
- * If the requested weapon is not found, an uninitialized pointer will be returned.
+ * Finds an eweapon using an internal ID number. This should be used by scripts
+ * launched by EWD_RUN_SCRIPT, and the weaponID argument should be the number
+ * passed to the script as D0. If the requested weapon is not found, an
+ * uninitialized pointer will be returned.
 
 bool IsGhostZHEWeapon(eweapon wpn)
  * Returns true if the weapon is one created or handled by ghost.zh.
@@ -592,7 +869,8 @@ bool IsDummyEWeapon(eweapon wpn)
 
 
 void StartClock()
- * Initializes the clock variable. Call this at the start of the active global script.
+ * Initializes the clock variable. Call this at the start of the active
+ * global script.
 
 void UpdateClock()
  * Updates the clock variable. Call this each frame in the active global script.

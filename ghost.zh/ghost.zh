@@ -1,13 +1,9 @@
 // ghost.zh
-// Version 2.2.0
+// Version 2.3.2
 
 // See ghost.txt for documentation.
 
-// World settings
-const int GH_DRAW_OVER_THRESHOLD = 32;
-const float GH_GRAVITY = 0.16;
-const float GH_TERMINAL_VELOCITY = 3.2;
-const int GH_SPAWN_SPRITE = 22; // Min: 0, Max: 255, Default: 22
+// Standard settings -----------------------------------------------------------
 
 // Shadow settings
 const int GH_SHADOW_TILE = 27401;
@@ -18,8 +14,16 @@ const int GH_SHADOW_FLICKER = 0; // 0 = No, 1 = Yes
 // AutoGhost settings
 const int AUTOGHOST_MIN_FFC = 1; // Min: 1, Max: 32
 const int AUTOGHOST_MAX_FFC = 32; // Min: 1, Max: 32
-const int AUTOGHOST_MIN_ENEMY_ID = 20; // Min: 20, Max: 255
-const int AUTOGHOST_MAX_ENEMY_ID = 255; // Min: 20, Max: 255
+const int AUTOGHOST_MIN_ENEMY_ID = 20; // Min: 20, Max: 511
+const int AUTOGHOST_MAX_ENEMY_ID = 511; // Min: 20, Max: 511
+
+// Other settings
+const int GH_DRAW_OVER_THRESHOLD = 32;
+const float GH_GRAVITY = 0.16;
+const float GH_TERMINAL_VELOCITY = 3.2;
+const int GH_SPAWN_SPRITE = 22; // Min: 0, Max: 255, Default: 22
+const int GH_FAKE_Z = 0; // 0 = No, 1 = Yes
+const int GH_ENEMIES_FLICKER = 0; // 0 = No, 1 = Yes
 
 // Top-left corner of a 4x4 block of blank tiles
 const int GH_BLANK_TILE = 65456; // Min: 0, Max: 65456
@@ -27,9 +31,20 @@ const int GH_BLANK_TILE = 65456; // Min: 0, Max: 65456
 // Invisible combo with no properties set
 const int GH_INVISIBLE_COMBO = 1; // Min: 1, Max: 65279
 
-// Standard settings end here -------------------------------------------------
+// End standard settings -------------------------------------------------------
 
 
+// Advanced settings -----------------------------------------------------------
+
+// Misc. Attribute 11 can be set to this instead of GH_INVISIBLE_COMBO
+const int __GH_INVISIBLE_ALT = -1;
+
+// This will use the invisible combo, but also set npc->Extend to 3
+const int __GH_INVISIBLE_EXTEND = -2;
+
+// If enabled, the FFC will be invisible, and Screen->DrawCombo will be used
+// to display the enemy.
+const int __GH_USE_DRAWCOMBO = 1;
 
 // npc->Misc[] index
 // Set this so it doesn't conflict with other scripts. Legal values are 0-15.
@@ -53,11 +68,12 @@ const int __EWI_ON_DEATH     = 13;
 const int __EWI_ON_DEATH_ARG = 14;
 const int __EWI_FLAGS        = 15; // Every index but this one can be used by non-ghost.zh EWeapons
 
-// Customizable constants end here --------------------------------------------
+// End advanced settings -------------------------------------------------------
 
 
 
 // Enemy flags
+// Old flags - 16 bits, can be ORed together
 const int GHF_KNOCKBACK          = 0000000000000001b;
 const int GHF_KNOCKBACK_4WAY     = 0000000000000011b;
 const int GHF_REDUCED_KNOCKBACK  = 0000000000000101b;
@@ -71,18 +87,29 @@ const int GHF_8WAY               = 0000001000000000b;
 const int GHF_IGNORE_SOLIDITY    = 0000010000000000b;
 const int GHF_IGNORE_WATER       = 0000100000000000b;
 const int GHF_IGNORE_PITS        = 0001000000000000b;
-const int GHF_IGNORE_ALL_TERRAIN = 0001110000000000b;
 const int GHF_MOVE_OFFSCREEN     = 0010000000000000b;
 const int GHF_FAKE_Z             = 0100000000000000b;
 const int GHF_FULL_TILE_MOVEMENT = 1000000000000000b;
+
+// Combined old flags
 const int GHF_NORMAL             = 0000000001011001b;
+const int GHF_IGNORE_ALL_TERRAIN = 0001110000000000b;
+
+// New flags - Set individually, identified as new by 17th bit
+const int GHF_FLYING_ENEMY    = 0x10000;
+const int GHF_IGNORE_NO_ENEMY = 0x10001;
+const int GHF_WATER_ONLY      = 0x10002;
+const int GHF_DEEP_WATER_ONLY = 0x10003;
 
 // Internal enemy flags
-const int __GHFI_GOT_HIT               = 00001b;
-const int __GHFI_DIR_FORCED            = 00010b;
-const int __GHFI_CSET_FORCED           = 00100b;
-const int __GHFI_SHADOW_FLICKER        = 01000b;
-const int __GHFI_KNOCKBACK_INTERRUPTED = 10000b;
+const int __GHFI_GOT_HIT               = 0000001b;
+const int __GHFI_DIR_FORCED            = 0000010b;
+const int __GHFI_CSET_FORCED           = 0000100b;
+const int __GHFI_SHADOW_FLICKER        = 0001000b;
+const int __GHFI_KNOCKBACK_INTERRUPTED = 0010000b;
+const int __GHFI_HIT_LINK              = 0100000b;
+const int __GHFI_FLICKER               = 1000000b;
+const int __GH_UNSET_FLAGS             = 0101000b; // Used to unset flags that last one frame
 
 // Arguments to SetEWeaponMovement()
 const int EWM_SINE_WAVE         = 1;
@@ -169,6 +196,23 @@ const int __EWFI_DUMMY_CHECK       = 0110000000b;
 const int __EWFI_DEATH_EFFECT_DONE = 1000000000b;
 const int __EWFI_INTERNAL          = 1111100000b;
 
+// Positions in the attached FFC array
+const int GH_FFC_ID          = 0;  // 0, 7, 14...
+const int GH_FFC_DATA        = 1;  // 1, 8, 15...
+const int GH_FFC_X           = 2;  // 2, 9, 16...
+const int GH_FFC_Y           = 3;  // 3, 10, 17...
+const int GH_FFC_TILE_WIDTH  = 4;  // 4, 11, 18...
+const int GH_FFC_TILE_HEIGHT = 5;  // 5, 12, 19...
+const int GH_FFC_FLAGS       = 6;  // 6, 13, 20...
+
+// Attached FFC combo types
+const int GH_FFCF_FIXED_DATA    = 001b;
+const int GH_FFCF_NO_FLASH      = 010b;
+const int GH_FFCF_HIDDEN        = 100b;
+
+// Total number of array elements used per FFC
+const int __GH_FFC_SIZE = 7;
+
 // Global variables
 
 // Position
@@ -195,6 +239,7 @@ int Ghost_HP;
 
 // Internal use
 int __Ghost_Flags;
+int __Ghost_Flags2;
 int __Ghost_InternalFlags;
 float __Ghost_PrevX;
 float __Ghost_PrevY;
@@ -203,6 +248,7 @@ int __Ghost_KnockbackCounter;
 int __Ghost_XOffsets;
 int __Ghost_YOffsets;
 int __Ghost_Scripts[32];
+int __Ghost_AttachedFFCs;
 
 // These are needed for clocks to work
 int __ghzhPrevScreen;
@@ -264,8 +310,9 @@ npc Ghost_InitCreate(ffc this, int enemyID)
 npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos)
 {
     int combo=this->Data;
-    this->Data=0;
-
+    this->Data=GH_INVISIBLE_COMBO;
+    
+    // Wait until there are enough enemies
     for(int i=0; i<4; i++)
     {
         if(Screen->NumNPCs()>=enemyIndex)
@@ -278,6 +325,7 @@ npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos)
     }
 
     // Didn't find the enemy, so quit
+    this->Data=0;
     Quit();
 }
 
@@ -285,15 +333,16 @@ npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos)
 {
     int combo=this->Data;
     npc ghost;
-    this->Data=0;
-
+    this->Data=GH_INVISIBLE_COMBO;
+    
     for(int i=0; i<4; i++)
     {
+        // Find the right enemy
         for(int j=1; j<=Screen->NumNPCs(); j++)
         {
-
             ghost=Screen->LoadNPC(j);
-
+            
+            // Wrong ID or already in use
             if(ghost->ID!=enemyID)
                 continue;
             if(ghost->Misc[__GHI_IN_USE]!=0)
@@ -306,6 +355,7 @@ npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos)
     }
 
     // Didn't find the enemy, so quit
+    this->Data=0;
     Quit();
 }
 
@@ -318,170 +368,89 @@ npc Ghost_InitSpawn(ffc this, int enemyID)
 npc Ghost_InitAutoGhost(ffc this, int enemyID)
 {
     npc ghost;
+    
+    // Find the right enemy
     for(int i=1; i<=Screen->NumNPCs(); i++)
     {
         ghost=Screen->LoadNPC(i);
         
+        // Wrong ID or already in use
         if(ghost->ID!=enemyID)
             continue;
         if(ghost->Misc[__GHI_IN_USE]!=0)
             continue;
         
         __Ghost_InitInternal(this, ghost, true, ghost->Attributes[10], ghost->CSet);
+        
+        if((ghost->MiscFlags&100000000b)!=0) // That's "Is Transparent"
+            this->Flags[FFCF_TRANS]=true;
         return ghost;
     }
     
-    // No enemy found, so quit. This shouldn't ever happen, so record it in allegro.log.
-    int error[80]="ghost.zh: AutoGhost initialization failed! Script %d, enemy %d\n";
-    printf(error, this->Script, enemyID);
+    // No enemy found, so quit. This shouldn't ever happen, so log it.
+    int error1[]="ghost.zh: AutoGhost initialization failed - enemy missing.\n";
+    int error2[30]="  DMap %d, screen %X\n";
+    int error3[30]="  Script %d, enemy ID %d\n";
+    printf(error1);
+    printf(error2, Game->GetCurDMap(), Game->GetCurDMapScreen());
+    printf(error3, this->Script, enemyID);
     
     this->Data=0;
     Quit();
 }
 
-void Ghost_Init(ffc this, npc ghost, int flags)
-{
-    Ghost_Init(this, ghost);
-    Ghost_SetFlags(flags);
-}
 
-npc Ghost_InitCreate(ffc this, int enemyID, int flags)
-{
-    npc ghost=Ghost_InitCreate(this, enemyID);
-    Ghost_SetFlags(flags);
-    return ghost;
-}
+// ===============
+// |||| FLAGS ||||
+// ===============
 
-npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos, int flags)
+void Ghost_SetFlag(int flag)
 {
-    npc ghost=Ghost_InitWait(this, enemyIndex, useEnemyPos);
-    Ghost_SetFlags(flags);
-    return ghost;
-}
-
-npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos, int flags)
-{
-    npc ghost=Ghost_InitWait2(this, enemyID, useEnemyPos);
-    Ghost_SetFlags(flags);
-    return ghost;
-}
-
-npc Ghost_InitSpawn(ffc this, int enemyID, int flags)
-{
-    npc ghost=Ghost_InitSpawn(this, enemyID);
-    Ghost_SetFlags(flags);
-    return ghost;
-}
-
-npc Ghost_InitAutoGhost(ffc this, int enemyID, int flags)
-{
-    npc ghost=Ghost_InitAutoGhost(this, enemyID);
-    Ghost_SetFlags(flags);
-    return ghost;
-}
-
-void Ghost_SetFlags(int flags)
-{
-    __Ghost_Flags=flags;
-}
-
-void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
-{
-    lweapon graphic;
-    int combo=this->Data;
-    bool collDet=ghost->CollDetection;
-    int xOffset=ghost->DrawXOffset;
-
-    if(this->TileWidth!=Ghost_TileWidth)
+    if((flag&0x10000)!=0)
     {
-        this->TileWidth=Ghost_TileWidth;
-        ghost->TileWidth=Ghost_TileWidth;
-        ghost->HitWidth=16*Ghost_TileWidth;
-        ghost->HitXOffset=0;
+        // New style flag - get the index (the last 16 bits)
+        // and set that bit in __Ghost_Flags2
+        __Ghost_Flags2|=1<<(flag&0xFFFF);
     }
-
-    if(this->TileHeight!=Ghost_TileHeight)
+    else
     {
-        this->TileHeight=Ghost_TileHeight;
-        ghost->TileHeight=Ghost_TileHeight;
-        ghost->HitHeight=16*Ghost_TileHeight;
-        ghost->HitYOffset=0;
+        // Old style flag - just OR it into __Ghost_Flags
+        __Ghost_Flags|=flag;
     }
-
-    this->Data=0;
-    ghost->CollDetection=false;
-    ghost->DrawXOffset=32768;
-
-    for(int i=0; i<this->TileWidth; i++)
-    {
-        for(int j=0; j<this->TileHeight; j++)
-        {
-            graphic=Screen->CreateLWeapon(LW_SCRIPT10);
-            graphic->CollDetection=false;
-            graphic->UseSprite(GH_SPAWN_SPRITE);
-            graphic->X=this->X+16*i;
-            graphic->Y=this->Y+16*j;
-
-            if(graphic->NumFrames==0)
-                graphic->NumFrames=3;
-            if(graphic->ASpeed==0)
-                graphic->ASpeed=4;
-
-            graphic->DeadState=graphic->NumFrames*graphic->ASpeed;
-        }
-    }
-
-    for(int i=graphic->NumFrames*graphic->ASpeed; i>0; i--)
-    {
-        Ghost_SetPosition(this, ghost);
-        Ghost_WaitframeLight();
-    }
-
-    this->Data=combo;
-    ghost->CollDetection=collDet;
-    ghost->DrawXOffset=xOffset;
 }
 
-void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
+void Ghost_UnsetFlag(int flag)
 {
-    int combo=this->Data;
-    bool collDet=ghost->CollDetection;
-    int xOffset=ghost->DrawXOffset;
-
-    if(this->TileWidth!=Ghost_TileWidth)
+    if((flag&0x10000)!=0)
     {
-        this->TileWidth=Ghost_TileWidth;
-        ghost->TileWidth=Ghost_TileWidth;
-        ghost->HitWidth=16*Ghost_TileWidth;
-        ghost->HitXOffset=0;
+        // New style flag
+        __Ghost_Flags2&=~1<<(flag&0xFFFF);
     }
-
-    if(this->TileHeight!=Ghost_TileHeight)
+    else
     {
-        this->TileHeight=Ghost_TileHeight;
-        ghost->TileHeight=Ghost_TileHeight;
-        ghost->HitHeight=16*Ghost_TileHeight;
-        ghost->HitYOffset=0;
+        // Old style flag
+        __Ghost_Flags&=~flag;
     }
+}
 
-    ghost->CollDetection=false;
-
-    for(int i=0; i<32; i++)
+bool Ghost_FlagIsSet(int flag)
+{
+    if((flag&0x10000)!=0)
     {
-        this->Data=0;
-        ghost->DrawXOffset=32768;
-        Ghost_SetPosition(this, ghost);
-        Ghost_WaitframeLight();
-
-        this->Data=combo;
-        ghost->DrawXOffset=xOffset;
-        Ghost_SetPosition(this, ghost);
-        Ghost_WaitframeLight();
+        // New style flag
+        return (__Ghost_Flags2&(1<<(flag&0xFFFF)))!=0;
     }
+    else
+    {
+        // Old style flag
+        return (__Ghost_Flags&flag)==flag;
+    }
+}
 
-    this->Data=combo;
-    ghost->CollDetection=collDet;
-    ghost->DrawXOffset=xOffset;
+void Ghost_ClearFlags()
+{
+    __Ghost_Flags=0;
+    __Ghost_Flags2=0;
 }
 
 
@@ -493,23 +462,24 @@ bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
 {
     // Handle gravity first
     ghost->Jump=0;
-    if((__Ghost_Flags&GHF_NO_FALL)==0)
+    if(!Ghost_FlagIsSet(GHF_NO_FALL))
     {
         // Sideview: Jump/fall on Y axis
         if(IsSideview())
         {
-            if(Ghost_Jump!=0 || Ghost_CanMove(DIR_DOWN, 1, 2)) // Use CanMove to check for platforms
+            // Use Ghost_CanMove to check for platforms
+            if(Ghost_Jump!=0 || Ghost_CanMove(DIR_DOWN, 1, 2))
             {
                 // Temporarily unset GHF_SET_DIRECTION so that Ghost_Move doesn't
                 // change the enemy's direction here
-                int tempFlags=__Ghost_Flags;
-                __Ghost_Flags&=~GHF_SET_DIRECTION;
+                bool setDir=Ghost_FlagIsSet(GHF_SET_DIRECTION);
+                Ghost_UnsetFlag(GHF_SET_DIRECTION);
                 
                 // Jumping
                 if(Ghost_Jump>0)
                 {
                     // Set GHF_NO_FALL temporarily so Ghost_CanMove(DIR_UP) can return true
-                    __Ghost_Flags|=GHF_NO_FALL;
+                    Ghost_SetFlag(GHF_NO_FALL);
                     
                     Ghost_Move(DIR_UP, Ghost_Jump, 2);
                     Ghost_Jump=Max(Ghost_Jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
@@ -519,7 +489,7 @@ bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
                     if(Ghost_Jump>0 && !Ghost_CanMove(DIR_UP, 1, 2))
                         Ghost_Jump=0;
                     
-                    __Ghost_Flags&=~GHF_NO_FALL;
+                    Ghost_UnsetFlag(GHF_NO_FALL);
                 }
                 // Falling
                 else
@@ -534,7 +504,9 @@ bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
                         Ghost_Jump=0;
                 }
                 
-                __Ghost_Flags=tempFlags;
+                // Restore the flag
+                if(setDir)
+                    Ghost_SetFlag(GHF_SET_DIRECTION);
             }
         }
         // Top-down: Jump/fall on Z axis
@@ -569,7 +541,9 @@ bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
     Ghost_SetPosition(this, ghost);
 
     __Ghost_WaitframePart1(this, ghost, false);
-    Ghost_WaitframeLight();
+    __Ghost_UpdateFlashing(this, ghost);
+    Ghost_WaitframeLight(this, ghost);
+    __Ghost_InternalFlags&=__GH_UNSET_FLAGS;
     return __Ghost_WaitframePart2(this, ghost, clearOnDeath, quitOnDeath);
 }
 
@@ -578,9 +552,15 @@ bool Ghost_Waitframe2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
     Ghost_X=ghost->X;
     Ghost_Y=ghost->Y;
     Ghost_Z=ghost->Z;
+    Ghost_Jump=ghost->Jump;
+    
+    this->X=VBound(Ghost_X+ghost->DrawXOffset, 256, -64);
+    this->Y=VBound(Ghost_Y-Ghost_Z+ghost->DrawYOffset-ghost->DrawZOffset, 176, -64);
     
     __Ghost_WaitframePart1(this, ghost, true);
-    Ghost_WaitframeLight();
+    __Ghost_UpdateFlashing(this, ghost);
+    Ghost_WaitframeLight(this, ghost);
+    __Ghost_InternalFlags&=__GH_UNSET_FLAGS;
     
     if(ghost->isValid())
     {
@@ -592,56 +572,288 @@ bool Ghost_Waitframe2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
     return __Ghost_WaitframePart2(this, ghost, clearOnDeath, quitOnDeath);
 }
 
-void Ghost_WaitframeLight()
+void Ghost_WaitframeLight(ffc this, npc ghost)
 {
-    float ghostXTemp=Ghost_X;
-    float ghostYTemp=Ghost_Y;
-    float ghostZTemp=Ghost_Z;
-    float ghostJumpTemp=Ghost_Jump;
-    float ghostVxTemp=Ghost_Vx;
-    float ghostVyTemp=Ghost_Vy;
-    float ghostAxTemp=Ghost_Ax;
-    float ghostAyTemp=Ghost_Ay;
-    float ghostPrevXTemp=__Ghost_PrevX;
-    float ghostPrevYTemp=__Ghost_PrevY;
-    int ghostCSetTemp=Ghost_CSet;
-    int ghostDirTemp=Ghost_Dir;
-    int ghostDataTemp=Ghost_Data;
-    int ghostTileWidthTemp=Ghost_TileWidth;
-    int ghostTileHeightTemp=Ghost_TileHeight;
-    int ghostFlagsTemp=__Ghost_Flags;
-    int ghostInternalFlagsTemp=__Ghost_InternalFlags;
-    int ghostFlashCounterTemp=__Ghost_FlashCounter;
-    int ghostKnockbackCounterTemp=__Ghost_KnockbackCounter;
-    int ghostHPTemp=Ghost_HP;
-    int ghostXOffsetsTemp=__Ghost_XOffsets;
-    int ghostYOffsetsTemp=__Ghost_YOffsets;
-
-    Waitframe();
-
-    Ghost_X=ghostXTemp;
-    Ghost_Y=ghostYTemp;
-    Ghost_Z=ghostZTemp;
-    Ghost_Jump=ghostJumpTemp;
-    Ghost_Vx=ghostVxTemp;
-    Ghost_Vy=ghostVyTemp;
-    Ghost_Ax=ghostAxTemp;
-    Ghost_Ay=ghostAyTemp;
-    __Ghost_PrevX=ghostPrevXTemp;
-    __Ghost_PrevY=ghostPrevYTemp;
-    Ghost_CSet=ghostCSetTemp;
-    Ghost_Dir=ghostDirTemp;
-    Ghost_Data=ghostDataTemp;
-    Ghost_TileWidth=ghostTileWidthTemp;
-    Ghost_TileHeight=ghostTileHeightTemp;
-    __Ghost_Flags=ghostFlagsTemp;
-    __Ghost_InternalFlags=ghostInternalFlagsTemp;
-
-    __Ghost_FlashCounter=ghostFlashCounterTemp;
-    __Ghost_KnockbackCounter=ghostKnockbackCounterTemp;
-    Ghost_HP=ghostHPTemp;
-    __Ghost_XOffsets=ghostXOffsetsTemp;
-    __Ghost_YOffsets=ghostYOffsetsTemp;
+    // Remember all the global variables
+    float tempGhostX=Ghost_X;
+    float tempGhostY=Ghost_Y;
+    float tempGhostZ=Ghost_Z;
+    float tempGhostJump=Ghost_Jump;
+    float tempGhostVx=Ghost_Vx;
+    float tempGhostVy=Ghost_Vy;
+    float tempGhostAx=Ghost_Ax;
+    float tempGhostAy=Ghost_Ay;
+    float tempGhostPrevX=__Ghost_PrevX;
+    float tempGhostPrevY=__Ghost_PrevY;
+    int tempGhostCSet=Ghost_CSet;
+    int tempGhostDir=Ghost_Dir;
+    int tempGhostData=Ghost_Data;
+    int tempGhostTileWidth=Ghost_TileWidth;
+    int tempGhostTileHeight=Ghost_TileHeight;
+    int tempGhostFlags=__Ghost_Flags;
+    int tempGhostFlags2=__Ghost_Flags2;
+    int tempGhostInternalFlags=__Ghost_InternalFlags;
+    int tempGhostFlashCounter=__Ghost_FlashCounter;
+    int tempGhostKnockbackCounter=__Ghost_KnockbackCounter;
+    int tempGhostHP=Ghost_HP;
+    int tempGhostXOffsets=__Ghost_XOffsets;
+    int tempGhostYOffsets=__Ghost_YOffsets;
+    int tempGhostAttachedFFCs=__Ghost_AttachedFFCs;
+    
+    // Position attached FFCs, draw combos, make FFCs invisible if flickering.
+    // Several factors to account for:
+    // - FFC or DrawCombo
+    // - Visible or flickering
+    // - Other FFCs attached or not
+    //   - And their various flags
+    
+    // If visible (i.e. not flickering)
+    //     If DrawCombo is enabled
+    //         If FFCs are attached
+    //             Set positions
+    //             Draw combos
+    //         Draw combo
+    //         Clear combo
+    //         Waitframe
+    //         Restore combo
+    //     Else (DrawCombo disabled)
+    //         If FFCs are attached
+    //             Set positions
+    //             Set combos
+    //         Waitframe
+    // Else (flickering)
+    //     If FFCs are attached
+    //         Set positions
+    //         Clear, set, or draw combos
+    //     Clear combo
+    //     Waitframe
+    //     Restore combo
+    
+    // Not flickering
+    if((__Ghost_InternalFlags&__GHFI_FLICKER)==0)
+    {
+        // Using DrawCombo
+        if(__GH_USE_DRAWCOMBO>0)
+        {
+            int layer;
+            int opacity;
+            int tempData;
+            
+            if(this->Flags[FFCF_OVERLAY])
+                layer=4;
+            else
+                layer=2;
+            
+            if(this->Flags[FFCF_TRANS])
+                opacity=64;
+            else
+                opacity=128;
+            
+            // Draw attached FFCs
+            if(__Ghost_AttachedFFCs>0)
+            {
+                int cset;
+                int data;
+                
+                for(int i=0; i<SizeOfArray(__Ghost_AttachedFFCs); i+=__GH_FFC_SIZE)
+                {
+                    // Skip hidden FFCs
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_HIDDEN)!=0)
+                        continue;
+                    
+                    // Fixed or relative data
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_FIXED_DATA)!=0)
+                        data=__Ghost_AttachedFFCs[i+GH_FFC_DATA];
+                    else
+                        data=Ghost_Data+__Ghost_AttachedFFCs[i+GH_FFC_DATA];
+                    
+                    // Flash or not
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_NO_FLASH)!=0)
+                        cset=Ghost_CSet;
+                    else
+                        cset=this->CSet;
+                    
+                    Screen->DrawCombo(layer,
+                       this->X+__Ghost_AttachedFFCs[i+GH_FFC_X],
+                       this->Y+__Ghost_AttachedFFCs[i+GH_FFC_Y],
+                       data,
+                       __Ghost_AttachedFFCs[i+GH_FFC_TILE_WIDTH],
+                       __Ghost_AttachedFFCs[i+GH_FFC_TILE_HEIGHT],
+                       cset,
+                       16*__Ghost_AttachedFFCs[i+GH_FFC_TILE_WIDTH],
+                       16*__Ghost_AttachedFFCs[i+GH_FFC_TILE_HEIGHT],
+                       0, 0, 0, 0, 0, true, opacity);
+                }
+            }
+            
+            Screen->DrawCombo(layer, this->X, this->Y, this->Data,
+               this->TileWidth, this->TileHeight,
+               this->CSet, 16*this->TileWidth, 16*this->TileHeight,
+               0, 0, 0, 0, 0, true, opacity);
+            
+            tempData=this->Data;
+            this->Data=GH_INVISIBLE_COMBO;
+            
+            Waitframe();
+            
+            this->Data=tempData;
+        }
+        
+        // Not using DrawCombo
+        else
+        {
+            // Set up attached FFCs
+            if(__Ghost_AttachedFFCs>0)
+            {
+                ffc f;
+                
+                for(int i=0; i<SizeOfArray(__Ghost_AttachedFFCs); i+=__GH_FFC_SIZE)
+                {
+                    f=Screen->LoadFFC(__Ghost_AttachedFFCs[i]);
+                    
+                    // Hidden FFCs
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_HIDDEN)!=0)
+                    {
+                        f->Data=GH_INVISIBLE_COMBO;
+                        continue;
+                    }
+                    
+                    f->X=VBound(this->X+__Ghost_AttachedFFCs[i+GH_FFC_X], 256, -64);
+                    f->Y=VBound(this->Y+__Ghost_AttachedFFCs[i+GH_FFC_Y], 176, -64);
+                    f->TileWidth=__Ghost_AttachedFFCs[i+GH_FFC_TILE_WIDTH];
+                    f->TileHeight=__Ghost_AttachedFFCs[i+GH_FFC_TILE_HEIGHT];
+                    
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_NO_FLASH)==0)
+                        f->CSet=this->CSet;
+                    else
+                        f->CSet=Ghost_CSet;
+                    
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_FIXED_DATA)!=0)
+                        f->Data=__Ghost_AttachedFFCs[i+GH_FFC_DATA];
+                    else
+                        f->Data=Ghost_Data+__Ghost_AttachedFFCs[i+GH_FFC_DATA];
+                }
+            }
+            
+            Waitframe();
+        }
+    }
+    
+    // Flickering
+    else
+    {
+        int tempData;
+        
+        // Clear or draw attached FFCs
+        if(__Ghost_AttachedFFCs>0)
+        {
+            // DrawCombo enabled
+            if(__GH_USE_DRAWCOMBO!=0)
+            {
+                for(int i=0; i<SizeOfArray(__Ghost_AttachedFFCs); i+=__GH_FFC_SIZE)
+                {
+                    // Hidden or flickering?
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_HIDDEN)!=0 ||
+                       (__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_NO_FLASH)==0)
+                        continue;
+                        
+                    int data;
+                    int layer;
+                    int opacity;
+                    
+                    if(this->Flags[FFCF_OVERLAY])
+                        layer=4;
+                    else
+                        layer=2;
+                    
+                    if(this->Flags[FFCF_TRANS])
+                        opacity=64;
+                    else
+                        opacity=128;
+                    
+                    // Fixed or relative data
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_FIXED_DATA)!=0)
+                        data=__Ghost_AttachedFFCs[i+GH_FFC_DATA];
+                    else
+                        data=this->Data+__Ghost_AttachedFFCs[i+GH_FFC_DATA];
+                    
+                    Screen->DrawCombo(layer,
+                       this->X+__Ghost_AttachedFFCs[i+GH_FFC_X],
+                       this->Y+__Ghost_AttachedFFCs[i+GH_FFC_Y],
+                       data,
+                       __Ghost_AttachedFFCs[i+GH_FFC_TILE_WIDTH],
+                       __Ghost_AttachedFFCs[i+GH_FFC_TILE_HEIGHT],
+                       Ghost_CSet,
+                       16*__Ghost_AttachedFFCs[i+GH_FFC_TILE_WIDTH],
+                       16*__Ghost_AttachedFFCs[i+GH_FFC_TILE_HEIGHT],
+                       0, 0, 0, 0, 0, true, opacity);
+                }
+            }
+            
+            // DrawCombo disabled
+            else
+            {
+                ffc f;
+                
+                for(int i=0; i<SizeOfArray(__Ghost_AttachedFFCs); i+=__GH_FFC_SIZE)
+                {
+                    f=Screen->LoadFFC(__Ghost_AttachedFFCs[i]);
+                    
+                    // Hidden or flickering?
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_HIDDEN)!=0 ||
+                       (__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_NO_FLASH)==0)
+                    {
+                        f->Data=GH_INVISIBLE_COMBO;
+                        continue;
+                    }
+                    
+                    f->X=VBound(this->X+__Ghost_AttachedFFCs[i+GH_FFC_X], 256, -64);
+                    f->Y=VBound(this->Y+__Ghost_AttachedFFCs[i+GH_FFC_Y], 176, -64);
+                    f->TileWidth=__Ghost_AttachedFFCs[i+GH_FFC_TILE_WIDTH];
+                    f->TileHeight=__Ghost_AttachedFFCs[i+GH_FFC_TILE_HEIGHT];
+                    f->CSet=Ghost_CSet;
+                    
+                    if((__Ghost_AttachedFFCs[i+GH_FFC_FLAGS]&GH_FFCF_FIXED_DATA)!=0)
+                        f->Data=__Ghost_AttachedFFCs[i+GH_FFC_DATA];
+                    else
+                        f->Data=Ghost_Data+__Ghost_AttachedFFCs[i+GH_FFC_DATA];
+                }
+            }
+        }
+        
+        tempData=this->Data;
+        this->Data=GH_INVISIBLE_COMBO;
+        
+        Waitframe();
+        
+        this->Data=tempData;
+    }
+    
+    // Restore the global variables
+    Ghost_X=tempGhostX;
+    Ghost_Y=tempGhostY;
+    Ghost_Z=tempGhostZ;
+    Ghost_Jump=tempGhostJump;
+    Ghost_Vx=tempGhostVx;
+    Ghost_Vy=tempGhostVy;
+    Ghost_Ax=tempGhostAx;
+    Ghost_Ay=tempGhostAy;
+    __Ghost_PrevX=tempGhostPrevX;
+    __Ghost_PrevY=tempGhostPrevY;
+    Ghost_CSet=tempGhostCSet;
+    Ghost_Dir=tempGhostDir;
+    Ghost_Data=tempGhostData;
+    Ghost_TileWidth=tempGhostTileWidth;
+    Ghost_TileHeight=tempGhostTileHeight;
+    __Ghost_Flags=tempGhostFlags;
+    __Ghost_Flags2=tempGhostFlags2;
+    __Ghost_InternalFlags=tempGhostInternalFlags;
+    __Ghost_FlashCounter=tempGhostFlashCounter;
+    __Ghost_KnockbackCounter=tempGhostKnockbackCounter;
+    Ghost_HP=tempGhostHP;
+    __Ghost_XOffsets=tempGhostXOffsets;
+    __Ghost_YOffsets=tempGhostYOffsets;
+    __Ghost_AttachedFFCs=tempGhostAttachedFFCs;
 }
 
 bool Ghost_Waitframes(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
@@ -664,10 +876,10 @@ bool Ghost_Waitframes2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath,
     return true;
 }
 
-void Ghost_WaitframesLight(int numFrames)
+void Ghost_WaitframesLight(ffc this, npc ghost, int numFrames)
 {
     for(; numFrames>0; numFrames--)
-        Ghost_WaitframeLight();
+        Ghost_WaitframeLight(this, ghost);
 }
 
 void Ghost_CheckHit(ffc this, npc ghost)
@@ -682,28 +894,31 @@ void Ghost_CheckHit(ffc this, npc ghost)
             __Ghost_FlashCounter=32;
         
         // Set knockback counter (but don't handle it yet)
-        if((__Ghost_Flags&GHF_KNOCKBACK)!=0)
+        if(Ghost_FlagIsSet(GHF_KNOCKBACK))
         {
             int xDiff=Link->X-Ghost_X;
             int yDiff=Link->Y-Ghost_Y;
             
-            // The direction can't be checked the proper way, so guess based on Link's position
+            // The correct way to find the knockback direction would be to check
+            // the direction of the weapon, but that's not possible. Instead,
+            // Link's position and direction are used.
             
             // If Link is close, use his direction
             if(Abs(xDiff)<(Ghost_TileWidth+1)*16 && Abs(yDiff)<(Ghost_TileHeight+1)*16)
             {
                 if((Link->Dir&10b)==(Ghost_Dir&10b) || Ghost_Dir>3 || // Both horizontal or vertical, or enemy diagonal?
-                   (__Ghost_Flags&GHF_KNOCKBACK_4WAY)==GHF_KNOCKBACK_4WAY)
-                    __Ghost_KnockbackCounter=Link->Dir<<5|16;
+                   Ghost_FlagIsSet(GHF_KNOCKBACK_4WAY))
+                    __Ghost_KnockbackCounter=Link->Dir<<5|16; // Direction and timer are stored together
             }
-            // If far, use relative positions
+            
+            // If Link is far, use the direction from him to the enemy
             else
             {
                 // Up or down
                 if(Abs(xDiff)<Abs(yDiff))
                 {
                     if(Ghost_Dir==DIR_UP || Ghost_Dir==DIR_DOWN || Ghost_Dir>3 ||
-                       (__Ghost_Flags&GHF_KNOCKBACK_4WAY)==GHF_KNOCKBACK_4WAY)
+                       Ghost_FlagIsSet(GHF_KNOCKBACK_4WAY))
                     {
                         if(yDiff>0)
                             __Ghost_KnockbackCounter=(DIR_UP<<5)|16;
@@ -715,7 +930,7 @@ void Ghost_CheckHit(ffc this, npc ghost)
                 else
                 {
                     if(Ghost_Dir==DIR_LEFT || Ghost_Dir==DIR_RIGHT || Ghost_Dir>3 ||
-                       (__Ghost_Flags&GHF_KNOCKBACK_4WAY)==GHF_KNOCKBACK_4WAY)
+                       Ghost_FlagIsSet(GHF_KNOCKBACK_4WAY))
                     {
                         if(xDiff>0)
                             __Ghost_KnockbackCounter=(DIR_LEFT<<5)|16;
@@ -726,25 +941,6 @@ void Ghost_CheckHit(ffc this, npc ghost)
             }
         }
     }
-    // Not hit; unset flag
-    else if((__Ghost_InternalFlags&__GHFI_GOT_HIT)!=0)
-        __Ghost_InternalFlags&=~__GHFI_GOT_HIT;
-    
-    // Flash
-    if(__Ghost_FlashCounter>1)
-    {
-        // Cycle through CSets 6-7-8-9
-        if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)==0)
-            this->CSet=9-(__Ghost_FlashCounter&3);
-        __Ghost_FlashCounter--;
-    }
-    // Done flashing
-    else if(__Ghost_FlashCounter==1)
-    {
-        __Ghost_FlashCounter=0;
-        if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)==0)
-            this->CSet=Ghost_CSet;
-    }
     
     // Handle knockback
     if(__Ghost_KnockbackCounter!=0)
@@ -753,7 +949,7 @@ void Ghost_CheckHit(ffc this, npc ghost)
         int counter=__Ghost_KnockbackCounter&31;
         int step;
         
-        if((__Ghost_Flags&GHF_REDUCED_KNOCKBACK)==GHF_REDUCED_KNOCKBACK)
+        if(Ghost_FlagIsSet(GHF_REDUCED_KNOCKBACK))
             step=2;
         else
             step=4;
@@ -806,6 +1002,8 @@ void Ghost_CheckHit(ffc this, npc ghost)
             if(dir==DIR_UP)
                 newY=Floor(Ghost_Y/8)*8;
             else if(dir==DIR_DOWN)
+
+
                 newY=Ceiling((Ghost_Y<<0)/8)*8;
             else if(dir==DIR_LEFT)
                 newX=Floor(Ghost_X/8)*8;
@@ -830,8 +1028,8 @@ void Ghost_CheckHit(ffc this, npc ghost)
 
 bool Ghost_CheckFreeze(ffc this, npc ghost)
 {
-    if(((__Ghost_Flags&GHF_CLOCK)!=0 && __ghzhClockTimer!=0) ||
-       ((__Ghost_Flags&GHF_STUN)!=0 && ghost->Stun>0))
+    if((Ghost_FlagIsSet(GHF_CLOCK) && __ghzhClockTimer!=0) ||
+       (Ghost_FlagIsSet(GHF_STUN) && ghost->Stun>0))
     {
         // Stop all movement
         float vx=this->Vx;
@@ -845,19 +1043,20 @@ bool Ghost_CheckFreeze(ffc this, npc ghost)
         this->Ay=0;
 
         // Do nothing except get hit until recovered
-        while(((__Ghost_Flags&GHF_CLOCK)!=0 && __ghzhClockTimer!=0) ||
-              ((__Ghost_Flags&GHF_STUN)!=0 && ghost->Stun>0))
+        while((Ghost_FlagIsSet(GHF_CLOCK) && __ghzhClockTimer!=0) ||
+              (Ghost_FlagIsSet(GHF_STUN) && ghost->Stun>0))
         {
-            Ghost_WaitframeLight();
+            __Ghost_UpdateFlashing(this, ghost);
+            Ghost_WaitframeLight(this, ghost);
 
             if(!ghost->isValid() || ghost->HP<=0)
                 return false;
 
             Ghost_SetPosition(this, ghost);
 
-            if((__Ghost_Flags&GHF_8WAY)!=0)
+            if(Ghost_FlagIsSet(GHF_8WAY))
                 this->Data=Ghost_Data+VBound(Ghost_Dir, 7, 0);
-            else if((__Ghost_Flags&GHF_4WAY)!=0)
+            else if(Ghost_FlagIsSet(GHF_4WAY))
                 this->Data=Ghost_Data+VBound(Ghost_Dir, 3, 0);
             else
                 this->Data=Ghost_Data;
@@ -922,7 +1121,7 @@ void Ghost_Move(int dir, float step, int imprecision)
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
 {
     // If this is sideview, most enemies can't move upward
-    if(yStep<0 && IsSideview() && (__Ghost_Flags&GHF_NO_FALL)==0)
+    if(yStep<0 && IsSideview() && !Ghost_FlagIsSet(GHF_NO_FALL))
         yStep=0;
     
     if(yStep<0)
@@ -1004,10 +1203,10 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
             Ghost_X=Ceiling((Ghost_X<<0)/8)*8;
     }
     
-    if((__Ghost_Flags&GHF_SET_DIRECTION)!=0 && (__Ghost_InternalFlags&__GHFI_DIR_FORCED)==0)
+    if(Ghost_FlagIsSet(GHF_SET_DIRECTION) && (__Ghost_InternalFlags&__GHFI_DIR_FORCED)==0)
     {
         // Use 8 directions if 8-way flag is set
-        if((__Ghost_Flags&GHF_8WAY)!=0)
+        if(Ghost_FlagIsSet(GHF_8WAY))
             Ghost_Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
         
         // Otherwise, 4 directions
@@ -1034,7 +1233,7 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
     }
 }
 
-bool Ghost_CanMove(int dir, float step, int imprecision)
+bool Ghost_CanMove(int dir, float step, int imprecision, bool inAir)
 {
     if(step==0)
         return true;
@@ -1047,7 +1246,7 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
     if(dir==DIR_UP)
     {
         // Most enemies can't move upward on sideview screens
-        if(IsSideview() && (__Ghost_Flags&GHF_NO_FALL)==0)
+        if(IsSideview() && !Ghost_FlagIsSet(GHF_NO_FALL))
             return false;
         
         int y=Ghost_Y-step;
@@ -1055,12 +1254,12 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
         // Check every 8 pixels for solid, pit, or water
         for(int i=leftOffset+imprecision; i<Ghost_TileWidth*16-rightOffset-imprecision; i+=8)
         {
-            if(!Ghost_CanMovePixel(Ghost_X+i, y+topOffset))
+            if(!Ghost_CanMovePixel(Ghost_X+i, y+topOffset, inAir))
                 return false;
         }
 
         // One last pixel...
-        if(!Ghost_CanMovePixel(Ghost_X+Ghost_TileWidth*16-rightOffset-imprecision-1, y+topOffset))
+        if(!Ghost_CanMovePixel(Ghost_X+Ghost_TileWidth*16-rightOffset-imprecision-1, y+topOffset, inAir))
             return false;
 
         return true;
@@ -1071,11 +1270,11 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
 
         for(int i=leftOffset+imprecision; i<Ghost_TileWidth*16-rightOffset-imprecision; i+=8)
         {
-            if(!Ghost_CanMovePixel(Ghost_X+i, y-bottomOffset))
+            if(!Ghost_CanMovePixel(Ghost_X+i, y-bottomOffset, inAir))
                 return false;
         }
 
-        if(!Ghost_CanMovePixel(Ghost_X+Ghost_TileWidth*16-rightOffset-imprecision-1, y-bottomOffset))
+        if(!Ghost_CanMovePixel(Ghost_X+Ghost_TileWidth*16-rightOffset-imprecision-1, y-bottomOffset, inAir))
             return false;
 
         return true;
@@ -1086,11 +1285,11 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
 
         for(int i=topOffset+imprecision; i<Ghost_TileHeight*16-bottomOffset-imprecision; i+=8)
         {
-            if(!Ghost_CanMovePixel(x+leftOffset, Ghost_Y+i))
+            if(!Ghost_CanMovePixel(x+leftOffset, Ghost_Y+i, inAir))
                 return false;
         }
 
-        if(!Ghost_CanMovePixel(x+leftOffset, Ghost_Y+Ghost_TileHeight*16-bottomOffset-imprecision-1))
+        if(!Ghost_CanMovePixel(x+leftOffset, Ghost_Y+Ghost_TileHeight*16-bottomOffset-imprecision-1, inAir))
             return false;
 
         return true;
@@ -1147,40 +1346,82 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
         return false;
 }
 
-bool Ghost_CanMovePixel(int x, int y)
+bool Ghost_CanMove(int dir, float step, int imprecision)
+{
+    return Ghost_CanMove(dir, step, imprecision, Ghost_Z>0);
+}
+
+bool Ghost_CanMovePixel(int x, int y, bool inAir)
 {
     if(x<0 || x>255 || y<0 || y>175)
-        return (__Ghost_Flags&GHF_MOVE_OFFSCREEN)!=0;
+        return Ghost_FlagIsSet(GHF_MOVE_OFFSCREEN);
     
     int combo=ComboAt(x, y);
     
     // "No enemy" flags and combos
-    if(Screen->ComboT[combo]==CT_NOENEMY)
-        return false;
-    if(Screen->ComboF[combo]==CF_NOENEMY)
-        return false;
-    if(Screen->ComboI[combo]==CF_NOENEMY)
-        return false;
+    if(!Ghost_FlagIsSet(GHF_IGNORE_NO_ENEMY))
+    {
+        if(Screen->ComboT[combo]==CT_NOENEMY)
+            return false;
+        if(Screen->ComboF[combo]==CF_NOENEMY)
+            return false;
+        if(Screen->ComboI[combo]==CF_NOENEMY)
+            return false;
+        
+        // Flying
+        if(Ghost_FlagIsSet(GHF_FLYING_ENEMY))
+        {
+            if(Screen->ComboT[combo]==CT_NOFLYZONE)
+                return false;
+        }
+        // Jumping
+        else if(inAir)
+        {
+            if(Screen->ComboF[combo]==CT_NOJUMPZONE)
+                return false;
+        }
+        // Ground
+        else
+        {
+            if(Screen->ComboT[combo]==CT_NOGROUNDENEMY)
+                return false;
+            if(Screen->ComboF[combo]==CF_NOGROUNDENEMY)
+                return false;
+            if(Screen->ComboI[combo]==CF_NOGROUNDENEMY)
+                return false;
+        }
+    }
+    
+    // Restricted to water
+    if(Ghost_FlagIsSet(GHF_DEEP_WATER_ONLY))
+        return IsWater(combo);
+    
+    if(Ghost_FlagIsSet(GHF_WATER_ONLY))
+        return IsWater(combo) || Screen->ComboT[combo]==CT_SHALLOWWATER;
     
     // Water and pit walkability override solidity checking
     if(IsWater(combo))
-        return (__Ghost_Flags&GHF_IGNORE_WATER)!=0;
-    else if(IsPit(combo))
-        return (__Ghost_Flags&GHF_IGNORE_PITS)!=0;
-    else
-    {
-        // Ignore solidity: always OK
-        // Full tile movement: Only if the whole tile is walkable
-        // All others: Only if the pixel is walkable
-        if((__Ghost_Flags&GHF_IGNORE_SOLIDITY)!=0)
-            return true;
-        else if((__Ghost_Flags&GHF_FULL_TILE_MOVEMENT)!=0)
-            return __FullTileWalkable(x, y);
-        else
-            return !Screen->isSolid(x, y);
-    }
+        return Ghost_FlagIsSet(GHF_IGNORE_WATER);
     
-    return true;
+    if(IsPit(combo))
+        return Ghost_FlagIsSet(GHF_IGNORE_PITS);
+    
+    // Ignore solidity: always OK
+    if(Ghost_FlagIsSet(GHF_IGNORE_SOLIDITY))
+        return true;
+    
+    // Full tile movement: Only if the whole tile is walkable
+    else if(Ghost_FlagIsSet(GHF_FULL_TILE_MOVEMENT))
+        return __FullTileWalkable(x, y);
+    
+    // All others: Only if the pixel is walkable
+    else
+        return !Screen->isSolid(x, y);
+}
+
+bool Ghost_CanMovePixel(int x, int y)
+{
+    return Ghost_CanMovePixel(x, y, Ghost_Z>0);
 }
 
 void Ghost_MoveAtAngle(float angle, float step, int imprecision)
@@ -1201,11 +1442,12 @@ int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
         return counter;
     
     int xStep=0;
+
     int yStep=0;
     
     // Trying to walk onto half solid combos will throw off the counter
-    int tempFlags=__Ghost_Flags;
-    if((__Ghost_Flags&GHF_IGNORE_SOLIDITY)==0)
+    bool ftmSet=Ghost_FlagIsSet(GHF_FULL_TILE_MOVEMENT);
+    if(!Ghost_FlagIsSet(GHF_IGNORE_SOLIDITY))
         Ghost_SetFlag(GHF_FULL_TILE_MOVEMENT);
     
     step/=100;
@@ -1271,11 +1513,21 @@ int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
         else
             counter=Floor(16/step);
     }
-    // If the enemy hit Link, turn around
-    else if(Link->Action==LA_GOTHURTLAND && Abs(Ghost_X-Link->X)<16 && Abs(Ghost_Y-Link->Y)<16)
+    // Turn around after hitting Link
+    if(Abs(Ghost_X-Link->X)<16 && Abs(Ghost_Y-Link->Y)<16)
     {
-        Ghost_Dir^=1;
-        counter=Floor(16/step)-counter;
+        if(Link->Action==LA_GOTHURTLAND &&
+           (__Ghost_InternalFlags&__GHFI_HIT_LINK)==0)
+        {
+            Ghost_Dir^=1;
+            counter=Floor(16/step)-counter;
+            __Ghost_InternalFlags|=__GHFI_HIT_LINK;
+        }
+    }
+    // Not touching Link - clear the flag
+    else
+    {
+        __Ghost_InternalFlags&=~__GHFI_HIT_LINK;
     }
     
     // These functions use the full step on both axes for diagonal movement
@@ -1295,8 +1547,11 @@ int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
             yStep=step;
     }
     
+    // Restore the flag
+    if(!ftmSet)
+        Ghost_UnsetFlag(GHF_FULL_TILE_MOVEMENT);
+    
     Ghost_MoveXY(xStep, yStep, 0);
-    __Ghost_Flags=tempFlags;
     return counter-1;
 }
 
@@ -1320,11 +1575,13 @@ int Ghost_ConstantWalk8(int counter, int step, int rate, int homing, int hunger)
 
     // Needs to snap to the grid, so Ghost_Move() would be problematic
     if(Ghost_Dir!=DIR_UP && Ghost_Dir!=DIR_DOWN)
+
     {
         if(Ghost_Dir==DIR_LEFT || Ghost_Dir==DIR_LEFTUP || Ghost_Dir==DIR_LEFTDOWN)
             xStep=-step;
         else // Right
             xStep=step;
+
     }
 
     if(Ghost_Dir!=DIR_LEFT && Ghost_Dir!=DIR_RIGHT)
@@ -1365,8 +1622,8 @@ float Ghost_HaltingWalk4(int counter, int step, int rate, int homing, int hunger
         return haltCounter-1;
     
     // Trying to walk onto half solid combos will throw off the counter
-    int tempFlags=__Ghost_Flags;
-    if((__Ghost_Flags&GHF_IGNORE_SOLIDITY)==0)
+    bool ftmSet=Ghost_FlagIsSet(GHF_FULL_TILE_MOVEMENT);
+    if(!Ghost_FlagIsSet(GHF_IGNORE_SOLIDITY))
         Ghost_SetFlag(GHF_FULL_TILE_MOVEMENT);
     
     step/=100;
@@ -1434,23 +1691,37 @@ float Ghost_HaltingWalk4(int counter, int step, int rate, int homing, int hunger
             // Halt?
             if(Rand(16)<haltRate)
             {
+                if(!ftmSet)
+                    Ghost_UnsetFlag(GHF_FULL_TILE_MOVEMENT);
                 haltCounter=haltTime;
-                __Ghost_Flags=tempFlags;
                 return haltCounter;
             }
         }
     }
     
     // Turn around after hitting Link
-    else if(Link->Action==LA_GOTHURTLAND && Abs(Ghost_X-Link->X)<16 && Abs(Ghost_Y-Link->Y)<16)
+    if(Abs(Ghost_X-Link->X)<16 && Abs(Ghost_Y-Link->Y)<16)
     {
-        Ghost_Dir^=1;
-        walkCounter=Floor(16/step)-walkCounter;
+        if(Link->Action==LA_GOTHURTLAND &&
+           (__Ghost_InternalFlags&__GHFI_HIT_LINK)==0)
+        {
+            Ghost_Dir^=1;
+            walkCounter=Floor(16/step)-walkCounter;
+            __Ghost_InternalFlags|=__GHFI_HIT_LINK;
+        }
+    }
+    // Not touching Link - clear the flag
+    else
+    {
+        __Ghost_InternalFlags&=~__GHFI_HIT_LINK;
     }
     
     walkCounter--;
     Ghost_Move(Ghost_Dir, step, 0);
-    __Ghost_Flags=tempFlags;
+    
+    if(!ftmSet)
+        Ghost_UnsetFlag(GHF_FULL_TILE_MOVEMENT);
+    
     if(walkCounter>0)
         return walkCounter/10000;
     else
@@ -1566,17 +1837,8 @@ void Ghost_ReplaceNPC(npc oldGhost, npc newGhost, bool copyHP)
     oldGhost->HP=-1000;
 }
 
-void Ghost_SetFlag(int flag)
-{
-    __Ghost_Flags|=flag;
-}
-
-void Ghost_UnsetFlag(int flag)
-{
-    __Ghost_Flags&=~flag;
-}
-
 void Ghost_SetHitOffsets(npc ghost, float top, float bottom, float left, float right)
+
 {
     if(top>0 && top<1)
         top=Round(top*Ghost_TileHeight*16);
@@ -1644,6 +1906,7 @@ void Ghost_StartFlashing(int time)
 void Ghost_StopFlashing()
 {
     __Ghost_FlashCounter=0;
+    __Ghost_InternalFlags&=~__GHFI_FLICKER;
 }
 
 void Ghost_StopKnockback()
@@ -1652,6 +1915,137 @@ void Ghost_StopKnockback()
 }
 
 
+// =======================
+// |||| MULTIPLE FFCS ||||
+// =======================
+
+bool Ghost_SetAttachedFFCs(int attachedFFCs, bool forceTrueFFCs)
+{
+    // Clear FFCs
+    if(attachedFFCs<=0)
+    {
+        __Ghost_AttachedFFCs=0;
+        return true;
+    }
+    
+    // Check that the number of array elements is valid; print an error if not
+    int arraySize=SizeOfArray(attachedFFCs);
+    
+    if(arraySize==0 || arraySize%__GH_FFC_SIZE!=0)
+    {
+        int error1[]="ghost.zh: Invalid array passed to Ghost_SetAttachedFFCs.\n";
+        int error2[30]="  DMap %d, screen %X\n";
+        int error3[60]="  Array size is %d; must be a multiple of %d.\n";
+        printf(error1);
+        printf(error2, Game->GetCurDMap(), Game->GetCurDMapScreen());
+        printf(error3, arraySize, __GH_FFC_SIZE);
+        __Ghost_AttachedFFCs=0;
+        return false;
+    }
+    
+    __Ghost_AttachedFFCs=attachedFFCs;
+    
+    // If DrawCombo is used, this doesn't actually require multiple FFCs;
+    // if real FFCs weren't forced, clear FFC numbers to avoid confusion
+    if(__GH_USE_DRAWCOMBO!=0 && !forceTrueFFCs)
+    {
+        for(int i=0; i<arraySize; i+=__GH_FFC_SIZE)
+            __Ghost_AttachedFFCs[i]=0;
+        
+        return true;
+    }
+    
+    // DrawCombo is disabled or real FFCs were requested, so set up the FFCs
+    int unusedFFC=0;
+    ffc f;
+    
+    for(int i=0; i<arraySize; i+=__GH_FFC_SIZE)
+    {
+        // Find an FFC automatically
+        if(__Ghost_AttachedFFCs[i]<=0)
+        {
+            unusedFFC=FindUnusedFFC(unusedFFC);
+            
+            // Failed to find an FFC?
+            if(unusedFFC==0)
+            {
+                Ghost_ClearAttachedFFCs();
+                return false;
+            }
+            
+            // FFC's okay
+            else
+                __Ghost_AttachedFFCs[i]=unusedFFC;
+        }
+        
+        // Set the FFC's data so it doesn't appear unused later
+        f=Screen->LoadFFC(unusedFFC);
+        f->Data=GH_INVISIBLE_COMBO;
+    }
+    
+    // Success
+    return true;
+}
+
+void Ghost_ModifyAttachedFFC(int whichFFC, int whichDatum, int newValue)
+{
+    if(__Ghost_AttachedFFCs==0)
+        return;
+    
+    __Ghost_AttachedFFCs[whichFFC*__GH_FFC_SIZE+whichDatum]=newValue;
+}
+
+void Ghost_HideAttachedFFCs()
+{
+    if(__Ghost_AttachedFFCs==0)
+        return;
+    
+    int arraySize=SizeOfArray(__Ghost_AttachedFFCs);
+    
+    for(int i=GH_FFC_FLAGS; i<arraySize; i+=__GH_FFC_SIZE)
+        __Ghost_AttachedFFCs[i]|=GH_FFCF_HIDDEN;
+}
+
+void Ghost_UnhideAttachedFFCs()
+{
+    if(__Ghost_AttachedFFCs==0)
+        return;
+    
+    int arraySize=SizeOfArray(__Ghost_AttachedFFCs);
+    
+    for(int i=GH_FFC_FLAGS; i<arraySize; i+=__GH_FFC_SIZE)
+        __Ghost_AttachedFFCs[i]&=~GH_FFCF_HIDDEN;
+}
+
+void Ghost_ClearAttachedFFCs()
+{
+    if(__Ghost_AttachedFFCs==0)
+        return;
+    
+    int arraySize=SizeOfArray(__Ghost_AttachedFFCs);
+    ffc f;
+    
+    // Load each FFC and clear it
+    for(int i=0; i<arraySize; i+=__GH_FFC_SIZE)
+    {
+        if(__Ghost_AttachedFFCs[i]==0)
+            continue;
+        
+        f=Screen->LoadFFC(__Ghost_AttachedFFCs[i]);
+        f->Data=0;
+        __Ghost_AttachedFFCs[i]=0;
+    }
+    
+    __Ghost_AttachedFFCs=0;
+}
+
+int Ghost_GetAttachedFFC(int whichFFC)
+{
+    if(__Ghost_AttachedFFCs==0)
+        return 0;
+    
+    return __Ghost_AttachedFFCs[whichFFC*__GH_FFC_SIZE];
+}
 
 // ===============
 // |||| OTHER ||||
@@ -1708,7 +2102,8 @@ void AutoGhost()
 
             // Setting this in advance hides the spawn animation, so it's not visible for a
             // single frame before the script starts (assuming this is after Waitdraw())
-            if(enemy->Attributes[10]!=GH_INVISIBLE_COMBO)
+            if(enemy->Attributes[10]!=GH_INVISIBLE_COMBO &&
+               enemy->Attributes[10]!=__GH_INVISIBLE_ALT)
                 enemy->Extend=3;
         }
     }
@@ -1717,7 +2112,7 @@ void AutoGhost()
 void CleanUpGhostFFCs()
 {
     // Hide FFCs when Link is dead
-    if(Link->HP<=0)
+    if(Link->HP<=0 && __GH_USE_DRAWCOMBO==0)
     {
         ffc f;
         for(int i=1; i<=32; i++)
@@ -1795,6 +2190,7 @@ npc SpawnNPC(int id)
             bestRating=tileRatings[i];
             bestCount=1;
         }
+
     }
 
     // Pick at random from the best rated tiles, but pick again if it's too close to Link
@@ -1809,8 +2205,8 @@ npc SpawnNPC(int id)
         // Limit the number of tries to ensure this doesn't become an infinite loop
         tries++;
     } while(Distance(ComboX(choice), ComboY(choice), Link->X, Link->Y)<40 && tries<256)
-
-
+    
+    
     theNPC=Screen->CreateNPC(id);
     theNPC->X=ComboX(choice-1);
     theNPC->Y=ComboY(choice-1);
@@ -1825,17 +2221,120 @@ int FindUnusedFFC()
 int FindUnusedFFC(int startingFrom)
 {
     ffc f;
-
+    
     for(int i=Max(startingFrom+1, AUTOGHOST_MIN_FFC); i<=AUTOGHOST_MAX_FFC; i++)
     {
         f=Screen->LoadFFC(i);
-
-        if((f->Data==0 || f->Data==GH_INVISIBLE_COMBO) && f->Script==0)
+        
+        if(f->Data==0 && f->Script==0)
             return i;
     }
-
+    
     // Couldn't find one
     return 0;
+}
+
+void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
+{
+    lweapon graphic;
+    int combo=this->Data;
+    bool collDet=ghost->CollDetection;
+    int xOffset=ghost->DrawXOffset;
+    
+    if(this->TileWidth!=Ghost_TileWidth)
+    {
+        this->TileWidth=Ghost_TileWidth;
+        ghost->TileWidth=Ghost_TileWidth;
+        ghost->HitWidth=16*Ghost_TileWidth;
+        ghost->HitXOffset=0;
+    }
+    
+    if(this->TileHeight!=Ghost_TileHeight)
+    {
+        this->TileHeight=Ghost_TileHeight;
+        ghost->TileHeight=Ghost_TileHeight;
+        ghost->HitHeight=16*Ghost_TileHeight;
+        ghost->HitYOffset=0;
+    }
+    
+    Ghost_SetPosition(this, ghost);
+    
+    this->Data=0;
+    ghost->CollDetection=false;
+    ghost->DrawXOffset=32768;
+    
+    for(int i=0; i<this->TileWidth; i++)
+    {
+        for(int j=0; j<this->TileHeight; j++)
+        {
+            graphic=Screen->CreateLWeapon(LW_SCRIPT10);
+            graphic->CollDetection=false;
+            graphic->UseSprite(GH_SPAWN_SPRITE);
+            graphic->X=this->X+16*i;
+            graphic->Y=this->Y+16*j;
+            
+            if(graphic->NumFrames==0)
+                graphic->NumFrames=3;
+            if(graphic->ASpeed==0)
+                graphic->ASpeed=4;
+            
+            graphic->DeadState=graphic->NumFrames*graphic->ASpeed;
+        }
+    }
+    
+    for(int i=graphic->NumFrames*graphic->ASpeed; i>0; i--)
+    {
+        Ghost_SetPosition(this, ghost);
+        Ghost_WaitframeLight(this, ghost);
+    }
+    
+    this->Data=combo;
+    ghost->CollDetection=collDet;
+    ghost->DrawXOffset=xOffset;
+}
+
+void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
+{
+    int combo=this->Data;
+    bool collDet=ghost->CollDetection;
+    int xOffset=ghost->DrawXOffset;
+    
+    if(this->TileWidth!=Ghost_TileWidth)
+    {
+        this->TileWidth=Ghost_TileWidth;
+        ghost->TileWidth=Ghost_TileWidth;
+        ghost->HitWidth=16*Ghost_TileWidth;
+        ghost->HitXOffset=0;
+    }
+    
+    if(this->TileHeight!=Ghost_TileHeight)
+    {
+        this->TileHeight=Ghost_TileHeight;
+        ghost->TileHeight=Ghost_TileHeight;
+        ghost->HitHeight=16*Ghost_TileHeight;
+        ghost->HitYOffset=0;
+    }
+    
+    Ghost_SetPosition(this, ghost);
+    ghost->CollDetection=false;
+    
+    // Alternate drawing offscreen and in place for 64 frames
+    for(int i=0; i<32; i++)
+    {
+        this->Data=0;
+        ghost->DrawXOffset=32768;
+        Ghost_SetPosition(this, ghost);
+        Ghost_WaitframeLight(this, ghost);
+        
+        this->Data=combo;
+        ghost->DrawXOffset=xOffset;
+        Ghost_SetPosition(this, ghost);
+        Ghost_WaitframeLight(this, ghost);
+    }
+    
+    this->Data=combo;
+    ghost->CollDetection=collDet;
+    ghost->DrawXOffset=xOffset;
 }
 
 bool Ghost_GotHit()
@@ -1852,14 +2351,14 @@ void Ghost_Explode(ffc this, npc ghost)
     // alive until the end. There isn't a good way to do that, so here's a stupid way, instead.
     // Make another of the same enemy, hide it, and kill it. After the animation finishes,
     // kill the real one silently.
-
+    
     deathSFXNPC=Screen->CreateNPC(ghost->ID);
     deathSFXNPC->X=ghost->X; // For panning
     deathSFXNPC->Y=176;
     deathSFXNPC->ItemSet=0;
     deathSFXNPC->HP=0;
     deathSFXNPC->Misc[__GHI_IN_USE]=1;
-
+    
     this->CSet=Ghost_CSet;
     this->Flags[FFCF_OVERLAY]=false;
     this->Vx=0;
@@ -1869,29 +2368,32 @@ void Ghost_Explode(ffc this, npc ghost)
     ghost->HP=1;
     ghost->CollDetection=false;
     ghost->SFX=0;
-
+    Ghost_StopFlashing();
+    
     // One explosion every 16 frames, 15 times
     for(int i=0; i<15; i++)
     {
         explosion=Screen->CreateLWeapon(LW_BOMBBLAST);
-        explosion->X=Ghost_X+Rand(16*Ghost_TileWidth)-8;
-        explosion->Y=Ghost_Y+Rand(16*Ghost_TileHeight)-8;
+        explosion->X=Ghost_X+ghost->DrawXOffset+Rand(16*Ghost_TileWidth)-8;
+        explosion->Y=Ghost_Y-Ghost_Z+ghost->DrawYOffset-ghost->DrawZOffset+Rand(16*Ghost_TileHeight)-8;
         explosion->CollDetection=false;
         for(int j=0; j<16; j++)
         {
             Ghost_SetPosition(this, ghost);
-            Ghost_WaitframeLight();
+            Ghost_WaitframeLight(this, ghost);
         }
     }
 
     ghost->X=1024;
-    this->Data=0;
+    this->Data=GH_INVISIBLE_COMBO;
+    Ghost_Data=GH_INVISIBLE_COMBO;
+    Ghost_ClearAttachedFFCs();
 }
 
 void Ghost_SetPosition(ffc this, npc ghost)
 {
     // Real Z
-    if((__Ghost_Flags&GHF_FAKE_Z)==0)
+    if(GH_FAKE_Z==0 && !Ghost_FlagIsSet(GHF_FAKE_Z))
     {
         ghost->X=Ghost_X;
         ghost->Y=Ghost_Y;
@@ -2052,6 +2554,7 @@ eweapon CreateBigDummyEWeapon(int weaponID, int step, int damage, int sprite, in
 {
     eweapon wpn=CreateDummyEWeapon(weaponID, step, damage, sprite, sound, flags);
     wpn->Extend=3;
+
     wpn->TileWidth=width;
     wpn->TileHeight=height;
     // No point setting HitWidth and HitHeight here
@@ -2130,21 +2633,12 @@ void SetEWeaponDeathEffect(eweapon wpn, eweapon prototype, int numShots, int spr
 // Update a weapon's movement, lifespan, and death effects
 void UpdateEWeapon(eweapon wpn)
 {
-    // If Link's holding up an item, don't do anything
-    if(Link->Action==LA_HOLD1LAND || Link->Action==LA_HOLD2LAND ||
-       Link->Action==LA_HOLD1WATER || Link->Action==LA_HOLD2WATER)
-        return;
-
-    // If this is a dummy, or if it's not a ghost.zh weapon, don't do anything
-    if((wpn->Misc[__EWI_FLAGS]&__EWFI_IS_GHZH_EWPN)==0 || (wpn->Misc[__EWI_FLAGS]&__EWFI_DUMMY)!=0)
-        return;
-
     // Start flags
 
     // Unblockable
     if((wpn->Misc[__EWI_FLAGS]&EWF_UNBLOCKABLE)!=0)
     {
-        // A weapon is made unblockable by setting its direction to match Link's each frame.
+        // A weapon is made unblockable by setting its direction to match Link's each frame
         wpn->Dir=Link->Dir;
         if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
             SetEWeaponRotation(wpn);
@@ -2154,10 +2648,10 @@ void UpdateEWeapon(eweapon wpn)
     if((wpn->Misc[__EWI_FLAGS]&EWF_FLICKER)!=0)
     {
         // Weapons can't be made invisible; use DrawXOffset instead
-        if(wpn->DrawXOffset<10000)
-            wpn->DrawXOffset+=10000;
+        if(wpn->DrawXOffset<1000)
+            wpn->DrawXOffset+=1000;
         else
-            wpn->DrawXOffset-=10000;
+            wpn->DrawXOffset-=1000;
     }
 
     // Shadow
@@ -2252,12 +2746,15 @@ void UpdateEWeapon(eweapon wpn)
                         wpn->Misc[__EWI_WORK]=45;
 
                     if(wpn->Misc[__EWI_WORK]>0) // If positive, wpn is moving
+
                     {
+
                         wpn->Misc[__EWI_WORK]--;
                         if(wpn->Misc[__EWI_WORK]==0)
                         {
                             if(wpn->Misc[__EWI_MOVEMENT_ARG]<=0) // No more aims left
                                 KillEWeapon(wpn);
+
                             else // Stop
                             {
                                 wpn->Misc[__EWI_MOVEMENT_ARG]--;
@@ -2818,6 +3315,7 @@ void UpdateEWeapon(eweapon wpn)
             // Run FFC script
             else if(wpn->Misc[__EWI_ON_DEATH]==EWD_RUN_SCRIPT)
             {
+
                 int ffcID;
                 ffc f;
                 eweapon checkWpn;
@@ -2839,6 +3337,7 @@ void UpdateEWeapon(eweapon wpn)
                     checkWpn=Screen->LoadEWeapon(i);
                     if((checkWpn->Misc[__EWI_FLAGS]&__EWFI_DUMMY_CHECK)!=__EWFI_IS_GHZH_EWPN) // Filter out dummies
                         continue;
+
                     minID=Min(minID, checkWpn->Misc[__EWI_ID]);
                 }
                 wpn->Misc[__EWI_ID]=minID-1;
@@ -2870,6 +3369,13 @@ void UpdateEWeapons()
     for(int i=Screen->NumEWeapons(); i>0; i--)
     {
         wpn=Screen->LoadEWeapon(i);
+        
+        // If this is a dummy, or if it's not a ghost.zh weapon, don't do anything
+        if((wpn->Misc[__EWI_FLAGS]&__EWFI_IS_GHZH_EWPN)==0 ||
+           (wpn->Misc[__EWI_FLAGS]&__EWFI_DUMMY)!=0)
+            continue;
+
+    
         UpdateEWeapon(wpn);
     }
 }
@@ -3106,26 +3612,25 @@ bool ClockIsActive()
 // Before waiting: Update direction, set combo, set overlay flag, draw shadow
 void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
 {
+
     // Direction forced - set the npc's direction and unset the flag
     if((__Ghost_InternalFlags&__GHFI_DIR_FORCED)!=0)
-    {
         ghost->Dir=Ghost_Dir;
-        __Ghost_InternalFlags&=~__GHFI_DIR_FORCED;
-    }
 
     // Use npc's direction
     else if(useNPCDir)
         Ghost_Dir=ghost->Dir;
 
     // Set direction based on movement
-    else if((__Ghost_Flags&GHF_SET_DIRECTION)!=0 && (__Ghost_PrevX!=Ghost_X || __Ghost_PrevY!=Ghost_Y))
+    else if(Ghost_FlagIsSet(GHF_SET_DIRECTION) && (__Ghost_PrevX!=Ghost_X || __Ghost_PrevY!=Ghost_Y))
     {
         float xStep=Ghost_X-__Ghost_PrevX;
         float yStep=Ghost_Y-__Ghost_PrevY;
 
         // Use 8 directions if 8-way flag is set
-        if((__Ghost_Flags&GHF_8WAY)!=0)
+        if(Ghost_FlagIsSet(GHF_8WAY))
             Ghost_Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
+
 
         // Otherwise, 4 directions
         else
@@ -3152,20 +3657,28 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
     __Ghost_PrevY=Ghost_Y;
     
     // Set combo
-    if((__Ghost_Flags&GHF_8WAY)!=0)
-    {
-        if(this->Data!=Ghost_Data+Ghost_Dir)
-            this->Data=Ghost_Data+VBound(Ghost_Dir, 7, 0);
-    }
-    else if((__Ghost_Flags&GHF_4WAY)!=0)
-    {
-        if(this->Data!=Ghost_Data+Ghost_Dir)
-            this->Data=Ghost_Data+VBound(Ghost_Dir, 3, 0);
-    }
-    else
+    if(Ghost_Data==0 || Ghost_Data==GH_INVISIBLE_COMBO)
     {
         if(this->Data!=Ghost_Data)
             this->Data=Ghost_Data;
+    }
+    else
+    {
+        if(Ghost_FlagIsSet(GHF_8WAY))
+        {
+            if(this->Data!=Ghost_Data+Ghost_Dir)
+                this->Data=Ghost_Data+VBound(Ghost_Dir, 7, 0);
+        }
+        else if(Ghost_FlagIsSet(GHF_4WAY))
+        {
+            if(this->Data!=Ghost_Data+Ghost_Dir)
+                this->Data=Ghost_Data+VBound(Ghost_Dir, 3, 0);
+        }
+        else
+        {
+            if(this->Data!=Ghost_Data)
+                this->Data=Ghost_Data;
+        }
     }
     
     // Resize, if necessary
@@ -3186,7 +3699,7 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
     }
     
     // Draw over if high enough
-    if((__Ghost_Flags&GHF_SET_OVERLAY)!=0)
+    if(Ghost_FlagIsSet(GHF_SET_OVERLAY))
     {
         if(Ghost_Z>=GH_DRAW_OVER_THRESHOLD && !this->Flags[FFCF_OVERLAY])
             this->Flags[FFCF_OVERLAY]=true;
@@ -3197,18 +3710,15 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
     ghost->HP=Ghost_HP;
     
     // Set CSet
-    // ghost->CSet can't be forced
+    // ghost->CSet can't be forced; built-in flashing can't be prevented
     ghost->CSet=Ghost_CSet;
     if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)!=0)
-    {
         this->CSet=Ghost_CSet;
-        __Ghost_InternalFlags&=~__GHFI_CSET_FORCED;
-    }
     else if(__Ghost_FlashCounter<=0)
         this->CSet=Ghost_CSet;
     
     // Draw a shadow for fake Z movement
-    if((__Ghost_Flags&GHF_FAKE_Z)!=0 && Ghost_Z>0)
+    if((Ghost_FlagIsSet(GHF_FAKE_Z) || GH_FAKE_Z>0) && Ghost_Z>0)
     {
         bool drawShadow=true;
 
@@ -3235,10 +3745,6 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
                 Screen->DrawTile(1, x, y, GH_SHADOW_TILE, 1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 128);
         }
     }
-    
-    // Unset previous frame's flag
-    if((__Ghost_InternalFlags&__GHFI_KNOCKBACK_INTERRUPTED)!=0)
-        __Ghost_InternalFlags&=~__GHFI_KNOCKBACK_INTERRUPTED;
 }
 
 // After waiting: Check whether the enemy was hit, stunned, or killed
@@ -3248,7 +3754,10 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
     if(!ghost->isValid())
     {
         if(clearOnDeath)
+        {
+            Ghost_ClearAttachedFFCs();
             this->Data=0;
+        }
         if(quitOnDeath)
             Quit();
         return false;
@@ -3296,6 +3805,9 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
 // Does the actual initialization for the init functions
 void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int cset)
 {
+    if(combo==__GH_INVISIBLE_ALT || combo==__GH_INVISIBLE_EXTEND)
+        combo=GH_INVISIBLE_COMBO;
+    
     if(useEnemyPos)
     {
         Ghost_X=ghost->X;
@@ -3309,32 +3821,33 @@ void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int 
         Ghost_Y=this->Y;
         Ghost_Z=0;
         Ghost_Jump=0;
-
+        
         ghost->Z=0;
         ghost->Jump=0;
     }
-
+    
     Ghost_SetPosition(this, ghost);
     Ghost_Dir=ghost->Dir;
-
+    
     Ghost_Vx=0;
     Ghost_Vy=0;
     Ghost_Ax=0;
     Ghost_Ay=0;
-
+    
     __Ghost_PrevX=Ghost_X;
     __Ghost_PrevY=Ghost_Y;
+    
 
     this->Data=combo;
-    this->CSet=cset;
     Ghost_Data=combo;
+    this->CSet=cset;
     Ghost_CSet=cset;
-
+    
     Ghost_TileWidth=this->TileWidth;
     Ghost_TileHeight=this->TileHeight;
     __Ghost_XOffsets=0;
     __Ghost_YOffsets=0;
-
+    
     if(combo!=GH_INVISIBLE_COMBO)
     {
         ghost->OriginalTile=GH_BLANK_TILE;
@@ -3344,14 +3857,15 @@ void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int 
         ghost->HitWidth=16*Ghost_TileWidth;
         ghost->HitHeight=16*Ghost_TileHeight;
     }
-
+    
     __Ghost_Flags=0;
+    __Ghost_Flags2=0;
     __Ghost_FlashCounter=0;
     __Ghost_KnockbackCounter=0;
-
+    
     Ghost_HP=ghost->HP;
     ghost->Misc[__GHI_IN_USE]=1;
-
+    
     // Remember that this is a ghost script so it can be cleared at the appropriate times
     __Ghost_Scripts[this->Script>>4]|=1<<(this->Script&1111b);
 }
@@ -3389,15 +3903,15 @@ int __Ghost_LinedUp(int range, bool eightWay)
         if(Link->Y<Ghost_Y)
             return DIR_UP;
         else
-          return DIR_DOWN;
+            return DIR_DOWN;
     }
     // Left or right
     else if(Abs(Link->Y-Ghost_Y)<=range)
     {
         if(Link->X<Ghost_X)
-          return DIR_LEFT;
+            return DIR_LEFT;
         else
-         return DIR_RIGHT;
+            return DIR_RIGHT;
     }
 
     // Diagonal
@@ -3442,6 +3956,7 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
             if(Abs(Ghost_Y-bait->Y)>14)
             {
                 if(bait->Y<Ghost_Y)
+
                     newDir=DIR_UP;
                 else
                     newDir=DIR_DOWN;
@@ -3483,7 +3998,7 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
     int counter;
     
     // Don't bother checking upward in sideview if GHF_NO_FALL isn't set
-    if(!IsSideview() || (__Ghost_Flags&GHF_NO_FALL)!=0)
+    if(!IsSideview() || Ghost_FlagIsSet(GHF_NO_FALL))
     {
         if(__FullTileWalkable(Ghost_X, Ghost_Y-16))
         {
@@ -3707,7 +4222,7 @@ bool __FullTileWalkable(int x, int y)
 {
     // Offscreen?
     if(x<0 || y<0 || x>=256 || y>=176)
-        return (__Ghost_Flags&GHF_MOVE_OFFSCREEN)!=0;
+        return Ghost_FlagIsSet(GHF_MOVE_OFFSCREEN);
     
     // Get the exact coordinate of the top-left pixel
     x-=x%16;
@@ -3721,3 +4236,163 @@ bool __FullTileWalkable(int x, int y)
     
     return true;
 }
+
+void __Ghost_UpdateFlashing(ffc this, npc ghost)
+{
+    if(__Ghost_FlashCounter>=1)
+    {
+        // Flash
+        if(GH_ENEMIES_FLICKER==0)
+        {
+            if(__Ghost_FlashCounter>1)
+            {
+                // Cycle through CSets 6-7-8-9
+                if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)==0)
+                    this->CSet=9-(__Ghost_FlashCounter&3);
+                __Ghost_FlashCounter--;
+            }
+            // Done flashing
+            else if(__Ghost_FlashCounter==1)
+            {
+                if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)==0)
+                    this->CSet=Ghost_CSet;
+                __Ghost_FlashCounter=0;
+            }
+        }
+        
+        // Flicker
+        else
+        {
+            if(__Ghost_FlashCounter>1)
+            {
+                // Just set a flag; the actual flickering is handled in Ghost_WaitframeLight
+                if((__Ghost_FlashCounter&1)==1)
+                    __Ghost_InternalFlags|=__GHFI_FLICKER;
+                else
+                    __Ghost_InternalFlags&=~__GHFI_FLICKER;
+                __Ghost_FlashCounter--;
+            }
+            // Done flickering
+            else if(__Ghost_FlashCounter==1)
+            {
+                __Ghost_FlashCounter=0;
+                __Ghost_InternalFlags&=~__GHFI_FLICKER;
+            }
+        }
+    }
+}
+
+
+// =================================
+// |||| DEPRECATED - DO NOT USE ||||
+// =================================
+
+void Ghost_Init(ffc this, npc ghost, int flags)
+{
+    Ghost_Init(this, ghost);
+    Ghost_SetFlags(flags);
+}
+
+npc Ghost_InitCreate(ffc this, int enemyID, int flags)
+{
+    npc ghost=Ghost_InitCreate(this, enemyID);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos, int flags)
+{
+    npc ghost=Ghost_InitWait(this, enemyIndex, useEnemyPos);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos, int flags)
+{
+    npc ghost=Ghost_InitWait2(this, enemyID, useEnemyPos);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+npc Ghost_InitSpawn(ffc this, int enemyID, int flags)
+{
+    npc ghost=Ghost_InitSpawn(this, enemyID);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+npc Ghost_InitAutoGhost(ffc this, int enemyID, int flags)
+{
+    npc ghost=Ghost_InitAutoGhost(this, enemyID);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+void Ghost_SetFlags(int flags)
+{
+    __Ghost_Flags=flags;
+}
+
+void Ghost_WaitframeLight()
+{
+    // Remember all the global variables
+    float tempGhostX=Ghost_X;
+    float tempGhostY=Ghost_Y;
+    float tempGhostZ=Ghost_Z;
+    float tempGhostJump=Ghost_Jump;
+    float tempGhostVx=Ghost_Vx;
+    float tempGhostVy=Ghost_Vy;
+    float tempGhostAx=Ghost_Ax;
+    float tempGhostAy=Ghost_Ay;
+    float tempGhostPrevX=__Ghost_PrevX;
+    float tempGhostPrevY=__Ghost_PrevY;
+    int tempGhostCSet=Ghost_CSet;
+    int tempGhostDir=Ghost_Dir;
+    int tempGhostData=Ghost_Data;
+    int tempGhostTileWidth=Ghost_TileWidth;
+    int tempGhostTileHeight=Ghost_TileHeight;
+    int tempGhostFlags=__Ghost_Flags;
+    int tempGhostFlags2=__Ghost_Flags2;
+    int tempGhostInternalFlags=__Ghost_InternalFlags;
+    int tempGhostFlashCounter=__Ghost_FlashCounter;
+    int tempGhostKnockbackCounter=__Ghost_KnockbackCounter;
+    int tempGhostHP=Ghost_HP;
+    int tempGhostXOffsets=__Ghost_XOffsets;
+    int tempGhostYOffsets=__Ghost_YOffsets;
+    int tempGhostAttachedFFCs=__Ghost_AttachedFFCs;
+    
+    Waitframe();
+    
+    // Restore the global variables
+    Ghost_X=tempGhostX;
+    Ghost_Y=tempGhostY;
+    Ghost_Z=tempGhostZ;
+    Ghost_Jump=tempGhostJump;
+    Ghost_Vx=tempGhostVx;
+    Ghost_Vy=tempGhostVy;
+    Ghost_Ax=tempGhostAx;
+    Ghost_Ay=tempGhostAy;
+    __Ghost_PrevX=tempGhostPrevX;
+    __Ghost_PrevY=tempGhostPrevY;
+    Ghost_CSet=tempGhostCSet;
+    Ghost_Dir=tempGhostDir;
+    Ghost_Data=tempGhostData;
+    Ghost_TileWidth=tempGhostTileWidth;
+    Ghost_TileHeight=tempGhostTileHeight;
+    __Ghost_Flags=tempGhostFlags;
+    __Ghost_Flags2=tempGhostFlags2;
+    __Ghost_InternalFlags=tempGhostInternalFlags;
+    __Ghost_FlashCounter=tempGhostFlashCounter;
+    __Ghost_KnockbackCounter=tempGhostKnockbackCounter;
+    Ghost_HP=tempGhostHP;
+    __Ghost_XOffsets=tempGhostXOffsets;
+    __Ghost_YOffsets=tempGhostYOffsets;
+    __Ghost_AttachedFFCs=tempGhostAttachedFFCs;
+}
+
+void Ghost_WaitframesLight(int numFrames)
+{
+    for(; numFrames>0; numFrames--)
+        Ghost_WaitframeLight();
+}
+

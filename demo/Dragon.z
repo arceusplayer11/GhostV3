@@ -19,7 +19,9 @@ ffc script Dragon
         eweapon wpn;
         
         // Initialize
-        ghost=Ghost_InitCreate(this, DRG_ENEMY_ID, GHF_IGNORE_ALL_TERRAIN);
+        ghost=Ghost_InitCreate(this, DRG_ENEMY_ID);
+        Ghost_SetFlag(GHF_IGNORE_ALL_TERRAIN);
+        
         Ghost_SpawnAnimationPuff(this, ghost);
         Ghost_SetHitOffsets(ghost, 16, 0, 0, 0);
         

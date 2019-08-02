@@ -20,11 +20,13 @@ ffc script Lich
     {
         npc ghost;
         
-        ghost=Ghost_InitWait(this, 1, false, GHF_IGNORE_ALL_TERRAIN);
-        Ghost_SpawnAnimationPuff(this, ghost);
+        ghost=Ghost_InitWait(this, 1, false);
+        Ghost_SetFlag(GHF_IGNORE_ALL_TERRAIN);
         Ghost_SetHitOffsets(ghost, 0, 0, 0, 16); // The right column is just the hand
+        Ghost_SpawnAnimationPuff(this, ghost);
         
-        // Skull bomb splits into five smaller skulls on impact
+        // Skull bomb splits into five smaller skulls on impact;
+        // this is the prototype for those skulls
         eweapon prototype=CreateDummyEWeapon(EW_SCRIPT1, 150, 0, LICH_STALFOS_SPAWNER_SPRITE,
                                              LICH_SKULL_BOMB_SFX, EWF_SHADOW|EWF_NO_COLLISION);
         SetEWeaponMovement(prototype, EWM_THROW, 1.5);

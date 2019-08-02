@@ -342,7 +342,7 @@ bool GhostWaitframeF(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
 
 bool GhostWaitframesM(ffc this, npc ghost, float x, float y, float z, bool clearOnDeath, bool quitOnDeath, int numFrames)
 {
-    while(numFrames-->0)
+    for(; numFrames>0; numFrames--)
     {
         if(!GhostWaitframeM(this, ghost, x, y, z, clearOnDeath, quitOnDeath))
             return false;
@@ -352,7 +352,7 @@ bool GhostWaitframesM(ffc this, npc ghost, float x, float y, float z, bool clear
 
 bool GhostWaitframesN(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
 {
-    while(numFrames-->0)
+    for(; numFrames>0; numFrames--)
     {
         if(!GhostWaitframeM(this, ghost, ghost->X, ghost->Y, ghost->Z, clearOnDeath, quitOnDeath))
             return false;
@@ -362,7 +362,7 @@ bool GhostWaitframesN(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, 
 
 bool GhostWaitframesF(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
 {
-    while(numFrames-->0)
+    for(; numFrames>0; numFrames--)
     {
         if(!GhostWaitframeM(this, ghost, this->X, this->Y, 0, clearOnDeath, quitOnDeath))
             return false;
@@ -915,3 +915,4 @@ npc GhostInitWait2(ffc this, int enemyID, int which, bool useEnemyPos, int flags
 {
     return GhostInitWait2(this, enemyID, useEnemyPos, flags);
 }
+

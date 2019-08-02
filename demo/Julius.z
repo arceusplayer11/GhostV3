@@ -56,7 +56,9 @@ ffc script Julius
         WaitNoAction(120);
         
         // Initialize
-        ghost=Ghost_InitCreate(this, JUL_ENEMY_ID, GHF_MOVE_OFFSCREEN|GHF_IGNORE_ALL_TERRAIN);
+        ghost=Ghost_InitCreate(this, JUL_ENEMY_ID);
+        Ghost_SetFlag(GHF_MOVE_OFFSCREEN);
+        Ghost_SetFlag(GHF_IGNORE_ALL_TERRAIN);
         Ghost_SetHitOffsets(ghost, 0, 16, 16, 16);
         
         Ghost_Data=JUL_FLOAT_COMBO;

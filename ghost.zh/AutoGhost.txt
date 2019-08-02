@@ -1,78 +1,134 @@
+ghost.zh
+Version 2.3.2
+
 General setup:
 
-There are four files in the zip file: AutoGhost.txt, ghost.zh, ghost.txt, and ghost_legacy.zh.
-The only one of these you need for AutoGhost enemies is ghost.zh. You can put it anywhere, but it's
-simplest to put it in the same directory as ZC, since that's where ZQuest will look by default.
+There are four files in the zip file: AutoGhost.txt, ghost.zh, ghost.txt, and
+ghost_legacy.zh. The only one of these you need for AutoGhost enemies is
+ghost.zh. You can put it anywhere, but it's simplest to put it in the same
+directory as ZC, since that's where ZQuest will look by default. On Mac OS,
+this means putting the files inside the application; right-click ZQuest and
+select "Show Package Contents" to get in.
 
-First, you'll need to set up a combo that is invisible and has no type or flag set. This cannot be
-combo 0. You'll also need to set aside a block of 4x4 tiles to leave blank. You should also modify
-the "MISC: Spawn" sprite in Quest > Graphics > Sprites > Weapons/Misc. It needs to have the
-animation speed and number of frames set; 3 frames at a speed of 5 will best match the built-in
-enemies.
+First, you'll need to set aside a block of 4x4 tiles to leave blank. Set up
+a combo that uses the top-left tile of that block and has its type and flag
+both set to "(None)." You should also modify the "MISC: Spawn" sprite in
+Quest > Graphics > Sprites > Weapons/Misc. It needs to have the animation
+speed and number of frames set; 3 frames at a speed of 5 will best match the
+built-in enemies.
 
-You'll have to set a few constants in ghost.zh. Open it in a text editor (a basic one like Notepad;
-office programs sometimes modify punctuation marks, making scripts unusable). The constants are all
-at the top, and they look like this:
+You'll have to set some constants in ghost.zh. Open it in a text editor (a basic
+one like Notepad; office programs sometimes modify punctuation marks, making
+scripts unusable). The constants are all at the top, and they look like this:
 
 const int CONSTANT_NAME = ###; // And sometimes there's a note here
 
-The ### part is what you need to change. The names should mostly be self-explanatory, but a few
-need a bit of explanation.
+The ### part is what you need to change; be sure to leave the equals sign and
+semicolon in place. 
+TODO: Something like "these are they..."
 
-GH_DRAW_OVER_THRESHOLD: Some scripts set the FFC's "Draw Over" flag automatically as the enemy
-   moves up and down. This determines the Z value at which it changes.
-GH_SPAWN_SPRITE: Scripted enemies don't use the normal spawn animations. This needs to be set so
-   they can fake it. If you use the default sprite, 22, make sure its animation frames and speed
-   are set.
-AUTOGHOST_MIN_FFC and AUTOGHOST_MAX_FFC: Every scripted enemy uses at least one FFC. Set these to
-   limit the range of FFCs they will use automatically. Use this if you want to reserve some FFCs
-   for other purposes.
-AUTOGHOST_MIN_ENEMY_ID and AUTOGHOST_MAX_ENEMY_ID: AutoGhost enemies are identified by misc.
-   attributes 11 and 12 being set. Other scripts may also use these settings; when multiple scripts
-   use the same numbers for different purposes, they're likely to behave incorrectly. You can
-   restrict the range of enemy IDs that will be used for AutoGhost enemies to avoid this.
+GH_SHADOW_TILE
+GH_SHADOW_CSET
+GH_SHADOW_TRANSLUCENT
+GH_SHADOW_FLICKER
+   If a shadow needs to be drawn by the script, it will use these settings.
 
-GH_INVISIBLE_COMBO is the last one that needs set; everything after that can be ignored. If you're
-making multiple quests at once that use different settings, you should use a different copy of the
-file for each one.
+AUTOGHOST_MIN_FFC
+AUTOGHOST_MAX_FFC
+   Every scripted enemy uses at least one FFC. Set these to limit the range of
+   FFCs they will use automatically. Use this if you want to reserve some FFCs
+   for other purposes. Making this range too small can result in some scripts
+   not working, so it's best not to restrict it more than necessary.
+   
+AUTOGHOST_MIN_ENEMY_ID
+AUTOGHOST_MAX_ENEMY_ID
+   AutoGhost enemies are identified by misc. attributes 11 and 12 being set.
+   Other scripts may also use these settings; when multiple scripts use the
+   same numbers for different purposes, they're likely to behave incorrectly.
+   You can restrict the range of enemy IDs that will be used for AutoGhost
+   enemies to avoid this.
+
+GH_DRAW_OVER_THRESHOLD
+   Some scripts set the FFC's "Draw Over" flag automatically as the enemy moves
+   up and down. This determines the Z value at which it changes. This is similar
+   to the setting "Jumping Sprite Layer Threshold" in the initialization data.
+   
+GH_GRAVITY
+GH_TERMINAL_VELOCITY
+   These should match the numbers set for gravity and terminal velocity in
+   the initialization data. Most people will never have any reason to change
+   these two.
+
+GH_SPAWN_SPRITE
+   Scripted enemies don't use the normal spawn animations. This needs to be set
+   so they can fake it. This is the number of the sprite used by spawning
+   enemies, found in  Quest > Graphics > Sprites > Weapons/Misc. If you use the
+   default sprite, 22, make sure its animation frames and speed are set.
+
+GH_FAKE_Z
+   If enabled, enemies won't move through the Z axis. Similar to unchecking the
+   quest rule "Enemies Jump/Fly Through Z-Axis."
+
+GH_ENEMIES_FLICKER
+   If enabled, enemies will flicker instead of flashing. Similar to checking
+   the quest rule "Enemies Flicker When Hit."
+
+GH_BLANK_TILE
+   You need to have a 4x4 block of blank tiles in the tile pages. Set this to
+   the number of the tile in the top-left corner.
+
+GH_INVISIBLE_COMBO
+   The number of a combo with a blank tile and no type or flag set. The tile
+   should also be the top-left of a 4x4 block of blank tiles.
+
+
+
+GH_INVISIBLE_COMBO is the last one that needs set; everything after that can be
+ignored. If you're making multiple quests at once that use different settings,
+you should use a different copy of the file for each one.
 
 In ZQuest, go to Quest > Scripts > Compile ZScript... > Edit and enter this:
+
 import "std.zh"
 import "string.zh"
 import "ghost.zh"
 
-This assumes that all these files are in ZC's directory. If any of them are in different
-directories, you'll have to specify that, for instance:
+This assumes that all these files are in ZC's directory. If any of them are in
+different directories, you'll have to specify that, for instance:
 import "MyQuest\Scripts\ghost.zh"
 
-Close the window, save the changes, and click Compile. In the Global tab, load GhostZHActiveScript
-into the Active slot. In the Item tab, load GhostZHClockScript into any slot.
+Close the window, save the changes, and click Compile. In the Global tab, load
+GhostZHActiveScript into the Active slot. In the Item tab, load
+GhostZHClockScript into any slot.
 
-If your quest uses clocks, set the clock's pickup script to GhostZHClockScript. Set D0 to the same
-number as the clock's duration.
+If your quest uses clocks, set the clock's pickup script to GhostZHClockScript.
+Set D0 to the same number as the clock's duration.
 
 
 
 Individual enemies:
 
 
-First, the script needs to be imported. In the script buffer, add another line to import the file,
-for instance:
+First, the script needs to be imported. In the script buffer, add another line
+to import the file, for instance:
 import "GoriyaLttP.z"
 
-Don't remove the lines that are already there. Some scripts may require that you import additional
-files, but don't include any file more than once. Compile and load the FFC script into a slot.
+Don't remove the lines that are already there. Some scripts may require that you
+import additional files, but don't include any file more than once. Compile and
+load the FFC script into a slot.
 
-Exactly what needs done varies from one enemy to the next, but a few things are common. Most
-scripted enemies need at least one combo set up, but a few use the invisible one. Every enemy needs
-its type (usually 'other'), HP, damage, tile, and CSet set. Misc. attribute 11 must be set to the
-combo number, and misc. attribute 12 must be set to the number of the script slot. If either of
-these is 0, the enemy won't be recognized as scripted.
+Exactly what needs done varies from one enemy to the next, but a few things are
+common. Most scripted enemies need at least one combo set up, but a few use the
+invisible one. Every enemy needs its type (usually 'other'), HP, damage, tile,
+and CSet set. Misc. attribute 11 must be set to the combo number, and misc.
+attribute 12 must be set to the number of the script slot. If either of these is
+0, the enemy won't be recognized as scripted.
 
-Many enemies require more than one combo. In these cases, assume that all combos must be consecutive
-in the list and attribute 11 set to the first one unless the instructions say otherwise. Also, some
-scripts require that multiple enemies be set up. Unless instructed otherwise, you only need to place
-the primary enemy on the screen.
+Many enemies require more than one combo. In these cases, assume that all combos
+must be consecutive in the list and attribute 11 set to the first one unless the
+instructions say otherwise. Also, some scripts require that multiple enemies be
+set up. Unless instructed otherwise, you only need to place the primary enemy on
+the screen.
 
-If an enemy uses the invisible combo, be sure to set the same one you used for GH_INVISIBLE_COMBO.
-Otherwise, it won't be recognized, which may cause graphical problems.
+An enemy that uses the invisible combo can have misc. attribute set to -1
+instead of the combo number.
