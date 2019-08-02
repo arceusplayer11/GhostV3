@@ -75,7 +75,7 @@ bool GhostWaitframesM(ffc this, npc ghost, float x, float y, float z, bool clear
 These functions are used internally by the Waitframe replacements, but are available to use if you'd rather write your own.
 
 void CheckHit(ffc this, npc ghost)
- * This makes the FFC react when the enemy is damaged. It will cause the FFC to flash and be knocked back. This will not handle
+ * This makes the FFC react when the enemy is damaged. It will cause the FFC to flash and be knocked back. This will handle
  * stunning, only damage.
 
 bool CheckStun(ffc this, npc ghost)
@@ -96,7 +96,9 @@ bool CanMove(ffc this, npc ghost, int dir, float step, int imprecision)
  * of pixels at the edges so the enemy doesn't get stuck on corners.
 
 void Move(ffc this, npc ghost, float xStep, float yStep, int imprecision)
- * Makes the enemy move, if it's able.
+void MoveAtAngle(ffc this, npc ghost, float angle, float step, int imprecision)
+void MoveTowardLink(ffc this, npc ghost, float step, int imprecision)
+ * Makes the enemy move, if it's able. If the GHF_SETDIRECTION flag is set, the NPC's direction will be changed accordingly.
 
 void Transform(ffc this, npc ghost, int combo, int cset, int tileWidth, int tileHeight)
  * Change the FFC to a new combo and CSet and resize the FFC and NPC. The new width and height are given in tiles and must be
@@ -156,8 +158,7 @@ void SetEWeaponMovement(eweapon wpn, int type, int arg)
  * EWM_VEER_RIGHT: Accelerate right.
  *    arg: Acceleration
  * EWM_THROW: Arc through the air. The weapon dies (see below) when it hits the ground.
- *    arg: Initial upward velocity; if this is 0, the velocity will automatically be set so the weapon travels the necessary distance
- *         to reach Link
+ *    arg: Initial upward velocity
 
 void SetEWeaponLifespan(eweapon wpn, int type, int arg)
  * This controls the conditions under which a weapon dies. Dying does not mean the weapon is removed, but that its scripted

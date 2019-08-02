@@ -32,7 +32,7 @@ const int EWI_FLAGS=        15;
 const int GHF_KNOCKBACK=      000001b;
 const int GHF_STUN=           000010b;
 const int GHF_NO_FALL=        000100b;
-const int GHF_SET_DIRECTION=  00100b;
+const int GHF_SET_DIRECTION=  001000b;
 const int GHF_SET_OVERLAY=    010000b;
 const int GHF_NORMAL=         001011b;
 
@@ -487,7 +487,7 @@ bool CanMove(ffc this, npc ghost, int dir, float step, int imprecision)
         int combo;
         int y2=y-step;
         
-        // Solidity, pit or water
+        // Solid, pit, or water
         for(int i=imprecision; i<this->TileWidth*16-imprecision; i+=8)
         {
             combo=ComboAt(this->X+i, y2);
@@ -573,7 +573,7 @@ bool CanMove(ffc this, npc ghost, int dir, float step, int imprecision)
     }
     else if(dir==DIR_RIGHT)
     {
-        if((Screen->Flags[SF_ROOMTYPE]&010b)!=0 && this->X+16*this->TileWidth+step>=192)
+        if((Screen->Flags[SF_ROOMTYPE]&010b)!=0 && this->X+16*this->TileWidth+step>=224)
             return false;
         else if(this->X+16*this->TileWidth+step>=256)
             return false;
@@ -657,6 +657,17 @@ void Move(ffc this, npc ghost, float xStep, float yStep, int imprecision)
             ghost->X+=xStep;
         }
     }
+}
+
+void MoveAtAngle(ffc this, npc ghost, float angle, float step, int imprecision)
+{
+    Move(this, ghost, VectorX(step, angle), VectorY(step, angle), imprecision);
+}
+
+void MoveTowardLink(ffc this, npc ghost, float step, int imprecision)
+{
+    float angle=Angle(this->X, this->Y, Link->X, Link->Y);
+    Move(this, ghost, VectorX(step, angle), VectorY(step, angle), imprecision);
 }
 
 void Transform(ffc this, npc ghost, int combo, int cset, int tileWidth, int tileHeight)
