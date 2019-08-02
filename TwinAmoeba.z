@@ -3,7 +3,7 @@
 
 // Spawns two invincible slime enemies and jumps back and forth between them.
 
-const int TWA_CORE_COMBO=24;
+const int TWA_CORE_ID=178;
 const int TWA_SLIME_ID=179;
 const float TWA_JUMP_SPEED=2;
 
@@ -15,8 +15,7 @@ ffc script TwinAmoeba
         npc slime[2];
         int currentSlime;
         
-        ghost=GhostInitWait(this, pos, true, TWA_CORE_COMBO);
-        Waitframes(4); // Wait for a moment so it doesn't interfere with others
+        ghost=GhostInitWait2(this, TWA_CORE_ID, pos, true);
         SetFlags(this, GHF_NO_FALL);
         currentSlime=0;
         slime[0]=Screen->CreateNPC(TWA_SLIME_ID);

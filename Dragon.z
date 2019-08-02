@@ -1,7 +1,7 @@
 // import "std.zh"
 // import "ghost.zh"
 
-// A very simply enemy that moves up and down the side of the screen,
+// A very simple enemy that moves up and down the side of the screen,
 // periodically firing waving fireballs in three directions.
 
 ffc script Dragon
@@ -10,6 +10,7 @@ ffc script Dragon
     {
         npc ghost=GhostInitCreate(this, 183);
         int timer=Rand2(60, 180);
+        eweapon wpn;
         
         this->Vx=0.2;
         this->Vy=0.3;
@@ -23,7 +24,7 @@ ffc script Dragon
                 i=0;
                 for(int j=0; j<3; j++)
                 {
-                    eweapon wpn=FireAimedEWeapon(EW_FIREBALL, this->X+32, this->Y+32, Sign(j-1)*PI/8, 200, 2, true, 17, false, SFX_FIREBALL);
+                    wpn=FireAimedEWeapon(EW_FIREBALL, this->X+32, this->Y+32, Sign(j-1)*PI/8, 200, 2, true, 17, false, SFX_FIREBALL);
                     SetEWeaponMovement(wpn, EWM_SINE_WAVE, 8);
                 }
             }
@@ -34,7 +35,7 @@ ffc script Dragon
     
     void DrgWaitframe(ffc this,  npc ghost)
     {
-        // Move via Vx and Vy; reverse if at edge of movement area
+        // Move with Vx and Vy; reverse if at edge of movement area
         if(this->X<=32)
             this->Vx=0.2;
         else if(this->X>=63)

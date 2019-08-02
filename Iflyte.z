@@ -29,17 +29,17 @@ ffc script Iflyte
         hand1=Screen->LoadFFC(IFL_HAND1_FFC);
         hand2=Screen->LoadFFC(IFL_HAND2_FFC);
         
-        // Switch to invisible combo at screen init
-        this->Data=IFL_CLEAR_COMBO;
+        // Make hands invisible initially.
+        // Don't use combo 0; it messes up the hands' positions
         hand1->Data=IFL_CLEAR_COMBO;
         hand2->Data=IFL_CLEAR_COMBO;
         
         // Initialize and appear
-        ghost=GhostInitWait(this, 1, false, IFL_WALK_COMBO);
+        ghost=GhostInitWait(this, 1, false);
         hand1->Data=IFL_HAND1_COMBO;
         hand2->Data=IFL_HAND2_COMBO;
         
-        SetHP(this, ghost, ghost->HP+1000); // Used for custom death animation
+        SetHP(this, ghost, ghost->HP+1000); // Needed for custom death animation
         
         Game->PlayMIDI(IFL_BOSS_MIDI);
         

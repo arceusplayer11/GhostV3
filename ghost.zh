@@ -16,10 +16,10 @@ const int GHI_PREV_HP=           15;
 
 // eweapon->Misc[] indices
 // Like the above, these must be unique numbers between 0 and 15.
-const int EWI_STEP=         5; // Only used by homing re-aim and random re-aim movement types; others can use this index freely
 const int EWI_XPOS=         6;
 const int EWI_YPOS=         7;
 const int EWI_WORK=         8;
+const int EWI_WORK_2=       5; // Only used by a few movement types; most can use this one freely
 const int EWI_MOVEMENT=     9;
 const int EWI_MOVEMENT_ARG= 10; 
 const int EWI_LIFESPAN=     11;
@@ -29,11 +29,12 @@ const int EWI_ON_DEATH_ARG= 14;
 const int EWI_FLAGS=        15;
 
 // Arguments to SetFlags()
-const int GHF_KNOCKBACK=      00001b;
-const int GHF_NO_FALL=        00010b;
+const int GHF_KNOCKBACK=      000001b;
+const int GHF_STUN=           000010b;
+const int GHF_NO_FALL=        000100b;
 const int GHF_SET_DIRECTION=  00100b;
-const int GHF_SET_OVERLAY=    01000b;
-const int GHF_NORMAL=         00101b;
+const int GHF_SET_OVERLAY=    010000b;
+const int GHF_NORMAL=         001011b;
 
 // Internal use
 const int GHF_GOT_HIT=        10000b;
@@ -97,13 +98,17 @@ npc GhostInitCreate(ffc this, int enemyID)
     return ghost;
 }
 
-npc GhostInitWait(ffc this, int enemyIndex, bool useEnemyPos, int combo)
+npc GhostInitWait(ffc this, int enemyIndex, bool useEnemyPos)
 {
+    int combo=this->Data;
+    this->Data=0;
+    npc ghost;
+    
     for(int i=0; i<4; i++)
     {
         if(Screen->NumNPCs()>=enemyIndex)
         {
-            npc ghost=Screen->LoadNPC(enemyIndex);
+            ghost=Screen->LoadNPC(enemyIndex);
             ghost->Extend=3;
             ghost->HitWidth=16*this->TileWidth;
             ghost->HitHeight=16*this->TileHeight;
@@ -124,6 +129,55 @@ npc GhostInitWait(ffc this, int enemyIndex, bool useEnemyPos, int combo)
             }
             
             return ghost;
+        }
+        Waitframe();
+    }
+    // Timed out
+    Quit();
+}
+
+npc GhostInitWait2(ffc this, int enemyID, int which, bool useEnemyPos)
+{
+    int combo=this->Data;
+    this->Data=0;
+    npc ghost;
+    
+    for(int i=0; i<4; i++)
+    {
+        if(Screen->NumNPCs()>=which)
+        {
+            for(int j=1; j<=Screen->NumNPCs(); j++)
+            {
+                // Cycle through enemies to find the right one
+                ghost=Screen->LoadNPC(j);
+                if(ghost->ID!=enemyID)
+                    continue;
+                which--;
+                if(which>0)
+                    continue;
+                
+                // Found it; initialize
+                ghost->Extend=3;
+                ghost->HitWidth=16*this->TileWidth;
+                ghost->HitHeight=16*this->TileHeight;
+                this->Misc[GHI_BASE_CSET]=this->CSet;
+                this->Misc[GHI_FLASH_COUNTER]=0;
+                this->Misc[GHI_PREV_HP]=ghost->HP;
+                this->Data=combo;
+                
+                if(useEnemyPos)
+                {
+                    this->X=ghost->X;
+                    this->Y=ghost->Y;
+                }
+                else
+                {
+                    ghost->X=this->X;
+                    ghost->Y=this->Y;
+                }
+            
+                return ghost;
+            }
         }
         Waitframe();
     }
@@ -193,10 +247,11 @@ bool GhostWaitframeM(ffc this, npc ghost, float x, float y, float z, bool clearO
     Waitframe();
     
     CheckHit(this, ghost);
-    CheckStun(this, ghost);
+    if((this->Misc[GHI_FLAGS]&GHF_STUN)!=0)
+        CheckStun(this, ghost);
     
     // Dead?
-    if(!ghost->isValid() || ghost->HP<=0)
+    if(!ghost->isValid() || ghost->HP==0)
     {
         if(clearOnDeath)
         {
@@ -750,7 +805,19 @@ void SetEWeaponMovement(eweapon wpn, int type, int arg)
     wpn->Misc[EWI_MOVEMENT]=type;
     wpn->Misc[EWI_MOVEMENT_ARG]=arg;
     if(type==EWM_HOMING_REAIM || type==EWM_RANDOM_REAIM)
-        wpn->Misc[EWI_STEP]=wpn->Step;
+        wpn->Misc[EWI_WORK_2]=wpn->Step;
+    else if(type==EWM_THROW)
+    {
+        wpn->Misc[EWI_WORK_2]=wpn->Z;
+        
+        // Necessary upward velocity to reach Link for thrown weapons.
+        // A bit rough, but close enough.
+        if(arg<=0)
+        {
+            float time=Distance(wpn->X, wpn->Y, Link->X, Link->Y)/(wpn->Step/100);
+            wpn->Misc[EWI_MOVEMENT_ARG]=GH_GRAVITY*time/2;
+        }
+    }
 }
 
 void SetEWeaponLifespan(eweapon wpn, int type, int arg)
@@ -855,7 +922,7 @@ void UpdateEWeapons()
                             {
                                 wpn->Misc[EWI_WORK]=45;
                                 wpn->Angle=RadianAngle(wpn->X, wpn->Y, Link->X, Link->Y);
-                                wpn->Step=wpn->Misc[EWI_STEP];
+                                wpn->Step=wpn->Misc[EWI_WORK_2];
                                 SetEWeaponDir(wpn);
                                 if((wpn->Misc[EWI_FLAGS]&EWF_ROTATE)!=0)
                                     SetEWeaponRotation(wpn);
@@ -909,7 +976,7 @@ void UpdateEWeapons()
                             {
                                 wpn->Misc[EWI_WORK]=45;
                                 wpn->Angle=Rand(31416)/5000;
-                                wpn->Step=wpn->Misc[EWI_STEP];
+                                wpn->Step=wpn->Misc[EWI_WORK_2];
                                 SetEWeaponDir(wpn);
                                 if((wpn->Misc[EWI_FLAGS]&EWF_ROTATE)!=0)
                                     SetEWeaponRotation(wpn);
@@ -961,8 +1028,9 @@ void UpdateEWeapons()
                             wpn->Misc[EWI_MOVEMENT_ARG]=0;
                         }
                         
-                        wpn->Z=Max(wpn->Z+wpn->Misc[EWI_WORK], wpn->Z-GH_TERMINAL_VELOCITY);
-                        if(wpn->Z<=0)
+                        wpn->Misc[EWI_WORK_2]=Max(wpn->Misc[EWI_WORK_2]+wpn->Misc[EWI_WORK], wpn->Misc[EWI_WORK_2]-GH_TERMINAL_VELOCITY);
+                        wpn->Z=wpn->Misc[EWI_WORK_2];
+                        if(wpn->Misc[EWI_WORK_2]<=0)
                             wpn->Misc[EWI_FLAGS]|=EWF_DEAD;
                         else
                             wpn->Misc[EWI_WORK]-=GH_GRAVITY;

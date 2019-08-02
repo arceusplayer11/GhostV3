@@ -13,13 +13,16 @@ void GhostInit(ffc this, npc ghost)
 npc GhostInitCreate(ffc this, int enemyID)
  * This will create the ghosted NPC using the given ID and return a pointer to it.
 
-npc GhostInitWait(ffc this, int enemyIndex, bool useEnemyPos, int combo)
+npc GhostInitWait(ffc this, int enemyIndex, bool useEnemyPos)
  * Use this function if you want to use a normally placed enemy as the ghost. enemyIndex is its position in the list,
  * which must be an integer between 1 and 10. If useEnemyPos is true, the FFC will be moved to the enemy's position
  * instead of the other way around. The function will only wait 4 frames for the enemy to appear to minimize the
- * possibility of incorrectly using an enemy that is spawned by other means. FFCs that use this method should initially
- * use an invisible combo, but otherwise be set up normally. The combo will be switched to the one given in the combo
- * argument if and when the enemy is found.
+ * possibility of incorrectly using an enemy that is spawned by other means. The FFC will be made invisible when the
+ * function is called, and will switch back to the original combo before it returns.
+
+npc GhostInitWait2(ffc this, int enemyID, int which, bool useEnemyPos)
+ * Similar to GhostInitWait, except this loads the nth enemy of a given type. This is especially helpful if enemies
+ * are present other than those placed normally, since you can't always be certain what index an enemy will be assigned.
 
 npc GhostInitSpawn(ffc this, int enemyID)
  * This will create the ghosted enemy in a random location.
@@ -28,12 +31,13 @@ void SetFlags(ffc this, int flags)
  * Set flags that control the behavior of update functions. Use GHF constants ORed together for the flags argument.
  *
  * GHF_KNOCKBACK: The enemy can be knocked back when hit.
+ * GHF_STUN: Stunning will be handled automatically; Waitframe functions will not return while the enemy is stunned.
  * GHF_NO_FALL: ghost->Jump will be set to 0 each frame.
  * GHF_SET_DIRECTION: The NPC's direction  will automatically be set based on which way it's moved. Recommended if
  *    GHF_KNOCKBACK is used.
  * GHF_SET_OVERLAY: Set the "Draw Over" flag each frame based on Z position. The height at which it changes is
  *    determined by GH_DRAW_OVER_THRESHOLD.
- * GHF_NORMAL: Combines GHF_KNOCKBACK and GHF_SETDIRECTION.
+ * GHF_NORMAL: Combines GHF_KNOCKBACK, GHF_STUN, and GHF_SETDIRECTION.
 
 
 +------------+
@@ -71,7 +75,7 @@ bool GhostWaitframesM(ffc this, npc ghost, float x, float y, float z, bool clear
 These functions are used internally by the Waitframe replacements, but are available to use if you'd rather write your own.
 
 void CheckHit(ffc this, npc ghost)
- * This makes the FFC react when the enemy is damaged. It will cause the FFC to flash and be knocked back. This will handle
+ * This makes the FFC react when the enemy is damaged. It will cause the FFC to flash and be knocked back. This will not handle
  * stunning, only damage.
 
 bool CheckStun(ffc this, npc ghost)
@@ -152,7 +156,8 @@ void SetEWeaponMovement(eweapon wpn, int type, int arg)
  * EWM_VEER_RIGHT: Accelerate right.
  *    arg: Acceleration
  * EWM_THROW: Arc through the air. The weapon dies (see below) when it hits the ground.
- *    arg: Initial upward velocity
+ *    arg: Initial upward velocity; if this is 0, the velocity will automatically be set so the weapon travels the necessary distance
+ *         to reach Link
 
 void SetEWeaponLifespan(eweapon wpn, int type, int arg)
  * This controls the conditions under which a weapon dies. Dying does not mean the weapon is removed, but that its scripted
