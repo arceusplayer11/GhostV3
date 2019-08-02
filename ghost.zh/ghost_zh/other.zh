@@ -1,0 +1,580 @@
+// ghost.zh
+// Version 2.5.2
+
+
+int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
+{
+    int tileRatings[176];
+    int checkCombo;
+    int checkX;
+    int checkY;
+    int bestRating;
+    int bestCount;
+    int counter;
+    int choice;
+    int tries;
+    npc otherNPC;
+    
+    // First, rate each tile for suitability. Lower is better,
+    // but negative means it's strictly off-limits.
+    
+    // Tiles too close to other enemies are undesirable
+    for(int i=Screen->NumNPCs(); i>0; i--)
+    {
+        otherNPC=Screen->LoadNPC(i);
+        checkCombo=ComboAt(otherNPC->X, otherNPC->Y);
+        tileRatings[checkCombo]+=100;
+        
+        if(checkCombo>15)
+            tileRatings[checkCombo-16]+=1;
+        if(checkCombo<160)
+            tileRatings[checkCombo+16]+=1;
+        if(checkCombo%16>0)
+            tileRatings[checkCombo-1]+=1;
+        if(checkCombo%16<15)
+            tileRatings[checkCombo+1]+=1;
+    }
+    
+    // Mark prohibited tiles
+    for(int i=0; i<176; i++)
+    {
+        // Screen edges in NES dungeon
+        if((Screen->Flags[SF_ROOMTYPE]&010b)!=0 && (i<32 || i>143 || i%16<2 || i%16>13))
+            tileRatings[i]=-1;
+        // Water
+        else if(IsWater(i))
+        {
+            if(!waterOK)
+                tileRatings[i]=-1;
+        }
+        // Pits
+        else if(IsPit(i))
+        {
+            if(!pitsOK)
+                tileRatings[i]=-1;
+        }
+        // "No enemy" flag and combos
+        else if(Screen->ComboF[i]==CF_NOENEMY || Screen->ComboI[i]==CF_NOENEMY ||
+                Screen->ComboT[i]==CT_NOENEMY || Screen->ComboT[i]==CT_NOFLYZONE ||
+                Screen->ComboT[i]==CT_NOJUMPZONE)
+            tileRatings[i]=-1;
+        // Too close to Link
+        else if(Abs(ComboX(i)-Link->X)<32 && Abs(ComboY(i)-Link->Y))
+            tileRatings[i]=-1;
+        // All other combos
+        else
+        {
+            // If land is okay, but not walls (i.e. walkable only)
+            if(landOK && !wallsOK)
+            {
+                checkX=ComboX(i);
+                checkY=ComboY(i);
+                
+                if(Screen->isSolid(checkX, checkY) ||
+                   Screen->isSolid(checkX+8, checkY) ||
+                   Screen->isSolid(checkX, checkY+8) ||
+                   Screen->isSolid(checkX+8, checkY+8))
+                    tileRatings[i]=-1;
+            }
+            // If walls are okay, but not land (i.e. unwalkable only)
+            else if(!landOK && wallsOK)
+            {
+                checkX=ComboX(i);
+                checkY=ComboY(i);
+                
+                if(!Screen->isSolid(checkX, checkY) ||
+                   !Screen->isSolid(checkX+8, checkY) ||
+                   !Screen->isSolid(checkX, checkY+8) ||
+                   !Screen->isSolid(checkX+8, checkY+8))
+                    tileRatings[i]=-1;
+            }
+            // Neither land nor walls are okay
+            else if(!landOK && !wallsOK)
+                tileRatings[i]=-1;
+        }
+    }
+    
+    // Find the best rating and count the number of tiles with that rating
+    bestRating=10000;
+    bestCount=0;
+    for(int i=0; i<176; i++)
+    {
+        if(tileRatings[i]<0)
+            continue;
+        
+        if(tileRatings[i]==bestRating)
+            bestCount++;
+        else if(tileRatings[i]<bestRating)
+        {
+            bestRating=tileRatings[i];
+            bestCount=1;
+        }
+    }
+    
+    // The loop below might hang if every tile is unusable
+    if(bestCount==0)
+        return 0;
+    
+    // Pick at random from the best rated tiles
+    counter=Rand(bestCount)+1;
+    for(choice=0; counter>0; choice++)
+    {
+        if(tileRatings[choice]==bestRating)
+            counter--;
+    }
+    
+    // Subtract 1 because the for loop overshot
+    return choice-1;
+}
+
+
+int FindSpawnPoint(int type, int flag)
+{
+    int tileRatings[176];
+    int checkCombo;
+    int checkX;
+    int checkY;
+    int bestRating;
+    int bestCount;
+    int counter;
+    int choice;
+    int tries;
+    npc otherNPC;
+    
+    // Too close to other enemies
+    for(int i=Screen->NumNPCs(); i>0; i--)
+    {
+        otherNPC=Screen->LoadNPC(i);
+        checkCombo=ComboAt(otherNPC->X, otherNPC->Y);
+        tileRatings[checkCombo]+=100;
+        
+        if(checkCombo>15)
+            tileRatings[checkCombo-16]+=1;
+        if(checkCombo<160)
+            tileRatings[checkCombo+16]+=1;
+        if(checkCombo%16>0)
+            tileRatings[checkCombo-1]+=1;
+        if(checkCombo%16<15)
+            tileRatings[checkCombo+1]+=1;
+    }
+    
+    // Mark prohibited tiles
+    for(int i=0; i<176; i++)
+    {
+        // Wrong combo type
+        if(type>=0)
+        {
+            if(Screen->ComboT[i]!=type)
+                tileRatings[i]=-1;
+        }
+        
+        // Flag isn't present
+        if(flag>=0)
+        {
+            if(Screen->ComboF[i]!=flag && Screen->ComboI[i]!=flag)
+                tileRatings[i]=-1;
+        }
+        
+        // Too close to Link
+        else if(Abs(ComboX(i)-Link->X)<32 && Abs(ComboY(i)-Link->Y))
+            tileRatings[i]=-1;
+    }
+    
+    // Find the best rating and count the tiles
+    bestRating=10000;
+    bestCount=0;
+    for(int i=0; i<176; i++)
+    {
+        if(tileRatings[i]<0)
+            continue;
+        
+        if(tileRatings[i]==bestRating)
+            bestCount++;
+        else if(tileRatings[i]<bestRating)
+        {
+            bestRating=tileRatings[i];
+            bestCount=1;
+        }
+    }
+    
+    if(bestCount==0)
+        return 0;
+    
+    // Pick one at random
+    counter=Rand(bestCount)+1;
+    for(choice=0; counter>0; choice++)
+    {
+        if(tileRatings[choice]==bestRating)
+            counter--;
+    }
+    
+    return choice-1;
+}
+
+
+npc SpawnNPC(int id)
+{
+    npc theNPC;
+    
+    int spawnCombo=FindSpawnPoint(true, false, false, false);
+    
+    theNPC=Screen->CreateNPC(id);
+    theNPC->X=ComboX(spawnCombo);
+    theNPC->Y=ComboY(spawnCombo);
+    return theNPC;
+}
+
+
+int FindUnusedFFC()
+{
+    return FindUnusedFFC(0);
+}
+
+
+int FindUnusedFFC(int startingFrom)
+{
+    ffc f;
+    
+    for(int i=Max(startingFrom+1, AUTOGHOST_MIN_FFC); i<=AUTOGHOST_MAX_FFC; i++)
+    {
+        f=Screen->LoadFFC(i);
+        
+        if(f->Data==0 && f->Script==0)
+            return i;
+    }
+    
+    // Couldn't find one
+    return 0;
+}
+
+
+void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
+{
+    // This function doesn't work too well when scripts are suspended.
+    // This isn't an ideal solution, but it's better than nothing.
+    if((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
+        return;
+    
+    lweapon graphic;
+    int combo=this->Data;
+    bool collDet=ghost->CollDetection;
+    int xOffset=ghost->DrawXOffset;
+    
+    if(this->TileWidth!=Ghost_TileWidth)
+    {
+        this->TileWidth=Ghost_TileWidth;
+        ghost->TileWidth=Ghost_TileWidth;
+        ghost->HitWidth=16*Ghost_TileWidth;
+        ghost->HitXOffset=0;
+    }
+    
+    if(this->TileHeight!=Ghost_TileHeight)
+    {
+        this->TileHeight=Ghost_TileHeight;
+        ghost->TileHeight=Ghost_TileHeight;
+        ghost->HitHeight=16*Ghost_TileHeight;
+        ghost->HitYOffset=0;
+    }
+    
+    Ghost_SetPosition(this, ghost);
+    
+    this->Data=0;
+    ghost->CollDetection=false;
+    ghost->DrawXOffset=32768;
+    
+    for(int i=0; i<this->TileWidth; i++)
+    {
+        for(int j=0; j<this->TileHeight; j++)
+        {
+            graphic=Screen->CreateLWeapon(LW_SCRIPT10);
+            graphic->CollDetection=false;
+            graphic->UseSprite(GH_SPAWN_SPRITE);
+            graphic->X=this->X+16*i;
+            graphic->Y=this->Y+16*j;
+            
+            if(graphic->NumFrames==0)
+                graphic->NumFrames=3;
+            if(graphic->ASpeed==0)
+                graphic->ASpeed=4;
+            
+            graphic->DeadState=graphic->NumFrames*graphic->ASpeed;
+        }
+    }
+    
+    for(int i=graphic->NumFrames*graphic->ASpeed; i>0; i--)
+    {
+        Ghost_SetPosition(this, ghost);
+        Ghost_WaitframeLight(this, ghost);
+    }
+    
+    this->Data=combo;
+    ghost->CollDetection=collDet;
+    ghost->DrawXOffset=xOffset;
+}
+
+
+void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
+{
+    if((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
+        return;
+    
+    int combo=this->Data;
+    bool collDet=ghost->CollDetection;
+    int xOffset=ghost->DrawXOffset;
+    
+    if(this->TileWidth!=Ghost_TileWidth)
+    {
+        this->TileWidth=Ghost_TileWidth;
+        ghost->TileWidth=Ghost_TileWidth;
+        ghost->HitWidth=16*Ghost_TileWidth;
+        ghost->HitXOffset=0;
+    }
+    
+    if(this->TileHeight!=Ghost_TileHeight)
+    {
+        this->TileHeight=Ghost_TileHeight;
+        ghost->TileHeight=Ghost_TileHeight;
+        ghost->HitHeight=16*Ghost_TileHeight;
+        ghost->HitYOffset=0;
+    }
+    
+    Ghost_SetPosition(this, ghost);
+    ghost->CollDetection=false;
+    
+    // Alternate drawing offscreen and in place for 64 frames
+    for(int i=0; i<32; i++)
+    {
+        this->Data=0;
+        ghost->DrawXOffset=32768;
+        Ghost_SetPosition(this, ghost);
+        Ghost_WaitframeLight(this, ghost);
+        
+        this->Data=combo;
+        ghost->DrawXOffset=xOffset;
+        Ghost_SetPosition(this, ghost);
+        Ghost_WaitframeLight(this, ghost);
+    }
+    
+    this->Data=combo;
+    ghost->CollDetection=collDet;
+    ghost->DrawXOffset=xOffset;
+}
+
+
+bool Ghost_GotHit()
+{
+    return (__Ghost_InternalFlags&__GHFI_GOT_HIT)!=0;
+}
+
+
+bool Ghost_WasFrozen()
+{
+    return (__Ghost_InternalFlags&__GHFI_WAS_FROZEN)!=0;
+}
+
+
+void Ghost_DeathAnimation(ffc this, npc ghost, int type)
+{
+    if(type==1)
+        __Ghost_Explode(this, ghost, false);
+    else if(type==2)
+        __Ghost_Explode(this, ghost, true);
+}
+
+
+void Ghost_SetPosition(ffc this, npc ghost)
+{
+    // Real Z
+    if(GH_FAKE_Z==0 && !Ghost_FlagIsSet(GHF_FAKE_Z))
+    {
+        ghost->X=Ghost_X;
+        ghost->Y=Ghost_Y;
+        ghost->Z=Ghost_Z;
+    }
+
+    // Fake Z
+    else
+    {
+        ghost->X=Ghost_X;
+        ghost->Y=Ghost_Y-Ghost_Z;
+        ghost->Z=0;
+    }
+
+    // Don't let the FFC go too far offscreen, or else it will disappear
+    this->X=Clamp(Ghost_X+ghost->DrawXOffset, -64, 256);
+    this->Y=Clamp(Ghost_Y-Ghost_Z+ghost->DrawYOffset-ghost->DrawZOffset, -64, 176);
+}
+
+
+void Ghost_MarkAsInUse(npc ghost)
+{
+    ghost->Misc[__GHI_GHZH_DATA]|=0x10000;
+}
+
+
+bool Ghost_IsInUse(npc ghost)
+{
+    return ghost->Misc[__GHI_GHZH_DATA]!=0;
+}
+
+
+float Ghost_GetAttribute(npc ghost, int index, float default, float min, float max)
+{
+    if(index<0 || index>11)
+        return 0;
+    
+    float attr=ghost->Attributes[index];
+    
+    if(attr==0)
+        return default;
+    if(attr<min)
+        return min;
+    if(attr>max)
+        return max;
+    return attr;
+}
+
+
+float Ghost_GetAttribute(npc ghost, int index, float default)
+{
+    if(index<0 || index>11)
+        return 0;
+    
+    float attr=ghost->Attributes[index];
+    
+    if(attr==0)
+        return default;
+    return attr;
+}
+
+
+void Ghost_AddCombo(int combo, float x, float y, int width, int height)
+{
+    // Already at the limit?
+    if(__Ghost_AdditionalCombos[0]==__GH_MAX_ADDITIONAL_COMBOS)
+        return;
+    
+    // Store its data
+    int start=__Ghost_AdditionalCombos[0]*__GH_AC_DATA_SIZE+1;
+    
+    __Ghost_AdditionalCombos[start+__GHI_AC_COMBO]=combo;
+    __Ghost_AdditionalCombos[start+__GHI_AC_X]=x;
+    __Ghost_AdditionalCombos[start+__GHI_AC_Y]=y;
+    __Ghost_AdditionalCombos[start+__GHI_AC_WIDTH]=width;
+    __Ghost_AdditionalCombos[start+__GHI_AC_HEIGHT]=height;
+    __Ghost_AdditionalCombos[0]+=1;
+}
+
+
+void Ghost_AddCombo(int combo, float x, float y)
+{
+    Ghost_AddCombo(combo, x, y, 1, 1);
+}
+
+
+void Ghost_ClearCombos()
+{
+    // No need to clear all the data
+    __Ghost_AdditionalCombos[0]=0;
+}
+
+
+bool ClockIsActive()
+{
+    __ghzhData[__GH_CLOCK_TIMER]!=0;
+}
+
+
+void SuspendGhostZHScripts()
+{
+    __ghzhData[__GH_GLOBAL_FLAGS]|=__GHGF_SUSPEND;
+}
+
+
+void ResumeGhostZHScripts()
+{
+    __ghzhData[__GH_GLOBAL_FLAGS]&=~__GHGF_SUSPEND;
+}
+
+
+void __Ghost_DrawShadow()
+{
+    // Only needed if the enemy is in the air and fake Z is used
+    if(Ghost_Z==0)
+        return;
+    
+    if(!(Ghost_FlagIsSet(GHF_FAKE_Z) || GH_FAKE_Z>0))
+        return;
+    
+    if(GH_SHADOW_FLICKER!=0 && (__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+        return;
+    
+    int x=Ghost_X+8*(Ghost_TileWidth-1);
+    int y=Ghost_Y+16*(Ghost_TileHeight-1);
+
+    if(GH_SHADOW_TRANSLUCENT>0)
+    {
+        Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GH_SHADOW_FRAME],
+                         1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 64);
+    }
+    else
+    {
+        Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GH_SHADOW_FRAME],
+                         1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 128);
+    }
+}
+
+
+void __Ghost_Explode(ffc this, npc ghost, bool flash)
+{
+    lweapon explosion;
+    npc deathSFXNPC;
+
+    // The enemy's death sound should play at the start of the animation, but the enemy has to stay
+    // alive until the end. There isn't a good way to do that, so here's a stupid way, instead.
+    // Make another of the same enemy, hide it, and kill it. After the animation finishes,
+    // kill the real one silently.
+    
+    deathSFXNPC=Screen->CreateNPC(ghost->ID);
+    deathSFXNPC->X=ghost->X; // For panning
+    deathSFXNPC->Y=176;
+    deathSFXNPC->ItemSet=0;
+    deathSFXNPC->HP=0;
+    deathSFXNPC->Misc[__GHI_GHZH_DATA]=0x10000;
+    
+    this->CSet=Ghost_CSet;
+    this->Flags[FFCF_OVERLAY]=false;
+    this->Vx=0;
+    this->Vy=0;
+    this->Ax=0;
+    this->Ay=0;
+    ghost->HP=1;
+    ghost->CollDetection=false;
+    ghost->SFX=0;
+    
+    if(flash)
+        __Ghost_FlashCounter=10000;
+    else
+        Ghost_StopFlashing();
+    
+    // One explosion every 16 frames, 15 times
+    for(int i=0; i<15; i++)
+    {
+        explosion=Screen->CreateLWeapon(LW_BOMBBLAST);
+        explosion->X=Ghost_X+ghost->DrawXOffset+Rand(16*Ghost_TileWidth)-8;
+        explosion->Y=(Ghost_Y+ghost->DrawYOffset)-
+                     (Ghost_Z+ghost->DrawZOffset)+
+                     Rand(16*Ghost_TileHeight)-8;
+        explosion->CollDetection=false;
+        for(int j=0; j<16; j++)
+        {
+            Ghost_SetPosition(this, ghost);
+            Ghost_WaitframeLight(this, ghost);
+        }
+    }
+
+    ghost->X=1024;
+    this->Data=GH_INVISIBLE_COMBO;
+    Ghost_Data=GH_INVISIBLE_COMBO;
+    Ghost_ClearCombos();
+}

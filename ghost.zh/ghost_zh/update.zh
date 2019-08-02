@@ -1,0 +1,697 @@
+// ghost.zh
+// Version 2.5.2
+
+
+bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
+{
+    // Handle gravity first
+    ghost->Jump=0;
+    if(!Ghost_FlagIsSet(GHF_NO_FALL))
+    {
+        // Sideview: Jump/fall on Y axis
+        if(IsSideview())
+        {
+            // Use Ghost_CanMove to check for platforms
+            if(Ghost_Jump!=0 || Ghost_CanMove(DIR_DOWN, 1, 2))
+            {
+                // Temporarily unset GHF_SET_DIRECTION so that Ghost_Move doesn't
+                // change the enemy's direction here
+                bool setDir=Ghost_FlagIsSet(GHF_SET_DIRECTION);
+                Ghost_UnsetFlag(GHF_SET_DIRECTION);
+                
+                // Jumping
+                if(Ghost_Jump>0)
+                {
+                    // Set GHF_NO_FALL temporarily so Ghost_CanMove(DIR_UP) can return true
+                    Ghost_SetFlag(GHF_NO_FALL);
+                    
+                    Ghost_Move(DIR_UP, Ghost_Jump, 2);
+                    Ghost_Jump=Max(Ghost_Jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+                    
+                    // If it's still jumping, check if it can move any farther;
+                    // if it can't, it's hit something and should start falling
+                    if(Ghost_Jump>0 && !Ghost_CanMove(DIR_UP, 1, 2))
+                        Ghost_Jump=0;
+                    
+                    Ghost_UnsetFlag(GHF_NO_FALL);
+                }
+                // Falling
+                else
+                {
+                    Ghost_Move(DIR_DOWN, -Ghost_Jump, 2);
+                    
+                    // Can it fall farther?
+                    if(Ghost_CanMove(DIR_DOWN, 1, 2))
+                        Ghost_Jump=Max(Ghost_Jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+                    // If not, stop falling
+                    else
+                        Ghost_Jump=0;
+                }
+                
+                // Restore the flag
+                if(setDir)
+                    Ghost_SetFlag(GHF_SET_DIRECTION);
+            }
+        }
+        // Top-down: Jump/fall on Z axis
+        else
+        {
+            if(Ghost_Jump!=0 || Ghost_Z>0)
+            {
+                if(Ghost_Z+Ghost_Jump<=0)
+                {
+                    Ghost_Z=0;
+                    Ghost_Jump=0;
+                }
+                else
+                {
+                    Ghost_Z+=Ghost_Jump;
+                    Ghost_Jump=Max(Ghost_Jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+                }
+            }
+        }
+    }
+
+    // Then velocity and acceleration
+    if(Ghost_Vx!=0 || Ghost_Vy!=0 || Ghost_Ax!=0 || Ghost_Ay!=0)
+    {
+        Ghost_Vx+=Ghost_Ax;
+        Ghost_Vy+=Ghost_Ay;
+
+        Ghost_MoveXY(Ghost_Vx, Ghost_Vy, 2);
+        Ghost_ForceDir(Ghost_Dir);
+    }
+
+    Ghost_SetPosition(this, ghost);
+
+    __Ghost_WaitframePart1(this, ghost, false);
+    __Ghost_UpdateFlashing(this, ghost);
+    Ghost_WaitframeLight(this, ghost);
+    __Ghost_InternalFlags&=__GH_UNSET_FLAGS;
+    return __Ghost_WaitframePart2(this, ghost, clearOnDeath, quitOnDeath);
+}
+
+
+bool Ghost_Waitframe2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
+{
+    Ghost_X=ghost->X;
+    Ghost_Y=ghost->Y;
+    Ghost_Z=ghost->Z;
+    Ghost_Jump=ghost->Jump;
+    
+    this->X=Clamp(Ghost_X+ghost->DrawXOffset, -64, 256);
+    this->Y=Clamp(Ghost_Y-Ghost_Z+ghost->DrawYOffset-ghost->DrawZOffset, -64, 176);
+    
+    __Ghost_WaitframePart1(this, ghost, true);
+    __Ghost_UpdateFlashing(this, ghost);
+    Ghost_WaitframeLight(this, ghost);
+    __Ghost_InternalFlags&=__GH_UNSET_FLAGS;
+    
+    if(ghost->isValid())
+    {
+        Ghost_X=ghost->X;
+        Ghost_Y=ghost->Y;
+        Ghost_Z=ghost->Z;
+    }
+    
+    return __Ghost_WaitframePart2(this, ghost, clearOnDeath, quitOnDeath);
+}
+
+
+void Ghost_WaitframeLight(ffc this, npc ghost)
+{
+    // Remember all the global variables
+    float tempGhostX=Ghost_X;
+    float tempGhostY=Ghost_Y;
+    float tempGhostZ=Ghost_Z;
+    float tempGhostJump=Ghost_Jump;
+    float tempGhostVx=Ghost_Vx;
+    float tempGhostVy=Ghost_Vy;
+    float tempGhostAx=Ghost_Ax;
+    float tempGhostAy=Ghost_Ay;
+    float tempGhostPrevX=__Ghost_PrevX;
+    float tempGhostPrevY=__Ghost_PrevY;
+    int tempGhostCSet=Ghost_CSet;
+    int tempGhostDir=Ghost_Dir;
+    int tempGhostData=Ghost_Data;
+    int tempGhostTileWidth=Ghost_TileWidth;
+    int tempGhostTileHeight=Ghost_TileHeight;
+    int tempGhostFlags=__Ghost_Flags;
+    int tempGhostFlags2=__Ghost_Flags2;
+    int tempGhostInternalFlags=__Ghost_InternalFlags;
+    int tempGhostFlashCounter=__Ghost_FlashCounter;
+    int tempGhostKnockbackCounter=__Ghost_KnockbackCounter;
+    int tempGhostHP=Ghost_HP;
+    int tempGhostXOffsets=__Ghost_XOffsets;
+    int tempGhostYOffsets=__Ghost_YOffsets;
+    int tempGhostAdditionalCombos[26];
+    
+    if(__Ghost_AdditionalCombos[0]>0)
+    {
+        for(int i=0; i<21; i++)
+            tempGhostAdditionalCombos[i]=__Ghost_AdditionalCombos[i];
+    }
+    
+    // Position additional FFCs, set draw data, make FFCs invisible if flickering.
+    
+    do
+    {
+        // Not flickering
+        if((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_FLICKER)==0 ||
+           (GH_ENEMIES_FLICKER==0 && (ghost->MiscFlags&10000000b)==0) ||
+           (GH_ENEMIES_FLICKER!=0 && __Ghost_FlashCounter==0 && (ghost->MiscFlags&10000000b)==0))
+        {
+            // Using DrawCombo
+            if(__GH_USE_DRAWCOMBO>0)
+            {
+                int tempData;
+                
+                // Store all the data needed for DrawGhostFFCs() in an array
+                int drawingData[9];
+                drawingData[__GHI_DRAW_COMBO]=this->Data;
+                drawingData[__GHI_DRAW_CSET]=this->CSet;
+                drawingData[__GHI_DRAW_X]=Ghost_X;
+                drawingData[__GHI_DRAW_Y]=Ghost_Y-Ghost_Z;
+                drawingData[__GHI_DRAW_WIDTH]=this->TileWidth;
+                drawingData[__GHI_DRAW_HEIGHT]=this->TileHeight;
+                
+                if(this->Flags[FFCF_OVERLAY])
+                    drawingData[__GHI_DRAW_LAYER]=4;
+                else
+                    drawingData[__GHI_DRAW_LAYER]=2;
+                
+                if(this->Flags[FFCF_TRANS])
+                    drawingData[__GHI_DRAW_OPACITY]=64;
+                else
+                    drawingData[__GHI_DRAW_OPACITY]=128;
+                
+                // Additional combos?
+                int additionalCombos[21];
+                if(__Ghost_AdditionalCombos[0]>0)
+                {
+                    for(int i=0; i<21; i++)
+                        additionalCombos[i]=__Ghost_AdditionalCombos[i];
+                    drawingData[__GHI_DRAW_ADDITIONAL]=additionalCombos;
+                }
+                else
+                    drawingData[__GHI_DRAW_ADDITIONAL]=0;
+                
+                // Store the address of the array
+                ghost->Misc[__GHI_GHZH_DATA]=0x10000|drawingData;
+                
+                tempData=this->Data;
+                this->Data=GH_INVISIBLE_COMBO;
+                
+                Waitframe();
+                
+                this->Data=tempData;
+            }
+            
+            // Not using DrawCombo
+            else
+            {
+                // Additional combos?
+                if(__Ghost_AdditionalCombos[0]>0)
+                {
+                    tempGhostAdditionalCombos[__GHI_AC_CSET]=this->CSet;
+                    
+                    if(this->Flags[FFCF_OVERLAY])
+                        tempGhostAdditionalCombos[__GHI_AC_LAYER]=5;
+                    else
+                        tempGhostAdditionalCombos[__GHI_AC_LAYER]=1;
+                    
+                    if(this->Flags[FFCF_TRANS])
+                        tempGhostAdditionalCombos[__GHI_AC_OPACITY]=OP_TRANS;
+                    else
+                        tempGhostAdditionalCombos[__GHI_AC_OPACITY]=OP_OPAQUE;
+                    
+                    tempGhostAdditionalCombos[__GHI_AC_BASE_X]=Ghost_X;
+                    tempGhostAdditionalCombos[__GHI_AC_BASE_Y]=Ghost_Y-Ghost_Z;
+                    
+                    ghost->Misc[__GHI_GHZH_DATA]=0x10000|tempGhostAdditionalCombos;
+                }
+                
+                Waitframe();
+            }
+        }
+        
+        // Flickering
+        else
+        {
+            int tempData=this->Data;
+            this->Data=GH_INVISIBLE_COMBO;
+            
+            Waitframe();
+            
+            this->Data=tempData;
+        }
+        
+        // Restore the global variables
+        Ghost_X=tempGhostX;
+        Ghost_Y=tempGhostY;
+        Ghost_Z=tempGhostZ;
+        Ghost_Jump=tempGhostJump;
+        Ghost_Vx=tempGhostVx;
+        Ghost_Vy=tempGhostVy;
+        Ghost_Ax=tempGhostAx;
+        Ghost_Ay=tempGhostAy;
+        __Ghost_PrevX=tempGhostPrevX;
+        __Ghost_PrevY=tempGhostPrevY;
+        Ghost_CSet=tempGhostCSet;
+        Ghost_Dir=tempGhostDir;
+        Ghost_Data=tempGhostData;
+        Ghost_TileWidth=tempGhostTileWidth;
+        Ghost_TileHeight=tempGhostTileHeight;
+        __Ghost_Flags=tempGhostFlags;
+        __Ghost_Flags2=tempGhostFlags2;
+        __Ghost_InternalFlags=tempGhostInternalFlags;
+        __Ghost_FlashCounter=tempGhostFlashCounter;
+        __Ghost_KnockbackCounter=tempGhostKnockbackCounter;
+        Ghost_HP=tempGhostHP;
+        __Ghost_XOffsets=tempGhostXOffsets;
+        __Ghost_YOffsets=tempGhostYOffsets;
+        
+        if(tempGhostAdditionalCombos[0]>0)
+        {
+            for(int i=0; i<21; i++)
+                __Ghost_AdditionalCombos[i]=tempGhostAdditionalCombos[i];
+        }
+        
+        ghost->Misc[__GHI_GHZH_DATA]=0x10000;
+    } while((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0);
+}
+
+
+bool Ghost_Waitframes(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
+{
+    for(; numFrames>0; numFrames--)
+    {
+        if(!Ghost_Waitframe(this, ghost, clearOnDeath, quitOnDeath))
+            return false;
+    }
+    return true;
+}
+
+
+bool Ghost_Waitframes2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
+{
+    for(; numFrames>0; numFrames--)
+    {
+        if(!Ghost_Waitframe2(this, ghost, clearOnDeath, quitOnDeath))
+            return false;
+    }
+    return true;
+}
+
+
+void Ghost_WaitframesLight(ffc this, npc ghost, int numFrames)
+{
+    for(; numFrames>0; numFrames--)
+        Ghost_WaitframeLight(this, ghost);
+}
+
+
+void Ghost_CheckHit(ffc this, npc ghost)
+{
+    // Just got hit
+    if(ghost->HP<Ghost_HP)
+    {
+        // Remember HP and start flashing
+        __Ghost_InternalFlags|=__GHFI_GOT_HIT;
+        Ghost_HP=ghost->HP;
+        if(__Ghost_FlashCounter<__GH_FLASH_TIME)
+            __Ghost_FlashCounter=__GH_FLASH_TIME;
+        
+        // Set knockback counter (but don't handle it yet)
+        if(Ghost_FlagIsSet(GHF_KNOCKBACK))
+        {
+            int xDiff=Link->X-Ghost_X;
+            int yDiff=Link->Y-Ghost_Y;
+            
+            // The correct way to find the knockback direction would be to check
+            // the direction of the weapon, but that's not possible. Instead,
+            // Link's position and direction are used.
+            
+            // If Link is close, use his direction
+            if(Abs(xDiff)<(Ghost_TileWidth+1)*16 && Abs(yDiff)<(Ghost_TileHeight+1)*16)
+            {
+                if((Link->Dir&10b)==(Ghost_Dir&10b) || Ghost_Dir>3 || // Both horizontal or vertical, or enemy diagonal?
+                   Ghost_FlagIsSet(GHF_KNOCKBACK_4WAY))
+                    __Ghost_KnockbackCounter=Link->Dir<<12|__GH_KNOCKBACK_TIME; // Direction and timer are stored together
+            }
+            
+            // If Link is far, use the direction from him to the enemy
+            else
+            {
+                // Up or down
+                if(Abs(xDiff)<Abs(yDiff))
+                {
+                    if(Ghost_Dir==DIR_UP || Ghost_Dir==DIR_DOWN || Ghost_Dir>3 ||
+                       Ghost_FlagIsSet(GHF_KNOCKBACK_4WAY))
+                    {
+                        if(yDiff>0)
+                            __Ghost_KnockbackCounter=(DIR_UP<<12)|__GH_KNOCKBACK_TIME;
+                        else
+                            __Ghost_KnockbackCounter=(DIR_DOWN<<12)|__GH_KNOCKBACK_TIME;
+                    }
+                }
+                // Left or right
+                else
+                {
+                    if(Ghost_Dir==DIR_LEFT || Ghost_Dir==DIR_RIGHT || Ghost_Dir>3 ||
+                       Ghost_FlagIsSet(GHF_KNOCKBACK_4WAY))
+                    {
+                        if(xDiff>0)
+                            __Ghost_KnockbackCounter=(DIR_LEFT<<12)|__GH_KNOCKBACK_TIME;
+                        else
+                            __Ghost_KnockbackCounter=(DIR_RIGHT<<12)|__GH_KNOCKBACK_TIME;
+                    }
+                }
+            }
+        }
+    }
+    
+    // Handle knockback
+    if(__Ghost_KnockbackCounter!=0)
+    {
+        int dir=__Ghost_KnockbackCounter>>12;
+        int counter=__Ghost_KnockbackCounter&4095;
+        int step=__GH_KNOCKBACK_STEP;
+        
+        if(Ghost_FlagIsSet(GHF_REDUCED_KNOCKBACK))
+            step/=2;
+        
+        // Get knocked back
+        if(Ghost_CanMove(dir, step, 2))
+        {
+            int dX=0;
+            int dY=0;
+            
+            counter--;
+            if(counter>0)
+                __Ghost_KnockbackCounter=(dir<<12)|counter;
+            else
+                __Ghost_KnockbackCounter=0;
+            
+            if(dir==DIR_UP)
+                dY=-step;
+            else if(dir==DIR_DOWN)
+                dY=step;
+            else if(dir==DIR_LEFT)
+                dX=-step;
+            else // Right
+                dX=step;
+            
+            // Adjust all relevant position variables so this isn't mistaken for normal movement
+            if(dX!=0)
+            {
+                Ghost_X+=dX;
+                __Ghost_PrevX+=dX;
+                Ghost_SetPosition(this, ghost);
+            }
+            else if(dY!=0)
+            {
+                Ghost_Y+=dY;
+                __Ghost_PrevY+=dY;
+                Ghost_SetPosition(this, ghost);
+            }
+        }
+        
+        // Can't move any farther; end knockback
+        else
+        {
+            int newX=-1;
+            int newY=-1;
+            
+            __Ghost_KnockbackCounter=0;
+            __Ghost_InternalFlags|=__GHFI_KNOCKBACK_INTERRUPTED;
+            
+            if(dir==DIR_UP)
+                newY=Floor(Ghost_Y/8)*8;
+            else if(dir==DIR_DOWN)
+
+
+                newY=Ceiling((Ghost_Y<<0)/8)*8;
+            else if(dir==DIR_LEFT)
+                newX=Floor(Ghost_X/8)*8;
+            else // Right
+                newX=Ceiling((Ghost_X<<0)/8)*8;
+            
+            if(newX!=-1)
+            {
+                __Ghost_PrevX+=newX-Ghost_X;
+                Ghost_X=newX;
+                Ghost_SetPosition(this, ghost);
+            }
+            else if(newY!=-1)
+            {
+                __Ghost_PrevY+=newY-Ghost_Y;
+                Ghost_Y=newY;
+                Ghost_SetPosition(this, ghost);
+            }
+        }
+    }
+}
+
+
+bool Ghost_CheckFreeze(ffc this, npc ghost)
+{
+    if((Ghost_FlagIsSet(GHF_CLOCK) && ClockIsActive()) ||
+       (Ghost_FlagIsSet(GHF_STUN) && ghost->Stun>0))
+    {
+        // Stop all movement
+        float vx=this->Vx;
+        float vy=this->Vy;
+        float ax=this->Ax;
+        float ay=this->Ay;
+        
+        this->Vx=0;
+        this->Vy=0;
+        this->Ax=0;
+        this->Ay=0;
+        
+        __Ghost_InternalFlags|=__GHFI_WAS_FROZEN;
+        
+        // Do nothing except get hit until recovered
+        while((Ghost_FlagIsSet(GHF_CLOCK) && ClockIsActive()) ||
+              (Ghost_FlagIsSet(GHF_STUN) && ghost->Stun>0))
+        {
+            __Ghost_UpdateFlashing(this, ghost);
+            __Ghost_DrawShadow();
+            Ghost_WaitframeLight(this, ghost);
+            
+            if(!ghost->isValid() || ghost->HP<=0)
+                return false;
+            
+            Ghost_SetPosition(this, ghost);
+            
+            if(Ghost_FlagIsSet(GHF_8WAY))
+                this->Data=Ghost_Data+__NormalizeDir(Ghost_Dir);
+            else if(Ghost_FlagIsSet(GHF_4WAY))
+                this->Data=Ghost_Data+__NormalizeDir(Ghost_Dir);
+            else
+                this->Data=Ghost_Data;
+            
+            Ghost_CheckHit(this, ghost);
+        }
+        
+        // Restore movement
+        this->Vx=vx;
+        this->Vy=vy;
+        this->Ax=ax;
+        this->Ay=ay;
+    }
+    
+    return true;
+}
+
+
+// Before waiting: Update direction, set combo, set overlay flag, draw shadow
+void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
+{
+
+    // Direction forced - set the npc's direction and unset the flag
+    if((__Ghost_InternalFlags&__GHFI_DIR_FORCED)!=0)
+        ghost->Dir=Ghost_Dir;
+
+    // Use npc's direction
+    else if(useNPCDir)
+        Ghost_Dir=ghost->Dir;
+
+    // Set direction based on movement
+    else if(Ghost_FlagIsSet(GHF_SET_DIRECTION) && (__Ghost_PrevX!=Ghost_X || __Ghost_PrevY!=Ghost_Y))
+    {
+        float xStep=Ghost_X-__Ghost_PrevX;
+        float yStep=Ghost_Y-__Ghost_PrevY;
+
+        // Use 8 directions if 8-way flag is set
+        if(Ghost_FlagIsSet(GHF_8WAY))
+            Ghost_Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
+
+
+        // Otherwise, 4 directions
+        else
+        {
+            if(Abs(xStep)>Abs(yStep))
+            {
+                if(xStep<0)
+                    Ghost_Dir=DIR_LEFT;
+                else
+                    Ghost_Dir=DIR_RIGHT;
+            }
+            else
+            {
+                if(yStep<0)
+                    Ghost_Dir=DIR_UP;
+                else
+                    Ghost_Dir=DIR_DOWN;
+            }
+        }
+    }
+    
+    ghost->Dir=Ghost_Dir;
+    __Ghost_PrevX=Ghost_X;
+    __Ghost_PrevY=Ghost_Y;
+    
+    // Set combo
+    if(Ghost_Data==0 || Ghost_Data==GH_INVISIBLE_COMBO)
+    {
+        if(this->Data!=Ghost_Data)
+            this->Data=Ghost_Data;
+    }
+    else
+    {
+        if(Ghost_FlagIsSet(GHF_8WAY))
+        {
+            if(this->Data!=Ghost_Data+Ghost_Dir)
+                this->Data=Ghost_Data+__NormalizeDir(Ghost_Dir);
+        }
+        else if(Ghost_FlagIsSet(GHF_4WAY))
+        {
+            if(this->Data!=Ghost_Data+Ghost_Dir)
+                this->Data=Ghost_Data+__NormalizeDir(Ghost_Dir);
+        }
+        else
+        {
+            if(this->Data!=Ghost_Data)
+                this->Data=Ghost_Data;
+        }
+    }
+    
+    // Resize, if necessary
+    if(this->TileWidth!=Ghost_TileWidth)
+    {
+        this->TileWidth=Ghost_TileWidth;
+        ghost->TileWidth=Ghost_TileWidth;
+        ghost->HitWidth=16*Ghost_TileWidth;
+        ghost->HitXOffset=0;
+    }
+    
+    if(this->TileHeight!=Ghost_TileHeight)
+    {
+        this->TileHeight=Ghost_TileHeight;
+        ghost->TileHeight=Ghost_TileHeight;
+        ghost->HitHeight=16*Ghost_TileHeight;
+        ghost->HitYOffset=0;
+    }
+    
+    // Draw over if high enough
+    if(Ghost_FlagIsSet(GHF_SET_OVERLAY))
+    {
+        if(Ghost_Z>=GH_DRAW_OVER_THRESHOLD && !this->Flags[FFCF_OVERLAY])
+            this->Flags[FFCF_OVERLAY]=true;
+        else if(Ghost_Z<GH_DRAW_OVER_THRESHOLD && this->Flags[FFCF_OVERLAY])
+            this->Flags[FFCF_OVERLAY]=false;
+    }
+    
+    ghost->HP=Ghost_HP;
+    
+    // Set CSet
+    // ghost->CSet can't be forced; built-in flashing can't be prevented
+    ghost->CSet=Ghost_CSet;
+    if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)!=0)
+        this->CSet=Ghost_CSet;
+    else if(__Ghost_FlashCounter<=0)
+        this->CSet=Ghost_CSet;
+    
+    __Ghost_DrawShadow();
+}
+
+
+// After waiting: Check whether the enemy was hit, stunned, or killed
+bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
+{
+    // Was the enemy removed somehow?
+    if(!ghost->isValid())
+    {
+        if(clearOnDeath)
+        {
+            Ghost_ClearCombos();
+            this->Data=0;
+        }
+        if(quitOnDeath)
+            Quit();
+        return false;
+    }
+
+    // Is it dead?
+    bool dead=false;
+
+    if(ghost->HP<=0)
+        dead=true;
+
+    if(!dead)
+    {
+        // Hit?
+        Ghost_CheckHit(this, ghost);
+
+        // Stunned or frozen by a clock?
+        dead=!Ghost_CheckFreeze(this, ghost);
+    }
+
+    Ghost_HP=ghost->HP;
+
+    // Dead yet?
+    if(dead)
+    {
+        if(clearOnDeath)
+        {
+            ghost->TileWidth=1;
+            ghost->TileHeight=1;
+            ghost->X=Ghost_X+8*(Ghost_TileWidth-1);
+            ghost->Y=Ghost_Y+8*(Ghost_TileHeight-1);
+            ghost->Z=Ghost_Z;
+            this->Data=0;
+        }
+
+        if(quitOnDeath)
+            Quit();
+
+        return false;
+    }
+    
+    return true;
+}
+
+
+// Update the flash/flicker timer and change CSet if flashing
+void __Ghost_UpdateFlashing(ffc this, npc ghost)
+{
+    bool endFlash=false;
+    
+    if(__Ghost_FlashCounter>=1)
+    {
+        __Ghost_FlashCounter--;
+        if(__Ghost_FlashCounter==0)
+            endFlash=true;
+    }
+    
+    if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)==0)
+    {
+        if((__Ghost_FlashCounter>0 && GH_ENEMIES_FLICKER==0) || // Got hit?
+           (ghost->MiscFlags&1000000b)!=0) // "Is Flashing" flag set?
+            this->CSet=__ghzhData[__GH_FLASH_CSET];
+        else if(endFlash)
+            this->CSet=Ghost_CSet;
+    }
+}

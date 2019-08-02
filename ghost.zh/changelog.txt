@@ -1,0 +1,56 @@
+2.5.0 (2012-12-09)
+* Split ghost.zh into multiple files.
+* Drawing has been moved to the global script, so enemies won't disappear
+    when the screen freezes.
+* The multi-FFC functions have been replaced.
+* Directions 8-15 should be handled correctly now.
+* Ghost_Explode() has been replaced by Ghost_DeathAnimation().
+* Added functions to suspend and resume ghost.zh scripts.
+* Added functions to find random spawn points.
+* Added functions to simplify reading attributes.
+* Shadows can now be animated.
+* The "Is Flashing" and "Is Flickering" enemy flags work now.
+
+2.4.0 (2012-07-22)
+* Added Ghost_WasFrozen().
+
+2.3.2 (2012-07-12)
+* Added __GH_INVISIBLE_EXTEND, which will set up an FFC with the invisible
+    combo but still set npc->Extend to 3.
+
+2.3.1 (2012-06-15)
+* Fixed a drawing error.
+
+2.3.0 (2012-05-20)
+* Added support for enemies to use multiple FFCs.
+* It's now possible to use Screen->DrawCombo rather than making the FFC
+    itself visible.
+* Enemy blocking combos and flags are now respected.
+* Ghost_CanMove and Ghost_CanMovePixel now take an optional argument indicating
+    whether the enemy is in the air; this defaults to Ghost_Z>0.
+* Added a setting to make all Z-axis movement actually use the Y axis.
+* Added a setting to make enemies flicker instead of flash.
+* You can now use an alternate number (-1 by default) instead of
+    GH_INVISIBLE_COMBO to make enemies use the invisible combo.
+* Added GHF_FLYING_ENEMY, GHF_IGNORE_NO_ENEMY, GHF_WATER_ONLY, and 
+    GHF_DEEP_WATER_ONLY
+* GHF_ flags can no longer be ORed together; they must be set individually.
+* Ghost_SetFlags() and the init functions with a flags argument are deprecated.
+* Ghost_WaitframeLight() now takes ffc and npc arguments. The old version
+    is deprecated and may not work correctly with existing scripts.
+
+2.2.0 (2012-02-28)
+* Added some handling for sideview screens.
+* Added GHF_FULL_TILE_MOVEMENT, which makes the enemy consider a combo
+    completely solid if any quadrant of it is.
+* Various bug fixes.
+
+2.1.0 (2011-08-14)
+* Added Ghost_ConstantWalk4(), Ghost_ConstantWalk8(), Ghost_HaltingWalk4(),
+    and Ghost_VariableWalk8().
+* Added EWM_DRIFT and EWM_DRIFT_WAIT.
+* The hitbox adjustments made by Ghost_SetHitOffsets() are now
+    taken into account by Ghost_CanMove().
+
+2.0.0 (2011-08-03)
+* First version of modern ghost.zh. Completely overhauled since previous versions.

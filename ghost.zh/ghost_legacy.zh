@@ -1,4 +1,5 @@
-// Everything in this file is deprecated. Use ghost.zh instead for new scripts.
+// The constants and functions in this file are provided only for backward
+// compatibility. They should not be used in new scripts.
 
 const int GHI_FLAGS             = 9;
 const int GHI_KNOCKBACK_COUNTER = 10;
@@ -7,7 +8,6 @@ const int GHI_PREV_X            = 12;
 const int GHI_PREV_Y            = 13;
 const int GHI_PREV_HP           = 14;
 
-// Old constant names...
 const int GHF_GOT_HIT  = 01000000000b;
 const int GHF_IN_USE   = 10000000000b;
 const int GHF_INTERNAL = 11000000000b;
@@ -915,4 +915,3 @@ npc GhostInitWait2(ffc this, int enemyID, int which, bool useEnemyPos, int flags
 {
     return GhostInitWait2(this, enemyID, useEnemyPos, flags);
 }
-

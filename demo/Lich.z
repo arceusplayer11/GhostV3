@@ -83,8 +83,8 @@ ffc script Lich
     }
     
     
-    // Fire two homing projectiles that explode on contact, and a series of fireballs that move
-    // in a sine wave.
+    // Fire two homing projectiles that explode on contact, and a series of
+    // fireballs that move in a sine wave.
     void DoAttack2(ffc this, npc ghost)
     {
         eweapon wpn;

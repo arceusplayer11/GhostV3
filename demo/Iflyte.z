@@ -23,13 +23,13 @@ ffc script Iflyte
     {
         npc ghost;
         eweapon prototype;
-        int handData[]={ 0, IFL_HAND1_COMBO, -16, 16, 1, 1, GH_FFCF_FIXED_DATA,
-                         0, IFL_HAND2_COMBO, 48, 16, 1, 1, GH_FFCF_FIXED_DATA };
         
         ghost=Ghost_InitWait(this, 1, false);
         Ghost_SetFlag(GHF_IGNORE_ALL_TERRAIN);
         Ghost_SpawnAnimationPuff(this, ghost);
-        Ghost_SetAttachedFFCs(handData, false);
+        
+        Ghost_AddCombo(IFL_HAND1_COMBO, -16, 16);
+        Ghost_AddCombo(IFL_HAND2_COMBO, 48, 16);
         
         // Prototype for fireballs to split into
         prototype=CreateDummyEWeapon(EW_FIREBALL, 200, 2, IFL_FIREBALL_SPRITE, 13, 0);
@@ -66,9 +66,9 @@ ffc script Iflyte
             // Fire every 1.5 seconds
             if(i%90==0 && i>0)
             {
-                for(int j=0; j<3; j++)
+                for(int j=1; j<=3; j++) // 1, 2, 3 = down, left, right
                 {
-                    wpn=FireEWeapon(EW_SCRIPT1, Ghost_X+16, Ghost_Y+16, j*PI/2, 200, 2, IFL_FIRE_SPRITE, SFX_FIREBALL, EWF_UNBLOCKABLE|EWF_ROTATE);
+                    wpn=FireNonAngularEWeapon(EW_SCRIPT1, Ghost_X+16, Ghost_Y+16, j, 200, 2, IFL_FIRE_SPRITE, SFX_FIREBALL, EWF_UNBLOCKABLE|EWF_ROTATE);
                     SetEWeaponLifespan(wpn, EWL_SLOW_TO_HALT, 4);
                     SetEWeaponDeathEffect(wpn, prototype, 3, EWD_EVEN, 3*PI/2);
                 }
@@ -99,7 +99,7 @@ ffc script Iflyte
         
         // Change into a ball
         Ghost_Transform(this, ghost, IFL_ROLL_COMBO, -1, 2, -1);
-        Ghost_HideAttachedFFCs();
+        Ghost_ClearCombos();
         
         ghost->Damage+=2;
         
@@ -142,7 +142,8 @@ ffc script Iflyte
         ghost->Damage-=2;
         
         Ghost_Transform(this, ghost, IFL_WALK_COMBO, -1, 3, -1);
-        Ghost_UnhideAttachedFFCs();
+        Ghost_AddCombo(IFL_HAND1_COMBO, -16, 16);
+        Ghost_AddCombo(IFL_HAND2_COMBO, 48, 16);
         
         Ghost_Vx=0;
         Ghost_Vy=0;
@@ -156,7 +157,7 @@ ffc script Iflyte
         // Explode if dead
         if(!stillAlive)
         {
-            Ghost_Explode(this, ghost);
+            Ghost_DeathAnimation(this, ghost, 1);
             Game->PlayMIDI(IFL_DUNGEON_MIDI);
             Quit();
         }

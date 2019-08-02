@@ -1,0 +1,141 @@
+// ghost.zh
+// Version 2.5.2
+
+// The functions in this file are provided only for backward compatibility.
+// They should not be used in new scripts.
+
+void Ghost_Init(ffc this, npc ghost, int flags)
+{
+    Ghost_Init(this, ghost);
+    Ghost_SetFlags(flags);
+}
+
+
+npc Ghost_InitCreate(ffc this, int enemyID, int flags)
+{
+    npc ghost=Ghost_InitCreate(this, enemyID);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+
+npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos, int flags)
+{
+    npc ghost=Ghost_InitWait(this, enemyIndex, useEnemyPos);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+
+npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos, int flags)
+{
+    npc ghost=Ghost_InitWait2(this, enemyID, useEnemyPos);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+
+npc Ghost_InitSpawn(ffc this, int enemyID, int flags)
+{
+    npc ghost=Ghost_InitSpawn(this, enemyID);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+
+npc Ghost_InitAutoGhost(ffc this, int enemyID, int flags)
+{
+    npc ghost=Ghost_InitAutoGhost(this, enemyID);
+    Ghost_SetFlags(flags);
+    return ghost;
+}
+
+
+void Ghost_SetFlags(int flags)
+{
+    __Ghost_Flags=flags;
+}
+
+
+void Ghost_WaitframeLight()
+{
+    // Remember all the global variables
+    float tempGhostX=Ghost_X;
+    float tempGhostY=Ghost_Y;
+    float tempGhostZ=Ghost_Z;
+    float tempGhostJump=Ghost_Jump;
+    float tempGhostVx=Ghost_Vx;
+    float tempGhostVy=Ghost_Vy;
+    float tempGhostAx=Ghost_Ax;
+    float tempGhostAy=Ghost_Ay;
+    float tempGhostPrevX=__Ghost_PrevX;
+    float tempGhostPrevY=__Ghost_PrevY;
+    int tempGhostCSet=Ghost_CSet;
+    int tempGhostDir=Ghost_Dir;
+    int tempGhostData=Ghost_Data;
+    int tempGhostTileWidth=Ghost_TileWidth;
+    int tempGhostTileHeight=Ghost_TileHeight;
+    int tempGhostFlags=__Ghost_Flags;
+    int tempGhostFlags2=__Ghost_Flags2;
+    int tempGhostInternalFlags=__Ghost_InternalFlags;
+    int tempGhostFlashCounter=__Ghost_FlashCounter;
+    int tempGhostKnockbackCounter=__Ghost_KnockbackCounter;
+    int tempGhostHP=Ghost_HP;
+    int tempGhostXOffsets=__Ghost_XOffsets;
+    int tempGhostYOffsets=__Ghost_YOffsets;
+    
+    do
+    {
+        Waitframe();
+    } while((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0);
+    
+    // Restore the global variables
+    Ghost_X=tempGhostX;
+    Ghost_Y=tempGhostY;
+    Ghost_Z=tempGhostZ;
+    Ghost_Jump=tempGhostJump;
+    Ghost_Vx=tempGhostVx;
+    Ghost_Vy=tempGhostVy;
+    Ghost_Ax=tempGhostAx;
+    Ghost_Ay=tempGhostAy;
+    __Ghost_PrevX=tempGhostPrevX;
+    __Ghost_PrevY=tempGhostPrevY;
+    Ghost_CSet=tempGhostCSet;
+    Ghost_Dir=tempGhostDir;
+    Ghost_Data=tempGhostData;
+    Ghost_TileWidth=tempGhostTileWidth;
+    Ghost_TileHeight=tempGhostTileHeight;
+    __Ghost_Flags=tempGhostFlags;
+    __Ghost_Flags2=tempGhostFlags2;
+    __Ghost_InternalFlags=tempGhostInternalFlags;
+    __Ghost_FlashCounter=tempGhostFlashCounter;
+    __Ghost_KnockbackCounter=tempGhostKnockbackCounter;
+    Ghost_HP=tempGhostHP;
+    __Ghost_XOffsets=tempGhostXOffsets;
+    __Ghost_YOffsets=tempGhostYOffsets;
+}
+
+
+void Ghost_WaitframesLight(int numFrames)
+{
+    for(; numFrames>0; numFrames--)
+        Ghost_WaitframeLight();
+}
+
+
+void StartClock()
+{
+    InitializeGhostZHData();
+}
+
+
+void UpdateClock()
+{
+    UpdateGhostZHData();
+}
+
+
+void Ghost_Explode(ffc this, npc ghost)
+{
+    __Ghost_Explode(this, ghost, false);
+}
