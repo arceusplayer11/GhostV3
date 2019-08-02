@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.3.2
+Version 2.4.0
 
 
 This file is documentation for script writers. If you just want to set up
@@ -553,6 +553,10 @@ void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
 
 bool Ghost_GotHit()
  * Returns true if the enemy was hit in the last frame.
+
+bool Ghost_WasFrozen()
+ * Returns true if the enemy was stunned or frozen by a clock in the last frame.
+ * This only works if GHF_STUN or GHF_CLOCK is used.
 
 void Ghost_Explode(ffc this, npc ghost)
  * A simple death animation. Creates several harmless explosions over the enemy,

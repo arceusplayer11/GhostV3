@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.3.2
+// Version 2.4.0
 
 // See ghost.txt for documentation.
 
@@ -102,14 +102,15 @@ const int GHF_WATER_ONLY      = 0x10002;
 const int GHF_DEEP_WATER_ONLY = 0x10003;
 
 // Internal enemy flags
-const int __GHFI_GOT_HIT               = 0000001b;
-const int __GHFI_DIR_FORCED            = 0000010b;
-const int __GHFI_CSET_FORCED           = 0000100b;
-const int __GHFI_SHADOW_FLICKER        = 0001000b;
-const int __GHFI_KNOCKBACK_INTERRUPTED = 0010000b;
-const int __GHFI_HIT_LINK              = 0100000b;
-const int __GHFI_FLICKER               = 1000000b;
-const int __GH_UNSET_FLAGS             = 0101000b; // Used to unset flags that last one frame
+const int __GHFI_GOT_HIT               = 00000001b;
+const int __GHFI_WAS_FROZEN            = 00000010b;
+const int __GHFI_DIR_FORCED            = 00000100b;
+const int __GHFI_CSET_FORCED           = 00001000b;
+const int __GHFI_SHADOW_FLICKER        = 00010000b;
+const int __GHFI_KNOCKBACK_INTERRUPTED = 00100000b;
+const int __GHFI_HIT_LINK              = 01000000b;
+const int __GHFI_FLICKER               = 10000000b;
+const int __GH_UNSET_FLAGS             = 01010000b; // Used to unset flags that last one frame
 
 // Arguments to SetEWeaponMovement()
 const int EWM_SINE_WAVE         = 1;
@@ -1036,41 +1037,43 @@ bool Ghost_CheckFreeze(ffc this, npc ghost)
         float vy=this->Vy;
         float ax=this->Ax;
         float ay=this->Ay;
-
+        
         this->Vx=0;
         this->Vy=0;
         this->Ax=0;
         this->Ay=0;
-
+        
+        __Ghost_InternalFlags|=__GHFI_WAS_FROZEN;
+        
         // Do nothing except get hit until recovered
         while((Ghost_FlagIsSet(GHF_CLOCK) && __ghzhClockTimer!=0) ||
               (Ghost_FlagIsSet(GHF_STUN) && ghost->Stun>0))
         {
             __Ghost_UpdateFlashing(this, ghost);
             Ghost_WaitframeLight(this, ghost);
-
+            
             if(!ghost->isValid() || ghost->HP<=0)
                 return false;
-
+            
             Ghost_SetPosition(this, ghost);
-
+            
             if(Ghost_FlagIsSet(GHF_8WAY))
                 this->Data=Ghost_Data+VBound(Ghost_Dir, 7, 0);
             else if(Ghost_FlagIsSet(GHF_4WAY))
                 this->Data=Ghost_Data+VBound(Ghost_Dir, 3, 0);
             else
                 this->Data=Ghost_Data;
-
+            
             Ghost_CheckHit(this, ghost);
         }
-
+        
         // Restore movement
         this->Vx=vx;
         this->Vy=vy;
         this->Ax=ax;
         this->Ay=ay;
     }
-
+    
     return true;
 }
 
@@ -1575,6 +1578,7 @@ int Ghost_ConstantWalk8(int counter, int step, int rate, int homing, int hunger)
 
     // Needs to snap to the grid, so Ghost_Move() would be problematic
     if(Ghost_Dir!=DIR_UP && Ghost_Dir!=DIR_DOWN)
+
 
     {
         if(Ghost_Dir==DIR_LEFT || Ghost_Dir==DIR_LEFTUP || Ghost_Dir==DIR_LEFTDOWN)
@@ -2340,6 +2344,11 @@ void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
 bool Ghost_GotHit()
 {
     return (__Ghost_InternalFlags&__GHFI_GOT_HIT)!=0;
+}
+
+bool Ghost_WasFrozen()
+{
+    return (__Ghost_InternalFlags&__GHFI_WAS_FROZEN)!=0;
 }
 
 void Ghost_Explode(ffc this, npc ghost)
@@ -3798,7 +3807,7 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
 
         return false;
     }
-
+    
     return true;
 }
 
