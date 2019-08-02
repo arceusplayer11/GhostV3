@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.1.1
+Version 2.2.0
 
 +-------+
 | USAGE |
@@ -32,8 +32,8 @@ pickup script, with D0 set to match the clock's duration.
 It is possible to write enemy scripts such that scripted enemies can simply be placed on the screen
 like normal ones; see the AutoGhost section below for details.
 
-Undocumented functions, variables, and constants are for internal use and may be changed or
-removed without warning.
+Functions, variables, and constants whose names start with __ are for internal use and may be
+changed or removed without warning.
 
 
 +-----------+
@@ -41,13 +41,13 @@ removed without warning.
 +-----------+
 
 With appropriately written scripts, it is possible to place scripted enemies without any manual
-FFC setup. The AutoGhost function will scan the screen for enemies that should be scripted and
-set up FFCs automatically when it finds them. AutoGhost should come after WaitDraw in the global
-script.
+FFC setup. The AutoGhost function will scan the screen for enemies that should be handled by
+scripts and set up FFCs automatically when it finds them. AutoGhost should come after WaitDraw
+in the global script.
 
 An AutoGhost FFC script's run function should take a single argument. This is the enemy ID, which
-should be given to the AutoGhostInit function. AutoGhost will not set any other arguments, but you
-can use them if your script runs additional instances of the same script.
+should be passed to the AutoGhostInit function. AutoGhost will not set any other arguments, but
+you can use them if your script runs additional instances of the same script.
 
 The corresponding enemy needs misc. attribute 11 set to the number of the combo the FFC will use
 and attribute 12 set to the number of the script. The enemy's CSet will be assigned to the FFC. Its
@@ -163,6 +163,8 @@ void Ghost_SetFlags(int flags)
  * GHF_IGNORE_WATER: The enemy can move over water, regardless of solidity.
  * GHF_IGNORE_PITS: The enemy can move over pits, regardless of solidity.
  * GHF_IGNORE_ALL_TERRAIN: Combines GHF_IGNORE_SOLIDITY, GHF_IGNORE_WATER, and GHF_IGNORE_PITS.
+ * GHF_FULL_TILE_MOVEMENT: The enemy will not walk onto a tile unless the entire tile is walkable.
+ *    This is particularly useful for enemies using walking functions along with other movement.
 
 void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
  * The initialization functions interrupt the normal enemy spawning animation; this function makes
@@ -233,6 +235,7 @@ void Ghost_MoveTowardLink(float step, int imprecision)
 
 bool Ghost_CanMove(int dir, float step, int imprecision)
  * Determines whether the enemy can move in the given direction and distance.
+ * On sideview screens, a direction of DIR_UP will always return false unless GHF_NO_FALL is set.
 
 bool Ghost_CanMovePixel(int x, int y)
  * Used internally by Ghost_CanMove(). Returns true if the enemy can move onto the given pixel.
@@ -354,7 +357,8 @@ void AutoGhost()
 
 void CleanUpGhostFFCs()
  * This makes ghosted enemy FFCs invisible when Link dies. This should be used in the global script
- * before Waitdraw().
+ * before Waitdraw(). This happens as soon as the function sees Link->HP<=0, so it should come after
+ * anything that might restore his HP.
 
 npc SpawnNPC(int id)
  * Spawns an npc with the given ID in a random location. This will avoid solid combos, pits, water,

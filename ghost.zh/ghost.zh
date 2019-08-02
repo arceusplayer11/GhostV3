@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.1.1
+// Version 2.2.0
 
 // See ghost.txt for documentation.
 
@@ -58,29 +58,31 @@ const int __EWI_FLAGS        = 15; // Every index but this one can be used by no
 
 
 // Enemy flags
-const int GHF_KNOCKBACK          = 000000000000001b;
-const int GHF_KNOCKBACK_4WAY     = 000000000000011b;
-const int GHF_REDUCED_KNOCKBACK  = 000000000000101b;
-const int GHF_STUN               = 000000000001000b;
-const int GHF_CLOCK              = 000000000010000b;
-const int GHF_NO_FALL            = 000000000100000b;
-const int GHF_SET_DIRECTION      = 000000001000000b;
-const int GHF_SET_OVERLAY        = 000000010000000b;
-const int GHF_4WAY               = 000000100000000b;
-const int GHF_8WAY               = 000001000000000b;
-const int GHF_IGNORE_SOLIDITY    = 000010000000000b;
-const int GHF_IGNORE_WATER       = 000100000000000b;
-const int GHF_IGNORE_PITS        = 001000000000000b;
-const int GHF_IGNORE_ALL_TERRAIN = 001110000000000b;
-const int GHF_MOVE_OFFSCREEN     = 010000000000000b;
-const int GHF_FAKE_Z             = 100000000000000b;
-const int GHF_NORMAL             = 000000001011001b;
+const int GHF_KNOCKBACK          = 0000000000000001b;
+const int GHF_KNOCKBACK_4WAY     = 0000000000000011b;
+const int GHF_REDUCED_KNOCKBACK  = 0000000000000101b;
+const int GHF_STUN               = 0000000000001000b;
+const int GHF_CLOCK              = 0000000000010000b;
+const int GHF_NO_FALL            = 0000000000100000b;
+const int GHF_SET_DIRECTION      = 0000000001000000b;
+const int GHF_SET_OVERLAY        = 0000000010000000b;
+const int GHF_4WAY               = 0000000100000000b;
+const int GHF_8WAY               = 0000001000000000b;
+const int GHF_IGNORE_SOLIDITY    = 0000010000000000b;
+const int GHF_IGNORE_WATER       = 0000100000000000b;
+const int GHF_IGNORE_PITS        = 0001000000000000b;
+const int GHF_IGNORE_ALL_TERRAIN = 0001110000000000b;
+const int GHF_MOVE_OFFSCREEN     = 0010000000000000b;
+const int GHF_FAKE_Z             = 0100000000000000b;
+const int GHF_FULL_TILE_MOVEMENT = 1000000000000000b;
+const int GHF_NORMAL             = 0000000001011001b;
 
 // Internal enemy flags
-const int __GHFI_GOT_HIT        = 0001b;
-const int __GHFI_DIR_FORCED     = 0010b;
-const int __GHFI_CSET_FORCED    = 0100b;
-const int __GHFI_SHADOW_FLICKER = 1000b;
+const int __GHFI_GOT_HIT               = 00001b;
+const int __GHFI_DIR_FORCED            = 00010b;
+const int __GHFI_CSET_FORCED           = 00100b;
+const int __GHFI_SHADOW_FLICKER        = 01000b;
+const int __GHFI_KNOCKBACK_INTERRUPTED = 10000b;
 
 // Arguments to SetEWeaponMovement()
 const int EWM_SINE_WAVE         = 1;
@@ -224,7 +226,6 @@ global script GhostZHActiveScript
             CleanUpGhostFFCs();
 
             Waitdraw();
-
             AutoGhost();
 
             Waitframe();
@@ -320,24 +321,22 @@ npc Ghost_InitAutoGhost(ffc this, int enemyID)
     for(int i=1; i<=Screen->NumNPCs(); i++)
     {
         ghost=Screen->LoadNPC(i);
-
+        
         if(ghost->ID!=enemyID)
             continue;
         if(ghost->Misc[__GHI_IN_USE]!=0)
             continue;
-
+        
         __Ghost_InitInternal(this, ghost, true, ghost->Attributes[10], ghost->CSet);
         return ghost;
     }
-
+    
     // No enemy found, so quit. This shouldn't ever happen, so record it in allegro.log.
-    int error[60]="AutoGhost initialization failed! Script %d, enemy %d\n";
+    int error[80]="ghost.zh: AutoGhost initialization failed! Script %d, enemy %d\n";
     printf(error, this->Script, enemyID);
-
+    
     this->Data=0;
     Quit();
-
-
 }
 
 void Ghost_Init(ffc this, npc ghost, int flags)
@@ -494,18 +493,66 @@ bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
 {
     // Handle gravity first
     ghost->Jump=0;
-
-    if((__Ghost_Flags&GHF_NO_FALL)==0 && (Ghost_Z>0 || Ghost_Jump!=0))
+    if((__Ghost_Flags&GHF_NO_FALL)==0)
     {
-        if(Ghost_Z+Ghost_Jump<=0)
+        // Sideview: Jump/fall on Y axis
+        if(IsSideview())
         {
-            Ghost_Z=0;
-            Ghost_Jump=0;
+            if(Ghost_Jump!=0 || Ghost_CanMove(DIR_DOWN, 1, 2)) // Use CanMove to check for platforms
+            {
+                // Temporarily unset GHF_SET_DIRECTION so that Ghost_Move doesn't
+                // change the enemy's direction here
+                int tempFlags=__Ghost_Flags;
+                __Ghost_Flags&=~GHF_SET_DIRECTION;
+                
+                // Jumping
+                if(Ghost_Jump>0)
+                {
+                    // Set GHF_NO_FALL temporarily so Ghost_CanMove(DIR_UP) can return true
+                    __Ghost_Flags|=GHF_NO_FALL;
+                    
+                    Ghost_Move(DIR_UP, Ghost_Jump, 2);
+                    Ghost_Jump=Max(Ghost_Jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+                    
+                    // If it's still jumping, check if it can move any farther;
+                    // if it can't, it's hit something and should start falling
+                    if(Ghost_Jump>0 && !Ghost_CanMove(DIR_UP, 1, 2))
+                        Ghost_Jump=0;
+                    
+                    __Ghost_Flags&=~GHF_NO_FALL;
+                }
+                // Falling
+                else
+                {
+                    Ghost_Move(DIR_DOWN, -Ghost_Jump, 2);
+                    
+                    // Can it fall farther?
+                    if(Ghost_CanMove(DIR_DOWN, 1, 2))
+                        Ghost_Jump=Max(Ghost_Jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+                    // If not, stop falling
+                    else
+                        Ghost_Jump=0;
+                }
+                
+                __Ghost_Flags=tempFlags;
+            }
         }
+        // Top-down: Jump/fall on Z axis
         else
         {
-            Ghost_Z+=Ghost_Jump;
-            Ghost_Jump=Max(Ghost_Jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+            if(Ghost_Jump!=0 || Ghost_Z>0)
+            {
+                if(Ghost_Z+Ghost_Jump<=0)
+                {
+                    Ghost_Z=0;
+                    Ghost_Jump=0;
+                }
+                else
+                {
+                    Ghost_Z+=Ghost_Jump;
+                    Ghost_Jump=Max(Ghost_Jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+                }
+            }
         }
     }
 
@@ -531,17 +578,17 @@ bool Ghost_Waitframe2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
     Ghost_X=ghost->X;
     Ghost_Y=ghost->Y;
     Ghost_Z=ghost->Z;
-
+    
     __Ghost_WaitframePart1(this, ghost, true);
     Ghost_WaitframeLight();
-
+    
     if(ghost->isValid())
     {
         Ghost_X=ghost->X;
         Ghost_Y=ghost->Y;
         Ghost_Z=ghost->Z;
     }
-
+    
     return __Ghost_WaitframePart2(this, ghost, clearOnDeath, quitOnDeath);
 }
 
@@ -589,6 +636,7 @@ void Ghost_WaitframeLight()
     Ghost_TileHeight=ghostTileHeightTemp;
     __Ghost_Flags=ghostFlagsTemp;
     __Ghost_InternalFlags=ghostInternalFlagsTemp;
+
     __Ghost_FlashCounter=ghostFlashCounterTemp;
     __Ghost_KnockbackCounter=ghostKnockbackCounterTemp;
     Ghost_HP=ghostHPTemp;
@@ -632,15 +680,15 @@ void Ghost_CheckHit(ffc this, npc ghost)
         Ghost_HP=ghost->HP;
         if(__Ghost_FlashCounter<32)
             __Ghost_FlashCounter=32;
-
-        // Set knockback
+        
+        // Set knockback counter (but don't handle it yet)
         if((__Ghost_Flags&GHF_KNOCKBACK)!=0)
         {
             int xDiff=Link->X-Ghost_X;
             int yDiff=Link->Y-Ghost_Y;
-
+            
             // The direction can't be checked the proper way, so guess based on Link's position
-
+            
             // If Link is close, use his direction
             if(Abs(xDiff)<(Ghost_TileWidth+1)*16 && Abs(yDiff)<(Ghost_TileHeight+1)*16)
             {
@@ -681,7 +729,7 @@ void Ghost_CheckHit(ffc this, npc ghost)
     // Not hit; unset flag
     else if((__Ghost_InternalFlags&__GHFI_GOT_HIT)!=0)
         __Ghost_InternalFlags&=~__GHFI_GOT_HIT;
-
+    
     // Flash
     if(__Ghost_FlashCounter>1)
     {
@@ -697,31 +745,31 @@ void Ghost_CheckHit(ffc this, npc ghost)
         if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)==0)
             this->CSet=Ghost_CSet;
     }
-
+    
     // Handle knockback
     if(__Ghost_KnockbackCounter!=0)
     {
         int dir=__Ghost_KnockbackCounter>>5;
         int counter=__Ghost_KnockbackCounter&31;
         int step;
-
+        
         if((__Ghost_Flags&GHF_REDUCED_KNOCKBACK)==GHF_REDUCED_KNOCKBACK)
             step=2;
         else
             step=4;
-
+        
         // Get knocked back
         if(Ghost_CanMove(dir, step, 2))
         {
             int dX=0;
             int dY=0;
-
+            
             counter--;
             if(counter>0)
                 __Ghost_KnockbackCounter=(dir<<5)|counter;
             else
                 __Ghost_KnockbackCounter=0;
-
+            
             if(dir==DIR_UP)
                 dY=-step;
             else if(dir==DIR_DOWN)
@@ -730,8 +778,8 @@ void Ghost_CheckHit(ffc this, npc ghost)
                 dX=-step;
             else // Right
                 dX=step;
-
-            // Adjust all relevant position values so this isn't mistaken for normal movement
+            
+            // Adjust all relevant position variables so this isn't mistaken for normal movement
             if(dX!=0)
             {
                 Ghost_X+=dX;
@@ -745,24 +793,25 @@ void Ghost_CheckHit(ffc this, npc ghost)
                 Ghost_SetPosition(this, ghost);
             }
         }
-
+        
         // Can't move any farther; end knockback
         else
         {
             int newX=-1;
             int newY=-1;
-
+            
             __Ghost_KnockbackCounter=0;
-
+            __Ghost_InternalFlags|=__GHFI_KNOCKBACK_INTERRUPTED;
+            
             if(dir==DIR_UP)
                 newY=Floor(Ghost_Y/8)*8;
             else if(dir==DIR_DOWN)
-                newY=Ceiling(Ghost_Y/8)*8;
+                newY=Ceiling((Ghost_Y<<0)/8)*8;
             else if(dir==DIR_LEFT)
                 newX=Floor(Ghost_X/8)*8;
             else // Right
-                newX=Ceiling(Ghost_X/8)*8;
-
+                newX=Ceiling((Ghost_X<<0)/8)*8;
+            
             if(newX!=-1)
             {
                 __Ghost_PrevX+=newX-Ghost_X;
@@ -872,6 +921,10 @@ void Ghost_Move(int dir, float step, int imprecision)
 
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
 {
+    // If this is sideview, most enemies can't move upward
+    if(yStep<0 && IsSideview() && (__Ghost_Flags&GHF_NO_FALL)==0)
+        yStep=0;
+    
     if(yStep<0)
     {
         // If the enemy's going very fast, move 8 pixels at a time to ensure
@@ -881,9 +934,12 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
             int yStep2=yStep;
             for(; yStep2<-8; yStep2+=8)
                 Ghost_MoveXY(0, -8, imprecision);
-
+            
+            // Move all the way
             if(Ghost_CanMove(DIR_UP, -yStep2, imprecision))
                 Ghost_Y+=yStep2;
+            // Can't go that far; go as far as possible
+            // (i.e. snap to the grid on this axis)
             else
                 Ghost_Y=Floor(Ghost_Y/8)*8;
         }
@@ -899,18 +955,18 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
             int yStep2=yStep;
             for(; yStep2>8; yStep2-=8)
                 Ghost_MoveXY(0, 8, imprecision);
-
+            
             if(Ghost_CanMove(DIR_DOWN, yStep2, imprecision))
                 Ghost_Y+=yStep2;
             else if(Ghost_Y%8!=0)
-                Ghost_Y=Ceiling(Ghost_Y/8)*8;
+                Ghost_Y=Ceiling((Ghost_Y<<0)/8)*8;
         }
         else if(Ghost_CanMove(DIR_DOWN, yStep, imprecision))
             Ghost_Y+=yStep;
         else if(Ghost_Y%8!=0)
-            Ghost_Y=Ceiling(Ghost_Y/8)*8;
+            Ghost_Y=Ceiling((Ghost_Y<<0)/8)*8;
     }
-
+    
     if(xStep<0)
     {
         if(xStep<-8)
@@ -918,7 +974,7 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
             int xStep2=xStep;
             for(; xStep2<-8; xStep2+=8)
                 Ghost_MoveXY(-8, 0, imprecision);
-
+            
             if(Ghost_CanMove(DIR_LEFT, -xStep2, imprecision))
                 Ghost_X+=xStep2;
             else
@@ -931,30 +987,29 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
     }
     else if(xStep>0)
     {
-
         if(xStep>8)
         {
             int xStep2=xStep;
             for(; xStep2>8; xStep2-=8)
                 Ghost_MoveXY(8, 0, imprecision);
-
+            
             if(Ghost_CanMove(DIR_RIGHT, xStep2, imprecision))
                 Ghost_X+=xStep2;
             else if(Ghost_X%8!=0)
-                Ghost_X=Ceiling(Ghost_X/8)*8;
+                Ghost_X=Ceiling((Ghost_X<<0)/8)*8;
         }
         else if(Ghost_CanMove(DIR_RIGHT, xStep, imprecision))
             Ghost_X+=xStep;
         else if(Ghost_X%8!=0)
-            Ghost_X=Ceiling(Ghost_X/8)*8;
+            Ghost_X=Ceiling((Ghost_X<<0)/8)*8;
     }
-
+    
     if((__Ghost_Flags&GHF_SET_DIRECTION)!=0 && (__Ghost_InternalFlags&__GHFI_DIR_FORCED)==0)
     {
         // Use 8 directions if 8-way flag is set
         if((__Ghost_Flags&GHF_8WAY)!=0)
             Ghost_Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
-
+        
         // Otherwise, 4 directions
         else
         {
@@ -973,7 +1028,7 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
                     Ghost_Dir=DIR_RIGHT;
             }
         }
-
+        
         __Ghost_PrevX=Ghost_X;
         __Ghost_PrevY=Ghost_Y;
     }
@@ -991,6 +1046,10 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
 
     if(dir==DIR_UP)
     {
+        // Most enemies can't move upward on sideview screens
+        if(IsSideview() && (__Ghost_Flags&GHF_NO_FALL)==0)
+            return false;
+        
         int y=Ghost_Y-step;
 
         // Check every 8 pixels for solid, pit, or water
@@ -1008,7 +1067,7 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
     }
     else if(dir==DIR_DOWN)
     {
-        int y=Ghost_Y+16*Ghost_TileHeight+step;
+        int y=(Ghost_Y+16*Ghost_TileHeight-1)+step;
 
         for(int i=leftOffset+imprecision; i<Ghost_TileWidth*16-rightOffset-imprecision; i+=8)
         {
@@ -1038,7 +1097,7 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
     }
     else if(dir==DIR_RIGHT)
     {
-        int x=Ghost_X+16*Ghost_TileWidth+step;
+        int x=(Ghost_X+16*Ghost_TileWidth-1)+step;
 
         for(int i=topOffset+imprecision; i<Ghost_TileHeight*16-bottomOffset-imprecision; i+=8)
         {
@@ -1052,17 +1111,38 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
         return true;
     }
     else if(dir==DIR_LEFTUP)
-        return Ghost_CanMove(DIR_UP, step*0.7071, imprecision) &&
-               Ghost_CanMove(DIR_LEFT, step*0.7071, imprecision);
+    {
+        float tempX=Ghost_X;
+
+        Ghost_X-=step*0.7071;
+        bool ret=Ghost_CanMove(DIR_UP, step*0.7071, imprecision);
+        Ghost_X=tempX;
+        return ret;
+    }
     else if(dir==DIR_RIGHTUP)
-        return Ghost_CanMove(DIR_UP, step*0.7071, imprecision) &&
-               Ghost_CanMove(DIR_RIGHT, step*0.7071, imprecision);
+    {
+        float tempX=Ghost_X;
+        Ghost_X+=step*0.7071;
+        bool ret=Ghost_CanMove(DIR_UP, step*0.7071, imprecision);
+        Ghost_X=tempX;
+        return ret;
+    }
     else if(dir==DIR_LEFTDOWN)
-        return Ghost_CanMove(DIR_DOWN, step*0.7071, imprecision) &&
-               Ghost_CanMove(DIR_LEFT, step*0.7071, imprecision);
+    {
+        float tempX=Ghost_X;
+        Ghost_X-=step*0.7071;
+        bool ret=Ghost_CanMove(DIR_DOWN, step*0.7071, imprecision);
+        Ghost_X=tempX;
+        return ret;
+    }
     else if(dir==DIR_RIGHTDOWN)
-        return Ghost_CanMove(DIR_DOWN, step*0.7071, imprecision) &&
-               Ghost_CanMove(DIR_RIGHT, step*0.7071, imprecision);
+    {
+        float tempX=Ghost_X;
+        Ghost_X+=step*0.7071;
+        bool ret=Ghost_CanMove(DIR_DOWN, step*0.7071, imprecision);
+        Ghost_X=tempX;
+        return ret;
+    }
     else // Invalid direction
         return false;
 }
@@ -1071,9 +1151,9 @@ bool Ghost_CanMovePixel(int x, int y)
 {
     if(x<0 || x>255 || y<0 || y>175)
         return (__Ghost_Flags&GHF_MOVE_OFFSCREEN)!=0;
-
+    
     int combo=ComboAt(x, y);
-
+    
     // "No enemy" flags and combos
     if(Screen->ComboT[combo]==CT_NOENEMY)
         return false;
@@ -1081,15 +1161,25 @@ bool Ghost_CanMovePixel(int x, int y)
         return false;
     if(Screen->ComboI[combo]==CF_NOENEMY)
         return false;
-
+    
     // Water and pit walkability override solidity checking
     if(IsWater(combo))
         return (__Ghost_Flags&GHF_IGNORE_WATER)!=0;
     else if(IsPit(combo))
         return (__Ghost_Flags&GHF_IGNORE_PITS)!=0;
-    else if(Screen->isSolid(x, y))
-        return (__Ghost_Flags&GHF_IGNORE_SOLIDITY)!=0;
-
+    else
+    {
+        // Ignore solidity: always OK
+        // Full tile movement: Only if the whole tile is walkable
+        // All others: Only if the pixel is walkable
+        if((__Ghost_Flags&GHF_IGNORE_SOLIDITY)!=0)
+            return true;
+        else if((__Ghost_Flags&GHF_FULL_TILE_MOVEMENT)!=0)
+            return __FullTileWalkable(x, y);
+        else
+            return !Screen->isSolid(x, y);
+    }
+    
     return true;
 }
 
@@ -1109,11 +1199,67 @@ int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
     // Don't move while being knocked back
     if(__Ghost_KnockbackCounter>0)
         return counter;
-
+    
     int xStep=0;
     int yStep=0;
+    
+    // Trying to walk onto half solid combos will throw off the counter
+    int tempFlags=__Ghost_Flags;
+    if((__Ghost_Flags&GHF_IGNORE_SOLIDITY)==0)
+        Ghost_SetFlag(GHF_FULL_TILE_MOVEMENT);
+    
     step/=100;
-
+    
+    // If the enemy was knocked back into a wall,
+    // check whether it's half a tile off the grid
+    if((__Ghost_InternalFlags&__GHFI_KNOCKBACK_INTERRUPTED)!=0)
+    {
+        // Half a tile off horizontally
+        if(Ghost_X%16==8)
+        {
+            // Fix direction
+            bool canMoveLeft=Ghost_CanMove(DIR_LEFT, 1, 0);
+            bool canMoveRight=Ghost_CanMove(DIR_RIGHT, 1, 0);
+            
+            // Can move both left and right (or neither, for some reason)
+            if(canMoveLeft==canMoveRight)
+            {
+                // Don't change direction if already facing left or right
+                if(!(Ghost_Dir==DIR_LEFT || Ghost_Dir==DIR_RIGHT))
+                    Ghost_Dir=Choose(DIR_LEFT, DIR_RIGHT);
+            }
+            // Can only move left
+            else if(canMoveLeft)
+                Ghost_Dir=DIR_LEFT;
+            // Can only move right
+            else
+                Ghost_Dir=DIR_RIGHT;
+        }
+        
+        // Half a tile off vertically
+        {
+            // Fix direction
+            bool canMoveUp=Ghost_CanMove(DIR_UP, 1, 0);
+            bool canMoveDown=Ghost_CanMove(DIR_DOWN, 1, 0);
+            
+            // Can move both up and down (or neither, for some reason)
+            if(canMoveUp==canMoveDown)
+            {
+                // Don't change direction if already facing up or down
+                if(!(Ghost_Dir==DIR_UP || Ghost_Dir==DIR_DOWN))
+                    Ghost_Dir=Choose(DIR_UP, DIR_DOWN);
+            }
+            // Can only move up
+            else if(canMoveUp)
+                Ghost_Dir=DIR_UP;
+            // Can only move down
+            else
+                Ghost_Dir=DIR_DOWN;
+        }
+        
+        counter=Floor(8/step);
+    }
+    
     if(counter<=0)
     {
         // Snap to grid and maybe turn
@@ -1131,7 +1277,7 @@ int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
         Ghost_Dir^=1;
         counter=Floor(16/step)-counter;
     }
-
+    
     // These functions use the full step on both axes for diagonal movement
     if(Ghost_Dir!=DIR_UP && Ghost_Dir!=DIR_DOWN)
     {
@@ -1140,7 +1286,7 @@ int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
         else // Right
             xStep=step;
     }
-
+    
     if(Ghost_Dir!=DIR_LEFT && Ghost_Dir!=DIR_RIGHT)
     {
         if(Ghost_Dir==DIR_UP || Ghost_Dir==DIR_LEFTUP || Ghost_Dir==DIR_RIGHTUP)
@@ -1148,8 +1294,9 @@ int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
         else // Down
             yStep=step;
     }
-
+    
     Ghost_MoveXY(xStep, yStep, 0);
+    __Ghost_Flags=tempFlags;
     return counter-1;
 }
 
@@ -1197,11 +1344,11 @@ float Ghost_HaltingWalk4(int counter, int step, int rate, int homing, int hunger
     // Don't move while being knocked back
     if(__Ghost_KnockbackCounter>0)
         return counter;
-
+    
     // The counter is actually two combined...
     int walkCounter;
     int haltCounter;
-
+    
     if(counter==-1)
     {
         walkCounter=0;
@@ -1212,12 +1359,68 @@ float Ghost_HaltingWalk4(int counter, int step, int rate, int homing, int hunger
         walkCounter=counter*10000;
         haltCounter=counter>>0;
     }
-
+    
+    // Halted; just count down
     if(haltCounter>0)
         return haltCounter-1;
-
+    
+    // Trying to walk onto half solid combos will throw off the counter
+    int tempFlags=__Ghost_Flags;
+    if((__Ghost_Flags&GHF_IGNORE_SOLIDITY)==0)
+        Ghost_SetFlag(GHF_FULL_TILE_MOVEMENT);
+    
     step/=100;
-
+    
+    // If the enemy was knocked back into a wall,
+    // check whether it's half a tile off the grid
+    if((__Ghost_InternalFlags&__GHFI_KNOCKBACK_INTERRUPTED)!=0)
+    {
+        // Half a tile off horizontally
+        if(Ghost_X%16==8)
+        {
+            // Fix direction
+            bool canMoveLeft=Ghost_CanMove(DIR_LEFT, 1, 0);
+            bool canMoveRight=Ghost_CanMove(DIR_RIGHT, 1, 0);
+            
+            // Can move both left and right (or neither, for some reason)
+            if(canMoveLeft==canMoveRight)
+            {
+                // Don't change direction if already facing left or right
+                if(!(Ghost_Dir==DIR_LEFT || Ghost_Dir==DIR_RIGHT))
+                    Ghost_Dir=Choose(DIR_LEFT, DIR_RIGHT);
+            }
+            // Can only move left
+            else if(canMoveLeft)
+                Ghost_Dir=DIR_LEFT;
+            // Can only move right
+            else
+                Ghost_Dir=DIR_RIGHT;
+        }
+        
+        // Half a tile off vertically
+        {
+            // Fix direction
+            bool canMoveUp=Ghost_CanMove(DIR_UP, 1, 0);
+            bool canMoveDown=Ghost_CanMove(DIR_DOWN, 1, 0);
+            
+            // Can move both up and down (or neither, for some reason)
+            if(canMoveUp==canMoveDown)
+            {
+                // Don't change direction if already facing up or down
+                if(!(Ghost_Dir==DIR_UP || Ghost_Dir==DIR_DOWN))
+                    Ghost_Dir=Choose(DIR_UP, DIR_DOWN);
+            }
+            // Can only move up
+            else if(canMoveUp)
+                Ghost_Dir=DIR_UP;
+            // Can only move down
+            else
+                Ghost_Dir=DIR_DOWN;
+        }
+        
+        walkCounter=Floor(8/step);
+    }
+    
     if(walkCounter==0)
     {
         // Snap to the grid and possibly turn
@@ -1232,20 +1435,22 @@ float Ghost_HaltingWalk4(int counter, int step, int rate, int homing, int hunger
             if(Rand(16)<haltRate)
             {
                 haltCounter=haltTime;
+                __Ghost_Flags=tempFlags;
                 return haltCounter;
             }
         }
     }
-
+    
     // Turn around after hitting Link
     else if(Link->Action==LA_GOTHURTLAND && Abs(Ghost_X-Link->X)<16 && Abs(Ghost_Y-Link->Y)<16)
     {
         Ghost_Dir^=1;
         walkCounter=Floor(16/step)-walkCounter;
     }
-
+    
     walkCounter--;
     Ghost_Move(Ghost_Dir, step, 0);
+    __Ghost_Flags=tempFlags;
     if(walkCounter>0)
         return walkCounter/10000;
     else
@@ -1294,6 +1499,7 @@ void Ghost_Transform(ffc this, npc ghost, int combo, int cset, int tileWidth, in
         Ghost_CSet=cset;
         this->CSet=cset;
         ghost->CSet=cset;
+
     }
 
     if(tileWidth>0)
@@ -1395,10 +1601,10 @@ void Ghost_SetHitOffsets(npc ghost, float top, float bottom, float left, float r
     __Ghost_YOffsets=(top<<8)+bottom;
 }
 
-void Ghost_StoreDefenses(npc ghost, int storedDefese)
+void Ghost_StoreDefenses(npc ghost, int storedDefense)
 {
     for(int i=0; i<18; i++)
-        storedDefese[i]=ghost->Defense[i];
+        storedDefense[i]=ghost->Defense[i];
 }
 
 void Ghost_SetDefenses(npc ghost, int defense)
@@ -1510,6 +1716,7 @@ void AutoGhost()
 
 void CleanUpGhostFFCs()
 {
+    // Hide FFCs when Link is dead
     if(Link->HP<=0)
     {
         ffc f;
@@ -1719,6 +1926,7 @@ bool Ghost_IsInUse(npc ghost)
 // |||| EWEAPON ||||
 // =================
 
+// Fire an eweapon
 eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step, int damage, int sprite, int sound, int flags)
 {
     eweapon wpn=Screen->CreateEWeapon(weaponID);
@@ -1729,25 +1937,27 @@ eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step, int damag
     wpn->Angular=true;
     wpn->Angle=angle;
     SetEWeaponDir(wpn);
-
+    
     if(sprite>=0)
         wpn->UseSprite(sprite);
-
+    
     wpn->Misc[__EWI_FLAGS]=flags|__EWFI_IS_GHZH_EWPN;
-
+    
     if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
         SetEWeaponRotation(wpn);
-
+        
     Game->PlaySound(sound);
-
+    
     return wpn;
 }
 
+// Fire an eweapon aimed based on Link's position
 eweapon FireAimedEWeapon(int weaponID, int x, int y, float angle, int step, int damage, int sprite, int sound, int flags)
 {
     return FireEWeapon(weaponID, x, y, ArcTan(Link->X-x, Link->Y-y)+angle, step, damage, sprite, sound, flags);
 }
 
+// Fire a non-angular eweapon
 eweapon FireNonAngularEWeapon(int weaponID, int x, int y, int direction, int step, int damage, int sprite, int sound, int flags)
 {
     eweapon wpn=Screen->CreateEWeapon(weaponID);
@@ -1771,6 +1981,7 @@ eweapon FireNonAngularEWeapon(int weaponID, int x, int y, int direction, int ste
     return wpn;
 }
 
+// Fire an eweapon larger than 1x1
 eweapon FireBigEWeapon(int weaponID, int x, int y, float angle, int step, int damage, int sprite, int sound, int flags, int width, int height)
 {
     eweapon wpn=FireEWeapon(weaponID, x, y, angle, step, damage, sprite, sound, flags);
@@ -1782,6 +1993,7 @@ eweapon FireBigEWeapon(int weaponID, int x, int y, float angle, int step, int da
     return wpn;
 }
 
+// Fire an eweapon larger than 1x1 aimed based on Link's position
 eweapon FireBigAimedEWeapon(int weaponID, int x, int y, float angle, int step, int damage, int sprite, int sound, int flags, int width, int height)
 {
     eweapon wpn=FireEWeapon(weaponID, x, y, ArcTan(Link->X-x, Link->Y-y)+angle, step, damage, sprite, sound, flags);
@@ -1793,6 +2005,7 @@ eweapon FireBigAimedEWeapon(int weaponID, int x, int y, float angle, int step, i
     return wpn;
 }
 
+// Fire a non-angular eweapon larger than 1x1
 eweapon FireBigNonAngularEWeapon(int weaponID, int x, int y, int direction, int step, int damage, int sprite, int sound, int flags, int width, int height)
 {
     eweapon wpn=FireNonAngularEWeapon(weaponID, x, y, direction, step, damage, sprite, sound, flags);
@@ -1804,6 +2017,7 @@ eweapon FireBigNonAngularEWeapon(int weaponID, int x, int y, int direction, int 
     return wpn;
 }
 
+// Create a dummy eweapon to use as a prototype
 eweapon CreateDummyEWeapon(int weaponID, int step, int damage, int sprite, int sound, int flags)
 {
     eweapon wpn=Screen->CreateEWeapon(weaponID);
@@ -1833,6 +2047,7 @@ eweapon CreateDummyEWeapon(int weaponID, int step, int damage, int sprite, int s
     return wpn;
 }
 
+// Create a dummy eweapon larger than 1x1
 eweapon CreateBigDummyEWeapon(int weaponID, int step, int damage, int sprite, int sound, int flags, int width, int height)
 {
     eweapon wpn=CreateDummyEWeapon(weaponID, step, damage, sprite, sound, flags);
@@ -1843,6 +2058,7 @@ eweapon CreateBigDummyEWeapon(int weaponID, int step, int damage, int sprite, in
     return wpn;
 }
 
+// Set an eweapon's movement type
 void SetEWeaponMovement(eweapon wpn, int type, int arg)
 {
     wpn->Misc[__EWI_XPOS]=wpn->X;
@@ -1886,6 +2102,7 @@ void SetEWeaponMovement(eweapon wpn, int type, int arg)
     }
 }
 
+// Set an eweapon's lifespan
 void SetEWeaponLifespan(eweapon wpn, int type, int arg)
 {
     wpn->Misc[__EWI_LIFESPAN]=type;
@@ -1893,6 +2110,7 @@ void SetEWeaponLifespan(eweapon wpn, int type, int arg)
     wpn->Misc[__EWI_FLAGS]|=__EWFI_IS_GHZH_EWPN;
 }
 
+// Set an eweapon to use a standard death effect
 void SetEWeaponDeathEffect(eweapon wpn, int type, int arg)
 {
     wpn->Misc[__EWI_ON_DEATH]=type;
@@ -1900,14 +2118,16 @@ void SetEWeaponDeathEffect(eweapon wpn, int type, int arg)
     wpn->Misc[__EWI_FLAGS]|=__EWFI_IS_GHZH_EWPN;
 }
 
+// Set an eweapon to spawn more eweapons on death
 void SetEWeaponDeathEffect(eweapon wpn, eweapon prototype, int numShots, int spreadType, float angle)
 {
-    // Cramming four variables into two floats... Ugly, but doable
+    // Combining four variables into two... Ugly, but doable
     wpn->Misc[__EWI_ON_DEATH]=prototype->Misc[__EWI_ID]+(numShots%1000)/10000;
     wpn->Misc[__EWI_ON_DEATH_ARG]=spreadType*100+(WrapAngle(angle)+6.2832);
     wpn->Misc[__EWI_FLAGS]|=__EWFI_IS_GHZH_EWPN;
 }
 
+// Update a weapon's movement, lifespan, and death effects
 void UpdateEWeapon(eweapon wpn)
 {
     // If Link's holding up an item, don't do anything
@@ -1945,6 +2165,7 @@ void UpdateEWeapon(eweapon wpn)
     {
         if(GH_SHADOW_FLICKER!=0)
         {
+            // Draw every other frame
             if((wpn->Misc[__EWI_FLAGS]&__EWFI_SHADOW_FLICKER)==0)
                 wpn->Misc[__EWI_FLAGS]|=__EWFI_SHADOW_FLICKER;
             else
@@ -2014,6 +2235,8 @@ void UpdateEWeapon(eweapon wpn)
                     // Turn toward Link
                     if(diff<wpn->Misc[__EWI_MOVEMENT_ARG] || diff>6.2832-wpn->Misc[__EWI_MOVEMENT_ARG])
                         wpn->Angle=angle2;
+                    
+                    // Can't turn enough to point directly at him...
                     else if(Sign(angle1-angle2)==Sign(diff-PI)) // if angle1>angle2 and diff>pi or angle1<angle2 and diff<pi
                         wpn->Angle+=wpn->Misc[__EWI_MOVEMENT_ARG];
                     else
@@ -2055,10 +2278,12 @@ void UpdateEWeapon(eweapon wpn)
                             if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
                                 SetEWeaponRotation(wpn);
                         }
-                        // Spin while waiting
+                        // Spin in place while waiting
                         else if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
                         {
+                            // Pick the direction based on the timer
                             int dir=-wpn->Misc[__EWI_WORK]&110b;
+                            
                             if(dir==110b)
                                 SetEWeaponRotation(wpn, DIR_UP);
                             else if(dir==100b)
@@ -2070,11 +2295,11 @@ void UpdateEWeapon(eweapon wpn)
                         }
                     }
                 }
-
+                
                 // Random
                 else if(wpn->Misc[__EWI_MOVEMENT]==EWM_RANDOM)
                 {
-                    wpn->Angle+=Randf(2*wpn->Misc[__EWI_MOVEMENT_ARG])-wpn->Misc[__EWI_MOVEMENT_ARG]; // Randf(-arg, arg) doesn't work right...?
+                    wpn->Angle+=Randf(2*wpn->Misc[__EWI_MOVEMENT_ARG])-wpn->Misc[__EWI_MOVEMENT_ARG];
                     SetEWeaponDir(wpn);
                     if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
                         SetEWeaponRotation(wpn);
@@ -2114,11 +2339,12 @@ void UpdateEWeapon(eweapon wpn)
                             if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
                                 SetEWeaponRotation(wpn);
                         }
-                        // Spin while waiting
+                        // Spin in place while waiting
                         else if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
                         {
+                            // Pick the direction based on the timer
                             int dir=-wpn->Misc[__EWI_WORK]&110b;
-
+                            
                             if(dir==110b)
                                 SetEWeaponRotation(wpn, DIR_UP);
                             else if(dir==100b)
@@ -2134,6 +2360,7 @@ void UpdateEWeapon(eweapon wpn)
                 // Veering
                 else
                 {
+                    // Override regular movement
                     int dir=wpn->Misc[__EWI_MOVEMENT]-EWM_VEER;
                     wpn->Misc[__EWI_XPOS]+=(wpn->Step/100)*RadianCos(wpn->Angle);
                     wpn->Misc[__EWI_YPOS]+=(wpn->Step/100)*RadianSin(wpn->Angle);
@@ -2142,11 +2369,11 @@ void UpdateEWeapon(eweapon wpn)
                         wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_WORK];
                     else if(dir==DIR_DOWN)
                         wpn->Misc[__EWI_YPOS]+=wpn->Misc[__EWI_WORK];
-                    if(dir==DIR_LEFT)
+                    else if(dir==DIR_LEFT)
                         wpn->Misc[__EWI_XPOS]-=wpn->Misc[__EWI_WORK];
                     else if(dir==DIR_RIGHT)
                         wpn->Misc[__EWI_XPOS]+=wpn->Misc[__EWI_WORK];
-                    if(dir==DIR_LEFTUP)
+                    else if(dir==DIR_LEFTUP)
                     {
                         wpn->Misc[__EWI_XPOS]-=wpn->Misc[__EWI_WORK]*0.7071;
                         wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_WORK]*0.7071;
@@ -2156,7 +2383,7 @@ void UpdateEWeapon(eweapon wpn)
                         wpn->Misc[__EWI_XPOS]+=wpn->Misc[__EWI_WORK]*0.7071;
                         wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_WORK]*0.7071;
                     }
-                    if(dir==DIR_LEFTDOWN)
+                    else if(dir==DIR_LEFTDOWN)
                     {
                         wpn->Misc[__EWI_XPOS]-=wpn->Misc[__EWI_WORK]*0.7071;
                         wpn->Misc[__EWI_YPOS]+=wpn->Misc[__EWI_WORK]*0.7071;
@@ -2250,24 +2477,37 @@ void UpdateEWeapon(eweapon wpn)
                 {
                     int dir;
                     
+                    // EWM_DRIFT
                     if(wpn->Misc[__EWI_MOVEMENT]<EWM_DRIFT_WAIT)
-                        dir=wpn->Misc[__EWI_MOVEMENT]-EWM_DRIFT;
-                    else
                     {
-                        dir=wpn->Misc[__EWI_MOVEMENT]-EWM_DRIFT_WAIT;
-
-                        // Is the weapon moving?
+                        dir=wpn->Misc[__EWI_MOVEMENT]-EWM_DRIFT;
+                        
+                        // Override regular movement
                         if(wpn->Misc[__EWI_WORK]>=16)
                         {
                             wpn->Misc[__EWI_XPOS]+=(wpn->Step/100)*RadianCos(wpn->Angle);
                             wpn->Misc[__EWI_YPOS]+=(wpn->Step/100)*RadianSin(wpn->Angle);
                         }
-
+                    }
+                    
+                    // EWM_DRIFT_WAIT
+                    else
+                    {
+                        dir=wpn->Misc[__EWI_MOVEMENT]-EWM_DRIFT_WAIT;
+                        
+                        // Is the weapon moving? Override its regular movement if so
+                        if(wpn->Misc[__EWI_WORK]>=16)
+                        {
+                            wpn->Misc[__EWI_XPOS]+=(wpn->Step/100)*RadianCos(wpn->Angle);
+                            wpn->Misc[__EWI_YPOS]+=(wpn->Step/100)*RadianSin(wpn->Angle);
+                        }
+                        
                         // If not, just drift in place
                         else
                             wpn->Misc[__EWI_WORK]++;
                     }
-
+                    
+                    // Drifting
                     if(dir==DIR_UP)
                         wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_MOVEMENT_ARG];
                     else if(dir==DIR_DOWN)
@@ -2302,8 +2542,8 @@ void UpdateEWeapon(eweapon wpn)
                 }
             }
         } // End movement updates
-
-
+        
+        
         // Start lifespan updates
         if(wpn->Misc[__EWI_LIFESPAN]!=0)
         {
@@ -2358,7 +2598,7 @@ void UpdateEWeapon(eweapon wpn)
             // Didn't find it? Print an error, remove the weapon, and return
             if(i==0)
             {
-                int error[]="Failed to find prototype eweapon";
+                int error[]="ghost.zh: Failed to find prototype eweapon";
                 TraceS(error);
                 TraceNL();
                 wpn->DeadState=0;
@@ -2440,6 +2680,7 @@ void UpdateEWeapon(eweapon wpn)
                 // Spin while waiting
                 else if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
                 {
+                    // Pick a direction based on the counter
                     int dir=wpn->Misc[__EWI_ON_DEATH_ARG]&110b;
                     if(dir==110b)
                         SetEWeaponRotation(wpn, DIR_UP);
@@ -2458,6 +2699,7 @@ void UpdateEWeapon(eweapon wpn)
                 FireNonAngularEWeapon(EW_BOMBBLAST, CenterX(wpn)-8, CenterY(wpn)-8, wpn->Dir, 0, wpn->Misc[__EWI_ON_DEATH_ARG], -1, 0, 0);
                 wpn->DeadState=0;
             }
+
 
             // Super explode
             else if(wpn->Misc[__EWI_ON_DEATH]==EWD_SBOMB_EXPLODE)
@@ -2615,8 +2857,14 @@ void UpdateEWeapon(eweapon wpn)
     } // End death effects
 }
 
+// Calls UpdateEWeapon() on every weapon on the screen
 void UpdateEWeapons()
 {
+    // If Link's holding up an item, don't do anything
+    if(Link->Action==LA_HOLD1LAND || Link->Action==LA_HOLD2LAND ||
+       Link->Action==LA_HOLD1WATER || Link->Action==LA_HOLD2WATER)
+        return;
+    
     eweapon wpn;
 
     for(int i=Screen->NumEWeapons(); i>0; i--)
@@ -2626,6 +2874,7 @@ void UpdateEWeapons()
     }
 }
 
+// Set the weapon's direction based on its angle
 void SetEWeaponDir(eweapon wpn)
 {
     float angle=wpn->Angle%6.2832;
@@ -2650,6 +2899,7 @@ void SetEWeaponDir(eweapon wpn)
         wpn->Dir=DIR_RIGHTUP;
 }
 
+// Flip the weapon's sprite to match its direction
 void SetEWeaponRotation(eweapon wpn)
 {
     if(wpn->Angular)
@@ -2680,6 +2930,7 @@ void SetEWeaponRotation(eweapon wpn)
     }
 }
 
+// Flip the weapon's sprite to match the given direction
 void SetEWeaponRotation(eweapon wpn, int direction)
 {
     if(direction==DIR_UP || direction==DIR_RIGHTUP || direction==DIR_LEFTUP)
@@ -2692,11 +2943,13 @@ void SetEWeaponRotation(eweapon wpn, int direction)
         wpn->Flip=4;
 }
 
+// Kill an eweapon, triggering any death effects
 void KillEWeapon(eweapon wpn)
 {
     wpn->Misc[__EWI_FLAGS]|=__EWFI_DEAD;
 }
 
+// Draw a shadow under an eweapon
 void DrawEWeaponShadow(eweapon wpn)
 {
     int x=CenterX(wpn)-8+wpn->DrawXOffset;
@@ -2708,6 +2961,7 @@ void DrawEWeaponShadow(eweapon wpn)
         Screen->DrawTile(1, x, y, GH_SHADOW_TILE, 1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 128);
 }
 
+// Get the standard sprite for this weapon type
 int GetDefaultEWeaponSprite(int weaponID)
 {
     if(weaponID==EW_FIREBALL || weaponID==EW_FIREBALL)
@@ -2768,6 +3022,7 @@ int GetDefaultEWeaponSprite(int weaponID)
         return 0;
 }
 
+// Find the sound normally made by weapons of this type
 int GetDefaultEWeaponSound(int weaponID)
 {
      if(weaponID==EW_FIREBALL || weaponID==EW_FIREBALL2)
@@ -2782,10 +3037,11 @@ int GetDefaultEWeaponSound(int weaponID)
         return 0;
 }
 
+// Use this in a script started on eweapon death to find the weapon that created it
 eweapon GetAssociatedEWeapon(int weaponID)
 {
     eweapon wpn;
-
+    
     for(int i=Screen->NumEWeapons(); i>0; i--)
     {
         wpn=Screen->LoadEWeapon(i);
@@ -2795,17 +3051,19 @@ eweapon GetAssociatedEWeapon(int weaponID)
         if(wpn->Misc[__EWI_ID]==weaponID)
             return wpn;
     }
-
+    
     // Couldn't find it; return an uninitialized weapon
-    eweapon badWpn;
-    return badWpn;
+    eweapon invalidWpn;
+    return invalidWpn;
 }
 
+// Is this a ghost.zh-controlled weapon?
 bool IsGhostZHEWeapon(eweapon wpn)
 {
     return (wpn->Misc[__EWI_FLAGS]&__EWFI_IS_GHZH_EWPN)!=0;
 }
 
+// Is htis a dummy weapon?
 bool IsDummyEWeapon(eweapon wpn)
 {
     return (wpn->Misc[__EWI_FLAGS]&__EWFI_DUMMY_CHECK)==__EWFI_DUMMY_CHECK;
@@ -2817,6 +3075,7 @@ bool IsDummyEWeapon(eweapon wpn)
 // ===============
 
 void StartClock()
+
 {
     __ghzhClockTimer=0;
 }
@@ -2887,10 +3146,11 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
             }
         }
     }
-
+    
+    ghost->Dir=Ghost_Dir;
     __Ghost_PrevX=Ghost_X;
     __Ghost_PrevY=Ghost_Y;
-
+    
     // Set combo
     if((__Ghost_Flags&GHF_8WAY)!=0)
     {
@@ -2907,7 +3167,8 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
         if(this->Data!=Ghost_Data)
             this->Data=Ghost_Data;
     }
-
+    
+    // Resize, if necessary
     if(this->TileWidth!=Ghost_TileWidth)
     {
         this->TileWidth=Ghost_TileWidth;
@@ -2915,7 +3176,7 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
         ghost->HitWidth=16*Ghost_TileWidth;
         ghost->HitXOffset=0;
     }
-
+    
     if(this->TileHeight!=Ghost_TileHeight)
     {
         this->TileHeight=Ghost_TileHeight;
@@ -2923,7 +3184,7 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
         ghost->HitHeight=16*Ghost_TileHeight;
         ghost->HitYOffset=0;
     }
-
+    
     // Draw over if high enough
     if((__Ghost_Flags&GHF_SET_OVERLAY)!=0)
     {
@@ -2932,10 +3193,11 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
         else if(Ghost_Z<GH_DRAW_OVER_THRESHOLD && this->Flags[FFCF_OVERLAY])
             this->Flags[FFCF_OVERLAY]=false;
     }
-
+    
     ghost->HP=Ghost_HP;
-
-    //Set CSet - ghost->CSet can't be forced
+    
+    // Set CSet
+    // ghost->CSet can't be forced
     ghost->CSet=Ghost_CSet;
     if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)!=0)
     {
@@ -2944,7 +3206,7 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
     }
     else if(__Ghost_FlashCounter<=0)
         this->CSet=Ghost_CSet;
-
+    
     // Draw a shadow for fake Z movement
     if((__Ghost_Flags&GHF_FAKE_Z)!=0 && Ghost_Z>0)
     {
@@ -2961,7 +3223,7 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
             else
                 __Ghost_InternalFlags&=~__GHFI_SHADOW_FLICKER;
         }
-
+        
         if(drawShadow)
         {
             int x=Ghost_X+8*(Ghost_TileWidth-1);
@@ -2973,6 +3235,10 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
                 Screen->DrawTile(1, x, y, GH_SHADOW_TILE, 1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 128);
         }
     }
+    
+    // Unset previous frame's flag
+    if((__Ghost_InternalFlags&__GHFI_KNOCKBACK_INTERRUPTED)!=0)
+        __Ghost_InternalFlags&=~__GHFI_KNOCKBACK_INTERRUPTED;
 }
 
 // After waiting: Check whether the enemy was hit, stunned, or killed
@@ -3027,6 +3293,7 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
     return true;
 }
 
+// Does the actual initialization for the init functions
 void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int cset)
 {
     if(useEnemyPos)
@@ -3089,24 +3356,27 @@ void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int 
     __Ghost_Scripts[this->Script>>4]|=1<<(this->Script&1111b);
 }
 
+// Used internally by walk functions to keep the enemy lined up with the grid correctly
 void __Ghost_FixCoords()
 {
-    Ghost_X&=0xF0;
-
+    float newX=(Ghost_X&0xF0);
     if((Ghost_X&8)!=0)
-        Ghost_X+=16;
-
+        newX+=16;
+    Ghost_X=newX;
+    
     if((Screen->Flags[SF_ROOMTYPE]&100b)!=0) // If sideview
     {
-        Ghost_Y&=0xF8;
-        if((Ghost_Y&100b)!=0)
-            Ghost_Y+=8;
+        float newY=(Ghost_Y&0xF8);
+        if((Ghost_Y&4)!=0)
+            newY+=8;
+        Ghost_Y=newY;
     }
     else
     {
-        Ghost_Y&=0xF0;
-        if((Ghost_Y&1000b)!=0)
-            Ghost_Y+=16;
+        float newY=(Ghost_Y&0xF0);
+        if((Ghost_Y&8)!=0)
+            newY+=16;
+        Ghost_Y=newY;
     }
 }
 
@@ -3156,6 +3426,7 @@ int __Ghost_LinedUp(int range, bool eightWay)
     return -1;
 }
 
+// Used by walk functions to pick a new direction
 void __Ghost_NewDir4(int rate, int homing, int hunger)
 {
     int newDir=-1;
@@ -3164,29 +3435,29 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
     {
         // See if any is on the screen
         lweapon bait=LoadLWeaponOf(LW_BAIT);
-
+        
         if(bait->isValid())
         {
-            // Found bait; move toward it
+            // Found bait; try to move toward it
             if(Abs(Ghost_Y-bait->Y)>14)
             {
                 if(bait->Y<Ghost_Y)
                     newDir=DIR_UP;
                 else
                     newDir=DIR_DOWN;
-
+                
                 if(Ghost_CanMove(newDir, 1, 0))
                 {
                     Ghost_Dir=newDir;
                     return;
                 }
             }
-
+            
             if(bait->X<Ghost_X)
                 newDir=DIR_LEFT;
             else
                 newDir=DIR_RIGHT;
-
+            
             if(Ghost_CanMove(newDir, 1, 0))
             {
                 Ghost_Dir=newDir;
@@ -3194,7 +3465,7 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
             }
         }
     } // End hunger check
-
+    
     // Homing?
     if(Rand(256)<homing)
     {
@@ -3205,50 +3476,54 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
             return;
         }
     }
-
+    
     // Check solidity of surrounding combos
     bool combos[4];
     int numDirs;
     int counter;
-
-    if(Ghost_Y>=16 && Screen->ComboS[ComboAt(Ghost_X, Ghost_Y-16)]==0)
+    
+    // Don't bother checking upward in sideview if GHF_NO_FALL isn't set
+    if(!IsSideview() || (__Ghost_Flags&GHF_NO_FALL)!=0)
     {
-        combos[DIR_UP]=true;
-        numDirs++;
+        if(__FullTileWalkable(Ghost_X, Ghost_Y-16))
+        {
+            combos[DIR_UP]=true;
+            numDirs++;
+        }
     }
-
-    if(Ghost_Y<=144 && Screen->ComboS[ComboAt(Ghost_X, Ghost_Y+16)]==0)
+    
+    if(__FullTileWalkable(Ghost_X, Ghost_Y+16))
     {
         combos[DIR_DOWN]=true;
         numDirs++;
     }
-
-    if(Ghost_X>=16 && Screen->ComboS[ComboAt(Ghost_X-16, Ghost_Y)]==0)
+    
+    if(__FullTileWalkable(Ghost_X-16, Ghost_Y))
     {
         combos[DIR_LEFT]=true;
         numDirs++;
     }
-
-    if(Ghost_X<=224 && Screen->ComboS[ComboAt(Ghost_X+16, Ghost_Y)]==0)
+    
+    if(__FullTileWalkable(Ghost_X+16, Ghost_Y))
     {
         combos[DIR_RIGHT]=true;
         numDirs++;
     }
-
+    
     // Trapped?
     if(numDirs==0)
     {
         Ghost_Dir=-1;
         return;
     }
-
+    
     // Pick a direction at random from the ones available
     counter=Rand(numDirs);
     for(int dir=0; dir<4; dir++)
     {
         if(!combos[dir])
             continue;
-
+        
         if(counter==0)
         {
             Ghost_Dir=dir;
@@ -3259,6 +3534,7 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
     }
 }
 
+// Used by walk functions to pick a new direction
 void __Ghost_NewDir8(int rate, int homing, int hunger)
 {
     int newDir=-1;
@@ -3371,6 +3647,7 @@ void __Ghost_NewDir8(int rate, int homing, int hunger)
     }
 }
 
+// Make a copy of the given eweapon, which should be a dummy
 void __CopyEWeapon(eweapon prototype, int centerX, int centerY, float angle)
 {
     eweapon wpn=Screen->CreateEWeapon(prototype->ID);
@@ -3423,4 +3700,24 @@ void __CopyEWeapon(eweapon prototype, int centerX, int centerY, float angle)
 
     if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
         SetEWeaponRotation(wpn);
+}
+
+// Returns true if the only if the full tile at the given location is walkable
+bool __FullTileWalkable(int x, int y)
+{
+    // Offscreen?
+    if(x<0 || y<0 || x>=256 || y>=176)
+        return (__Ghost_Flags&GHF_MOVE_OFFSCREEN)!=0;
+    
+    // Get the exact coordinate of the top-left pixel
+    x-=x%16;
+    y-=y%16;
+    
+    if(Screen->isSolid(x, y) ||
+       Screen->isSolid(x+8, y) ||
+       Screen->isSolid(x, y+8) ||
+       Screen->isSolid(x+8, y+8))
+        return false;
+    
+    return true;
 }
