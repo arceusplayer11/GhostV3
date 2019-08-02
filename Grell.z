@@ -1,4 +1,5 @@
 // import "std.zh"
+// import "string.zh"
 // import "ghost.zh"
 
 // An example of a script that enhances a regular enemy. This will create an electrical field
@@ -13,13 +14,13 @@ ffc script Grell
     void run(int enemyID)
     {
         eweapon electricity;
-        npc grell=GhostInitWait(this, enemyID, true);
-        DrawSpawnAnimation(this, grell);
+        npc grell=Ghost_InitAutoGhost(this, enemyID);
+        Ghost_SpawnAnimationPuff(this, grell);
         
         while(true)
         {
             // If Link is close and grell isn't stunned, discharge electricity
-            if(Distance(Link->X, Link->Y, grell->X, grell->Y)<32 && grell->Stun==0)
+            if(Distance(Link->X, Link->Y, grell->X, grell->Y)<32 && grell->Stun==0 && ClockIsActive()==0)
             {
                 electricity=FireBigEWeapon(EW_SCRIPT1, grell->X-8, grell->Y-8, 0, 0, 8, GRL_ELECTRICITY_SPRITE, GRL_ELECTRICITY_SFX, EWF_UNBLOCKABLE|EWF_FLICKER, 2, 2);
                 
@@ -28,7 +29,7 @@ ffc script Grell
                 {
                     electricity->X=grell->X-8;
                     electricity->Y=grell->Y-8;
-                    if(!GrlWaitframe(grell, false))
+                    if(!GrlWaitframe(this, grell, false))
                     {
                         // Make sure it wasn't removed in the last frame
                         if(electricity->isValid())
@@ -42,17 +43,17 @@ ffc script Grell
                 
                 // Don't fire again for at least two seconds
                 for(int i=0; i<120; i++)
-                    GrlWaitframe(grell, true);
+                    GrlWaitframe(this, grell, true);
             }
             
-            GrlWaitframe(grell, true);
+            GrlWaitframe(this, grell, true);
         }
     }
     
-    bool GrlWaitframe(npc grell, bool quitOnDeath)
+    bool GrlWaitframe(ffc this, npc grell, bool quitOnDeath)
     {
-        // No need to use a GhostWaitframe function with this one
-        Waitframe();
+        Ghost_Waitframe2(this, grell, true, quitOnDeath);
+        
         if(grell->HP<=0)
         {
             if(quitOnDeath)

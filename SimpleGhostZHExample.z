@@ -1,4 +1,5 @@
 // import "std.zh"
+// import "string.zh"
 // import "ghost.zh"
 
 // A simple enemy that moves straight toward Link, periodically shooting
@@ -18,8 +19,8 @@ ffc script SimpleGhostZHExample
         int timer;
         
         // Initialize
-        ghost=GhostInitCreate(this, SGZE_ENEMY_ID, GHF_NORMAL|GHF_4WAY);
-        DrawSpawnAnimation(this, ghost);
+        ghost=Ghost_InitCreate(this, SGZE_ENEMY_ID, GHF_NORMAL|GHF_4WAY);
+        Ghost_SpawnAnimationPuff(this, ghost);
         timer=Rand(120, 180);
         
         while(true)
@@ -28,20 +29,20 @@ ffc script SimpleGhostZHExample
             timer--;
             if(timer<=0)
             {
-                timer=Rand(90, 150); // 30 frames less since they'll pause for half a second afterward
+                timer=Rand(90, 150); // 30 frames less since it'll pause for half a second afterward
                 
                 // Only one plays a sound, so it's not played twice
-                FireAimedEWeapon(EW_SCRIPT1, this->X, this->Y, 0.35, 200, 2, SGZE_FIREBALL_SPRITE, SFX_FIREBALL, 0);
-                FireAimedEWeapon(EW_SCRIPT1, this->X, this->Y, -0.35, 200, 2, SGZE_FIREBALL_SPRITE, 0, 0);
+                FireAimedEWeapon(EW_SCRIPT1, Ghost_X, Ghost_Y, 0.35, 200, 2, SGZE_FIREBALL_SPRITE, SFX_FIREBALL, 0);
+                FireAimedEWeapon(EW_SCRIPT1, Ghost_X, Ghost_Y, -0.35, 200, 2, SGZE_FIREBALL_SPRITE, 0, 0);
                 
-                // Change appearance and stop moving for a moment when firing
-                Set4WayCombo(this, ghost, SGZE_FIRE_COMBO);
-                GhostWaitframesF(this, ghost, true, true, 30);
-                Set4WayCombo(this, ghost, SGZE_WALK_COMBO);
+                // Change combo and stop moving for a moment when firing
+                Ghost_Data=SGZE_FIRE_COMBO;
+                Ghost_Waitframes(this, ghost, true, true, 30);
+                Ghost_Data=SGZE_WALK_COMBO;
             }
             
-            MoveTowardLink(this, ghost, 0.25, 2);
-            GhostWaitframeF(this, ghost, true, true);
+            Ghost_MoveTowardLink(0.25, 2);
+            Ghost_Waitframe(this, ghost, true, true);
         }
     }
 }   

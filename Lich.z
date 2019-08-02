@@ -1,4 +1,5 @@
 // import "std.zh"
+// import "string.zh"
 // import "ghost.zh"
 
 // Moves up and down the left side of the screen creating Stalfos and firing a variety of projectiles.
@@ -7,7 +8,9 @@
 const int LICH_FIREBALL_SPRITE_1=11;
 const int LICH_FIREBALL_SPRITE_2=89;
 const int LICH_FIREBALL_SPRITE_3=17;
-const int LICH_STALFOS_BOMB_SPRITE=88;
+const int LICH_SKULL_BOMB_SPRITE=88;
+const int LICH_STALFOS_SPAWNER_SPRITE=98;
+const int LICH_SKULL_BOMB_SFX=62;
 const int LICH_COMBO=25;
 const int LICH_ATTACK_COMBO=26;
 
@@ -17,19 +20,25 @@ ffc script Lich
     {
         npc ghost;
         
-        ghost=GhostInitWait(this, 1, false);
-        DrawSpawnAnimation(this, ghost);
-        SetOffsets(this, ghost, 0, 0, 0, 16); // The right column is just the hand
+        ghost=Ghost_InitWait(this, 1, false, GHF_IGNORE_ALL_TERRAIN);
+        Ghost_SpawnAnimationPuff(this, ghost);
+        Ghost_SetHitOffsets(ghost, 0, 0, 0, 16); // The right column is just the hand
+        
+        // Skull bomb splits into five smaller skulls on impact
+        eweapon prototype=CreateDummyEWeapon(EW_SCRIPT1, 150, 0, LICH_STALFOS_SPAWNER_SPRITE,
+                                             LICH_SKULL_BOMB_SFX, EWF_SHADOW|EWF_NO_COLLISION);
+        SetEWeaponMovement(prototype, EWM_THROW, 1.5);
+        SetEWeaponDeathEffect(prototype, EWD_SPAWN_NPC, NPC_STALFOS1);
         
         // Wait for three seconds initially, unless Link comes too close or attacks
-        for(int i=0; i<180 && Distance(this->X, this->Y, Link->X, Link->Y)>64 && !GotHit(ghost); i++)
+        for(int i=0; i<180 && Distance(Ghost_X+16, Ghost_Y+16, Link->X, Link->Y)>64 && !Ghost_GotHit(); i++)
             LichWaitframe(this, ghost, 1);
         
         while(true)
         {
             // If there are fewer than three Stalfos, create some more
             if(Screen->NumNPCs()<4)
-                CreateStalfos(this, ghost); 
+                CreateStalfos(this, ghost, prototype); 
             // Otherwise, pick an attack pattern at random
             else if(Rand(2)==0)
                 DoAttack1(this, ghost);
@@ -47,16 +56,18 @@ ffc script Lich
     {
         eweapon wpn;
         
-        this->Data=LICH_ATTACK_COMBO;
+        Ghost_Data=LICH_ATTACK_COMBO;
         
         // Shoot a fireball every 1/4 second for 2 seconds
         for(int i=0; i<8; i++)
         {
             // Alternate between aiming upward and downward
             if(i%2==1)
-                wpn=FireEWeapon(EW_FIREBALL, this->X+24, this->Y+16, -PI/4, 250, 2, LICH_FIREBALL_SPRITE_1, SFX_FIREBALL, EWF_ROTATE); 
+                wpn=FireEWeapon(EW_FIREBALL, Ghost_X+24, Ghost_Y+16, -PI/4, 250, 2,
+                                LICH_FIREBALL_SPRITE_1, SFX_FIREBALL, EWF_ROTATE); 
             else
-                wpn=FireEWeapon(EW_FIREBALL, this->X+24, this->Y+16, PI/4, 250, 2, LICH_FIREBALL_SPRITE_1, SFX_FIREBALL, EWF_ROTATE);
+                wpn=FireEWeapon(EW_FIREBALL, Ghost_X+24, Ghost_Y+16, PI/4, 250, 2,
+                                LICH_FIREBALL_SPRITE_1, SFX_FIREBALL, EWF_ROTATE);
             
             // Fireballs accelerate to the right, then stop after 3/4 second and aim at Link
             SetEWeaponMovement(wpn, EWM_VEER_RIGHT, 0.075);
@@ -66,7 +77,7 @@ ffc script Lich
             LichWaitframe(this, ghost, 15);
         }
         
-        this->Data=LICH_COMBO;
+        Ghost_Data=LICH_COMBO;
     }
     
     
@@ -76,15 +87,17 @@ ffc script Lich
     {
         eweapon wpn;
         
-        this->Data=LICH_ATTACK_COMBO;
+        Ghost_Data=LICH_ATTACK_COMBO;
         
         // Explosive homing projectiles
-        wpn=FireEWeapon(EW_SCRIPT1, this->X+24, this->Y+8, -PI/8, 150, 2, LICH_FIREBALL_SPRITE_2, SFX_FIREBALL, 0);
+        wpn=FireEWeapon(EW_SCRIPT1, Ghost_X+24, Ghost_Y+8, -PI/8, 150, 2,
+                        LICH_FIREBALL_SPRITE_2, SFX_FIREBALL, 0);
         SetEWeaponMovement(wpn, EWM_HOMING_REAIM, 4);
         SetEWeaponLifespan(wpn, EWL_NEAR_LINK, 16);
         SetEWeaponDeathEffect(wpn, EWD_EXPLODE, 4);
         
-        wpn=FireEWeapon(EW_SCRIPT1, this->X+24 , this->Y+24, PI/8, 150, 2, LICH_FIREBALL_SPRITE_2, 0, 0);
+        wpn=FireEWeapon(EW_SCRIPT1, Ghost_X+24 , Ghost_Y+24, PI/8, 150, 2,
+                        LICH_FIREBALL_SPRITE_2, 0, 0);
         SetEWeaponMovement(wpn, EWM_HOMING_REAIM, 4);
         SetEWeaponLifespan(wpn, EWL_NEAR_LINK, 16);
         SetEWeaponDeathEffect(wpn, EWD_EXPLODE, 4);
@@ -92,38 +105,38 @@ ffc script Lich
         // One waving fireball every 1/2 second for 3 seconds
         for(int i=0; i<6; i++)
         {
-            wpn=FireEWeapon(EW_SCRIPT1, this->X+24, this->Y+16, 0, 300, 2, LICH_FIREBALL_SPRITE_3, SFX_FIREBALL, 0);
+            wpn=FireEWeapon(EW_SCRIPT1, Ghost_X+24, Ghost_Y+16, 0, 300, 2,
+                            LICH_FIREBALL_SPRITE_3, SFX_FIREBALL, 0);
             SetEWeaponMovement(wpn, EWM_SINE_WAVE, 24);
             
             LichWaitframe(this, ghost, 30);
         }
         
-        this->Data=LICH_COMBO;
+        Ghost_Data=LICH_COMBO;
     }
     
     
-    // Throw some projectiles that turn into Stalfos when they hit the ground.
-    void CreateStalfos(ffc this, npc ghost)
+    // Throw some projectiles that spawn Stalfos when they hit the ground.
+    void CreateStalfos(ffc this, npc ghost, eweapon prototype)
     {
         eweapon wpn;
         
         // Wait until near the vertical center of the screen
-        while(Abs(this->Y-64)>8)
+        while(Abs(Ghost_Y-64)>8)
             LichWaitframe(this, ghost, 1);
         
-        this->Data=LICH_ATTACK_COMBO;
+        Ghost_Data=LICH_ATTACK_COMBO;
         
-        for(int i=0; i<5; i++)
-        {
-            // Projectiles are thrown at a random height and angle, and they spawn Stalfos wherever they land
-            wpn=FireEWeapon(EW_SCRIPT1, this->X+24, this->Y+16, Rand(-60, 60)/100, 100, 2, LICH_STALFOS_BOMB_SPRITE, 0, EWF_SHADOW);
-            wpn->CollDetection=false;
-            SetEWeaponMovement(wpn, EWM_THROW, Rand(25, 60)/10);
-            SetEWeaponDeathEffect(wpn, EWD_SPAWN_NPC, NPC_STALFOS1);
-        }
+        // Projectiles are thrown at a random height and angle, and they split into
+        // five parts when they land
+        wpn=FireEWeapon(EW_SCRIPT1, Ghost_X+24, Ghost_Y+16, Rand(-45, 45)/100, 100, 2,
+                        LICH_SKULL_BOMB_SPRITE, 0, EWF_SHADOW|EWF_NO_COLLISION);
+        SetEWeaponMovement(wpn, EWM_THROW, Rand(25, 50)/10);
+        SetEWeaponDeathEffect(wpn, prototype, 5, EWD_RANDOM, 0);
+        
         LichWaitframe(this, ghost, 10);
         
-        this->Data=LICH_COMBO;
+        Ghost_Data=LICH_COMBO;
     }
 
 
@@ -132,17 +145,22 @@ ffc script Lich
         while(numFrames-->0)
         {
             // Update movement - float around the side of the screen
-            if(this->Y<64)
-                this->Vy=Min(this->Vy+0.02, 2);
+            if(Ghost_Y<64)
+                Ghost_Vy=Min(Ghost_Vy+0.02, 2);
             else
-                this->Vy=Max(this->Vy-0.02, -2);
+                Ghost_Vy=Max(Ghost_Vy-0.02, -2);
             
-            if(this->X<56)
-                this->Vx=Min(this->Vx+0.015, 1.5);
+            if(Ghost_X<56)
+                Ghost_Vx=Min(Ghost_Vx+0.015, 1.5);
             else
-                this->Vx=Max(this->Vx-0.015, -1.5);
-    
-            GhostWaitframeF(this, ghost, true, true);
+                Ghost_Vx=Max(Ghost_Vx-0.015, -1.5);
+            
+            // Clear weapons on death
+            if(!Ghost_Waitframe(this, ghost, true, false))
+            {
+                Screen->ClearSprites(SL_EWPNS);
+                Quit();
+            }
         }    
     }
 }
