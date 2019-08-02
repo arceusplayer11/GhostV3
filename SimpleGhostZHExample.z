@@ -3,35 +3,43 @@
 
 // A simple enemy that moves straight toward Link, periodically shooting
 // fireballs off to his sides. Not much of an enemy, just a script example.
-// Appears on the first indoor screen in the demo quest.
+// Appears on screen 1 in the demo.
+
+const int SGZE_ENEMY_ID=177;
+const int SGZE_WALK_COMBO=40;
+const int SGZE_FIRE_COMBO=44;
+const int SGZE_FIREBALL_SPRITE=38;
 
 ffc script SimpleGhostZHExample
 {
     void run()
     {
         npc ghost;
-        int angle;
         int timer;
-        float moveX;
-        float moveY;
         
-        ghost=GhostInitCreate(this, 177);
-        SetFlags(this, GHF_NORMAL);
+        // Initialize
+        ghost=GhostInitCreate(this, SGZE_ENEMY_ID, GHF_NORMAL|GHF_4WAY);
+        timer=Rand(120, 180);
         
-        timer=Rand2(120, 180);
-        for(int i=0; true; i++)
+        while(true)
         {
             // Fire every 2-3 seconds
-            if(i==timer)
+            timer--;
+            if(timer<=0)
             {
-                i=0;
-                timer=Rand2(120, 180);
-                FireAimedEWeapon(EW_SCRIPT1, this->X, this->Y, 0.35, 200, 2, true, 17, false, SFX_FIREBALL);
-                FireAimedEWeapon(EW_SCRIPT1, this->X, this->Y, -0.35, 200, 2, true, 17, false, 0);
+                timer=Rand(90, 150); // 30 frames less since they'll pause for half a second afterward
+                
+                // Only one plays a sound, so it's not played twice
+                FireAimedEWeapon(EW_SCRIPT1, this->X, this->Y, 0.35, 200, 2, SGZE_FIREBALL_SPRITE, SFX_FIREBALL, 0);
+                FireAimedEWeapon(EW_SCRIPT1, this->X, this->Y, -0.35, 200, 2, SGZE_FIREBALL_SPRITE, 0, 0);
+                
+                // Change appearance and stop moving for a moment when firing
+                Set4WayCombo(this, ghost, SGZE_FIRE_COMBO);
+                GhostWaitframesF(this, ghost, true, true, 30);
+                Set4WayCombo(this, ghost, SGZE_WALK_COMBO);
             }
             
             MoveTowardLink(this, ghost, 0.25, 2);
-            
             GhostWaitframeF(this, ghost, true, true);
         }
     }

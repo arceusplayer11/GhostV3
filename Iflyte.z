@@ -3,45 +3,43 @@
 
 // Moves left and right for several seconds, regularly shooting splitting
 // fireballs. After that, rolls into a ball and bounces around the screen.
-// Used as the final boss in the demo quest.
+// Appears on screen 5 in the demo quest.
 
 const int IFL_HAND1_FFC=2;
 const int IFL_HAND2_FFC=3;
+
 const int IFL_WALK_COMBO=28;
 const int IFL_ROLL_COMBO=31;
 const int IFL_HAND1_COMBO=29;
 const int IFL_HAND2_COMBO=30;
-const int IFL_CLEAR_COMBO=27; // Using combo 0 messes up the hands' positions
-const int IFL_BOSS_MIDI=11;
-const int IFL_VICTORY_MIDI=20;
+
 const int IFL_FIRE_SPRITE=21;
 const int IFL_FIREBALL_SPRITE=17;
-const int IFL_ROLLING_NPC=182;
+
+const int IFL_BATTLE_MIDI=11;
+const int IFL_DUNGEON_MIDI=5;
 
 ffc script Iflyte
 {
     void run()
     {
-        ffc hand1;
-        ffc hand2;
+        ffc hand1=Screen->LoadFFC(IFL_HAND1_FFC);
+        ffc hand2=Screen->LoadFFC(IFL_HAND2_FFC);
         npc ghost;
         
-        hand1=Screen->LoadFFC(IFL_HAND1_FFC);
-        hand2=Screen->LoadFFC(IFL_HAND2_FFC);
+        // Make the hands invisible initially
+        hand1->Data=0;
+        hand2->Data=0;
         
-        // Make hands invisible initially.
-        // Don't use combo 0; it messes up the hands' positions
-        hand1->Data=IFL_CLEAR_COMBO;
-        hand2->Data=IFL_CLEAR_COMBO;
-        
-        // Initialize and appear
         ghost=GhostInitWait(this, 1, false);
         hand1->Data=IFL_HAND1_COMBO;
         hand2->Data=IFL_HAND2_COMBO;
         
-        SetHP(this, ghost, ghost->HP+1000); // Needed for custom death animation
+        // Add extra HP so he'll stay alive until the end of his death animation;
+        // otherwise, the item would appear too soon
+        SetHP(this, ghost, ghost->HP+1000);
         
-        Game->PlayMIDI(IFL_BOSS_MIDI);
+        Game->PlayMIDI(IFL_BATTLE_MIDI);
         
         while(true)
         {
@@ -50,17 +48,21 @@ ffc script Iflyte
         }
     }
     
+    
+    // Walk back and forth at the top of the screen, regularly shooting fireballs.
     void WalkAndShoot(ffc this, npc ghost)
     {
         eweapon wpn;
         int time;
         
+        // Start moving
+        this->Vy=0;
         if(this->X>=104) // X=104 is centered
             this->Vx=-1.5;
         else
             this->Vx=1.5;
             
-        time=Rand2(180, 480); // 3-8 seconds
+        time=Rand(180, 480); // 3-8 seconds
         
         for(int i=0; i<time; i++)
         {
@@ -85,37 +87,40 @@ ffc script Iflyte
         }
     }
     
+    
+    // Roll into an invincible ball and bounce around the room.
     void RollAttack(ffc this, npc ghost)
     {
-        ffc hand1;
-        ffc hand2;
+        ffc hand1=Screen->LoadFFC(IFL_HAND1_FFC);
+        ffc hand2=Screen->LoadFFC(IFL_HAND2_FFC);
         float angle;
         int bounces;
         int numBounces;
-        npc ghost2;
-        
-        hand1=Screen->LoadFFC(IFL_HAND1_FFC);
-        hand2=Screen->LoadFFC(IFL_HAND2_FFC);
         
         // Become invincible while rolling
-        ghost2=Screen->CreateNPC(IFL_ROLLING_NPC);
-        SwapGhost(ghost, ghost2, false);
+        SetAllDefenses(ghost, NPCDT_BLOCK);
         
         // Change into a ball
-        Transform(this, ghost2, IFL_ROLL_COMBO, -1, 2, -1);
-        hand1->Data=IFL_CLEAR_COMBO;
-        hand2->Data=IFL_CLEAR_COMBO;
+        Transform(this, ghost, IFL_ROLL_COMBO, -1, 2, -1);
+        hand1->Data=0;
+        hand2->Data=0;
+        ghost->Damage+=2;
         
-        // Start moving at a random angle
-        angle=Rand(45)+22.5+90*Rand(2);
+        // Start moving at a random angle, constrained to a certain range;
+        // if it's too horizontal or too vertical, it's easy to avoid
+        angle=Rand(30, 60)+90*Rand(2);// That's 30-60 or 120-150
+        // If Link's at the top of the screen, roll upward first
+        if(Link->Y<=this->Y)
+            angle+=180;
         this->Vx=VectorX(5, angle);
         this->Vy=VectorY(5, angle);
         
         // Bounce off the walls a certain number of times
         bounces=0;
-        numBounces=Rand2(15, 25);
+        numBounces=Rand(15, 25);
         while(true)
         {
+            // If near the edge of the screen, reverse direction
             if(this->X<=32 || this->X>=192)
             {
                 bounces++;
@@ -132,19 +137,30 @@ ffc script Iflyte
             if(bounces>=numBounces && Abs(this->Y-48)<3)
                 break;
             
-            IflWaitframe(this, ghost2);
+            IflWaitframe(this, ghost);
         }
         
         // Change back
-        ReplaceGhost(ghost2, ghost, false);
+        SetAllDefenses(ghost, NPCDT_NONE);
+        ghost->Defense[NPCD_BRANG]=NPCDT_BLOCK;
+        ghost->Defense[NPCD_FIRE]=NPCDT_BLOCK;
+        ghost->Defense[NPCD_HOOKSHOT]=NPCDT_BLOCK;
+        ghost->Defense[NPCD_MAGIC]=NPCDT_BLOCK;
+        ghost->Defense[NPCD_ARROW]=NPCDT_BLOCK;
+        ghost->Damage-=2;
         
-        Transform(this, ghost, 28, -1, 3, -1);
+        Transform(this, ghost, IFL_WALK_COMBO, -1, 3, -1);
         hand1->Data=IFL_HAND1_COMBO;
+        hand1->X=this->X-16;
+        hand1->Y=this->Y+16;
         hand2->Data=IFL_HAND2_COMBO;
+        hand2->X=this->X+48;
+        hand2->Y=this->Y+16;
         
         this->Vx=0;
         this->Vy=0;
     }
+    
     
     void IflWaitframe(ffc this, npc ghost)
     {
@@ -153,33 +169,12 @@ ffc script Iflyte
         
         GhostWaitframeF(this, ghost, false, false);
         
-        // Use 1000 HP as 0 for death animation
+        // Check if dead - use 1000 HP as 0
         if(ghost->HP<=1000)
         {
-            // Randomly placed harmless explosions
-            lweapon explosion;
-            this->CSet=this->Misc[GHI_BASE_CSET];
-            hand1->CSet=this->Misc[GHI_BASE_CSET];
-            hand2->CSet=this->Misc[GHI_BASE_CSET];
-            ghost->Y=176;
-            this->Vx=0;
-            this->Vy=0;
-            for(int i=0; i<10; i++)
-            {
-                explosion=Screen->CreateLWeapon(LW_BOMBBLAST);
-                explosion->X=Rand2(this->X, this->X+16*this->TileWidth);
-                explosion->Y=Rand2(this->Y, this->Y+32);
-                explosion->CollDetection=false;
-                Waitframes(30);
-            }
+            Die(this, ghost);
             
-            // Kill NPC and clear combos
-            ghost->HP=-1000;
-            this->Data=0;
-            hand1->Data=0;
-            hand2->Data=0;
-            
-            Game->PlayMIDI(IFL_VICTORY_MIDI);
+            Game->PlayMIDI(IFL_DUNGEON_MIDI);
             Quit();
         }
         // Make hands flash along with body
@@ -188,5 +183,38 @@ ffc script Iflyte
             hand1->CSet=this->CSet;
             hand2->CSet=this->CSet;
         }
+    }
+    
+    
+    // Show a death animation, then remove the enemy.
+    void Die(ffc this, npc ghost)
+    {
+        lweapon explosion;
+        ffc hand1=Screen->LoadFFC(IFL_HAND1_FFC);
+        ffc hand2=Screen->LoadFFC(IFL_HAND2_FFC);
+        
+        // Stop moving, stop flashing, turn off collision detection
+        ghost->CollDetection=false;
+        this->CSet=this->Misc[GHI_BASE_CSET];
+        hand1->CSet=this->Misc[GHI_BASE_CSET];
+        hand2->CSet=this->Misc[GHI_BASE_CSET];
+        this->Vx=0;
+        this->Vy=0;
+        
+        // Randomly placed harmless explosions - one every 1/4 second for 4 seconds
+        for(int i=0; i<16; i++)
+        {
+            explosion=Screen->CreateLWeapon(LW_BOMBBLAST);
+            explosion->X=Rand(this->X, this->X+16*this->TileWidth);
+            explosion->Y=Rand(this->Y, this->Y+16*this->TileHeight);
+            explosion->CollDetection=false;
+            Waitframes(15);
+        }
+        
+        // Kill NPC and clear combos
+        ghost->HP=-1000;
+        this->Data=0;
+        hand1->Data=0;
+        hand2->Data=0;
     }
 }

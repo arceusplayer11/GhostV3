@@ -2,6 +2,7 @@
 // import "ghost.zh"
 
 // Spawns two invincible slime enemies and jumps back and forth between them.
+// Appears on screen 3 in the demo.
 
 const int TWA_CORE_ID=178;
 const int TWA_SLIME_ID=179;
@@ -15,9 +16,11 @@ ffc script TwinAmoeba
         npc slime[2];
         int currentSlime;
         
-        ghost=GhostInitWait2(this, TWA_CORE_ID, pos, true);
-        SetFlags(this, GHF_NO_FALL);
+        // Initialize
+        ghost=GhostInitWait2(this, TWA_CORE_ID, pos, true, GHF_NO_FALL);
         currentSlime=0;
+        
+        // Create the first slime at the core's position; the second is randomly placed
         slime[0]=Screen->CreateNPC(TWA_SLIME_ID);
         slime[0]->X=ghost->X;
         slime[0]->Y=ghost->Y;
@@ -29,7 +32,7 @@ ffc script TwinAmoeba
             if(GotHit(this))
             {
                 SlimeJump(this, ghost, slime[currentSlime], slime[currentSlime^1], true);
-                currentSlime^=1;
+                currentSlime^=1; // Switch index between 0 and 1
             }
             // If Link is too close and the other slime is farther, jump over
             else if(Distance(ghost->X, ghost->Y, Link->X, Link->Y)<32)
@@ -38,69 +41,69 @@ ffc script TwinAmoeba
                     currentSlime^=1;
             }
             
-            // On death, kill the slimes
-            if(!GhostWaitframeM(this, ghost, slime[currentSlime]->X, slime[currentSlime]->Y, 0, true, false))
-            {
-                slime[0]->HP=0;
-                slime[1]->HP=0;
-                Quit();
-            }
+            TwaWaitframe(this, ghost, slime[currentSlime]->X, slime[currentSlime]->Y, 0, slime[0], slime[1]);
         }
     }
     
-    // Jump from one slime to the other
+    
+    // Jump from one slime to the other. If not forced, it won't jump if the other slime is
+    // closer to Link. Returns true if it jumps, false if not.
     bool SlimeJump(ffc this, npc ghost, npc startSlime, npc destSlime, bool force)
     {
-        float xPos;
-        float yPos;
-        float zPos;
-        float totalDist;
-        float currentDist;
-        float angle;
+        float xPos=this->X;
+        float yPos=this->Y;
+        float zPos=0;
         int startX;
         int startY;
         int targetX;
         int targetY;
+        float angle;
+        float totalDist;
+        float currentDist;
         
-        xPos=this->X;
-        yPos=this->Y;
-        
-        // If not forced, see if the destination slime is closer than the starting slime.
-        // If so, don't do anything.
+        // If not forced, see if the destination slime is closer than the starting slime;
+        // If so, don't do anything
         if(!force)
         {
             if(Distance(startSlime->X, startSlime->Y, Link->X, Link->Y)>=Distance(destSlime->X, destSlime->Y, Link->X, Link->Y))
                 return false;
         }
         
+        // Jump
         do
         {
-            // Move from toward target from start
+            // Get the current position of the two slimes
             startX=startSlime->X;
             startY=startSlime->Y;
             targetX=destSlime->X;
             targetY=destSlime->Y;
             
+            // Move toward one from the other
             angle=Angle(xPos, yPos, targetX, targetY);
             xPos+=VectorX(TWA_JUMP_SPEED, angle);
             yPos+=VectorY(TWA_JUMP_SPEED, angle);
             
-            // Set height
+            // Set height based on how much of the total distance has been covered
             totalDist=Distance(startX, startY, targetX, targetY);
             currentDist=Distance(xPos, yPos, targetX, targetY);
             zPos=totalDist/2*Sin(currentDist/totalDist*180);
             
-            // If dead, kill slimes
-            if(!GhostWaitframeM(this, ghost, xPos, yPos, zPos, true, false))
-            {
-                startSlime->HP=0;
-                destSlime->HP=0;
-                Quit();
-            }
-            
+            TwaWaitframe(this, ghost, xPos, yPos, zPos, startSlime, destSlime);
         } while(currentDist>1);
         
         return true;
+    }
+    
+    
+    void TwaWaitframe(ffc this, npc ghost, int x, int y, int z, npc slime1, npc slime2)
+    {
+        // If the core is dead, kill the slimes as well
+        if(!GhostWaitframeM(this, ghost, x, y, z, true, false))
+        {
+            slime1->HP=0;
+            slime2->HP=0;
+            Quit();
+        }
     }
 }
 
