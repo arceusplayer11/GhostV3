@@ -20,15 +20,17 @@ ffc script Grell
         while(true)
         {
             // If Link is close and grell isn't stunned, discharge electricity
-            if(Distance(Link->X, Link->Y, grell->X, grell->Y)<32 && grell->Stun==0 && ClockIsActive()==0)
+            if(Distance(Link->X, Link->Y, Ghost_X, Ghost_Y)<32 && grell->Stun==0 && ClockIsActive()==0)
             {
-                electricity=FireBigEWeapon(EW_SCRIPT1, grell->X-8, grell->Y-8, 0, 0, 8, GRL_ELECTRICITY_SPRITE, GRL_ELECTRICITY_SFX, EWF_UNBLOCKABLE|EWF_FLICKER, 2, 2);
+                electricity=FireBigEWeapon(EW_SCRIPT1, Ghost_X-8, Ghost_Y-8, 0, 0, 8,
+                                           GRL_ELECTRICITY_SPRITE, GRL_ELECTRICITY_SFX,
+                                           EWF_UNBLOCKABLE|EWF_FLICKER, 2, 2);
                 
                 // Keep it positioned until it vanishes
                 for(int i=0; i<90 && electricity->isValid(); i++)
                 {
-                    electricity->X=grell->X-8;
-                    electricity->Y=grell->Y-8;
+                    electricity->X=Ghost_X-8;
+                    electricity->Y=Ghost_Y-8;
                     if(!GrlWaitframe(this, grell, false))
                     {
                         // Make sure it wasn't removed in the last frame
@@ -54,7 +56,7 @@ ffc script Grell
     {
         Ghost_Waitframe2(this, grell, true, quitOnDeath);
         
-        if(grell->HP<=0)
+        if(Ghost_HP<=0)
         {
             if(quitOnDeath)
                 Quit();

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.0.0
+// Version 2.1.1
 
 // See ghost.txt for documentation.
 
@@ -27,6 +27,7 @@ const int GH_BLANK_TILE = 65456; // Min: 0, Max: 65456
 // Invisible combo with no properties set
 const int GH_INVISIBLE_COMBO = 1; // Min: 1, Max: 65279
 
+// Standard settings end here -------------------------------------------------
 
 
 
@@ -88,15 +89,40 @@ const int EWM_HOMING            = 3;
 const int EWM_HOMING_REAIM      = 4;
 const int EWM_RANDOM            = 5;
 const int EWM_RANDOM_REAIM      = 6;
-const int EWM_VEER_UP           = 7;
-const int EWM_VEER_DOWN         = 8;
-const int EWM_VEER_LEFT         = 9;
-const int EWM_VEER_RIGHT        = 10;
-const int EWM_THROW             = 11;
-const int EWM_THROW_STOP        = 12;
-const int EWM_THROW_BOUNCE      = 13;
-const int EWM_THROW_BOUNCE_STOP = 14;
-const int EWM_FALL              = 15;
+const int EWM_VEER              = 7;
+const int EWM_THROW             = 15;
+const int EWM_THROW_STOP        = 16;
+const int EWM_THROW_BOUNCE      = 17;
+const int EWM_THROW_BOUNCE_STOP = 18;
+const int EWM_FALL              = 19;
+const int EWM_DRIFT             = 20;
+const int EWM_DRIFT_WAIT        = 28;
+
+// Alternate arguments for movements with direction options
+const int EWM_VEER_UP              = 7;
+const int EWM_VEER_DOWN            = 8;
+const int EWM_VEER_LEFT            = 9;
+const int EWM_VEER_RIGHT           = 10;
+const int EWM_VEER_LEFTUP          = 11;
+const int EWM_VEER_RIGHTUP         = 12;
+const int EWM_VEER_LEFTDOWN        = 13;
+const int EWM_VEER_RIGHTDOWN       = 14;
+const int EWM_DRIFT_UP             = 20;
+const int EWM_DRIFT_DOWN           = 21;
+const int EWM_DRIFT_LEFT           = 22;
+const int EWM_DRIFT_RIGHT          = 23;
+const int EWM_DRIFT_LEFTUP         = 24;
+const int EWM_DRIFT_RIGHTUP        = 25;
+const int EWM_DRIFT_LEFTDOWN       = 26;
+const int EWM_DRIFT_RIGHTDOWN      = 27;
+const int EWM_DRIFT_WAIT_UP        = 28;
+const int EWM_DRIFT_WAIT_DOWN      = 29;
+const int EWM_DRIFT_WAIT_LEFT      = 30;
+const int EWM_DRIFT_WAIT_RIGHT     = 31;
+const int EWM_DRIFT_WAIT_LEFTUP    = 32;
+const int EWM_DRIFT_WAIT_RIGHTUP   = 33;
+const int EWM_DRIFT_WAIT_LEFTDOWN  = 34;
+const int EWM_DRIFT_WAIT_RIGHTDOWN = 35;
 
 // Arguments to SetEWeaponLifespan()
 const int EWL_TIMER        = 1;
@@ -172,6 +198,9 @@ float __Ghost_PrevX;
 float __Ghost_PrevY;
 int __Ghost_FlashCounter;
 int __Ghost_KnockbackCounter;
+int __Ghost_XOffsets;
+int __Ghost_YOffsets;
+int __Ghost_Scripts[32];
 
 // These are needed for clocks to work
 int __ghzhPrevScreen;
@@ -192,8 +221,12 @@ global script GhostZHActiveScript
         {
             UpdateEWeapons();
             UpdateClock();
+            CleanUpGhostFFCs();
+
             Waitdraw();
+
             AutoGhost();
+
             Waitframe();
         }
     }
@@ -534,6 +567,8 @@ void Ghost_WaitframeLight()
     int ghostFlashCounterTemp=__Ghost_FlashCounter;
     int ghostKnockbackCounterTemp=__Ghost_KnockbackCounter;
     int ghostHPTemp=Ghost_HP;
+    int ghostXOffsetsTemp=__Ghost_XOffsets;
+    int ghostYOffsetsTemp=__Ghost_YOffsets;
 
     Waitframe();
 
@@ -557,11 +592,13 @@ void Ghost_WaitframeLight()
     __Ghost_FlashCounter=ghostFlashCounterTemp;
     __Ghost_KnockbackCounter=ghostKnockbackCounterTemp;
     Ghost_HP=ghostHPTemp;
+    __Ghost_XOffsets=ghostXOffsetsTemp;
+    __Ghost_YOffsets=ghostYOffsetsTemp;
 }
 
 bool Ghost_Waitframes(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
 {
-    while(numFrames-->0)
+    for(; numFrames>0; numFrames--)
     {
         if(!Ghost_Waitframe(this, ghost, clearOnDeath, quitOnDeath))
             return false;
@@ -571,7 +608,7 @@ bool Ghost_Waitframes(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, 
 
 bool Ghost_Waitframes2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
 {
-    while(numFrames-->0)
+    for(; numFrames>0; numFrames--)
     {
         if(!Ghost_Waitframe2(this, ghost, clearOnDeath, quitOnDeath))
             return false;
@@ -581,7 +618,7 @@ bool Ghost_Waitframes2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath,
 
 void Ghost_WaitframesLight(int numFrames)
 {
-    while(numFrames-->0)
+    for(; numFrames>0; numFrames--)
         Ghost_WaitframeLight();
 }
 
@@ -769,8 +806,10 @@ bool Ghost_CheckFreeze(ffc this, npc ghost)
 
             Ghost_SetPosition(this, ghost);
 
-            if((__Ghost_Flags&GHF_4WAY)!=0 || (__Ghost_Flags&GHF_8WAY)!=0)
-                this->Data=Ghost_Data+Ghost_Dir;
+            if((__Ghost_Flags&GHF_8WAY)!=0)
+                this->Data=Ghost_Data+VBound(Ghost_Dir, 7, 0);
+            else if((__Ghost_Flags&GHF_4WAY)!=0)
+                this->Data=Ghost_Data+VBound(Ghost_Dir, 3, 0);
             else
                 this->Data=Ghost_Data;
 
@@ -945,19 +984,24 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
     if(step==0)
         return true;
 
+    int leftOffset=__Ghost_XOffsets>>8;
+    int rightOffset=__Ghost_XOffsets&255;
+    int topOffset=__Ghost_YOffsets>>8;
+    int bottomOffset=__Ghost_YOffsets&255;
+
     if(dir==DIR_UP)
     {
         int y=Ghost_Y-step;
 
         // Check every 8 pixels for solid, pit, or water
-        for(int i=imprecision; i<Ghost_TileWidth*16-imprecision; i+=8)
+        for(int i=leftOffset+imprecision; i<Ghost_TileWidth*16-rightOffset-imprecision; i+=8)
         {
-            if(!Ghost_CanMovePixel(Ghost_X+i, y))
+            if(!Ghost_CanMovePixel(Ghost_X+i, y+topOffset))
                 return false;
         }
 
         // One last pixel...
-        if(!Ghost_CanMovePixel(Ghost_X+16*Ghost_TileWidth-1-imprecision, y))
+        if(!Ghost_CanMovePixel(Ghost_X+Ghost_TileWidth*16-rightOffset-imprecision-1, y+topOffset))
             return false;
 
         return true;
@@ -966,13 +1010,13 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
     {
         int y=Ghost_Y+16*Ghost_TileHeight+step;
 
-        for(int i=imprecision; i<Ghost_TileWidth*16-imprecision; i+=8)
+        for(int i=leftOffset+imprecision; i<Ghost_TileWidth*16-rightOffset-imprecision; i+=8)
         {
-            if(!Ghost_CanMovePixel(Ghost_X+i, y))
+            if(!Ghost_CanMovePixel(Ghost_X+i, y-bottomOffset))
                 return false;
         }
 
-        if(!Ghost_CanMovePixel(Ghost_X+16*Ghost_TileWidth-1-imprecision, y))
+        if(!Ghost_CanMovePixel(Ghost_X+Ghost_TileWidth*16-rightOffset-imprecision-1, y-bottomOffset))
             return false;
 
         return true;
@@ -981,13 +1025,13 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
     {
         int x=Ghost_X-step;
 
-        for(int i=imprecision; i<Ghost_TileHeight*16-imprecision; i+=8)
+        for(int i=topOffset+imprecision; i<Ghost_TileHeight*16-bottomOffset-imprecision; i+=8)
         {
-            if(!Ghost_CanMovePixel(x, Ghost_Y+i))
+            if(!Ghost_CanMovePixel(x+leftOffset, Ghost_Y+i))
                 return false;
         }
 
-        if(!Ghost_CanMovePixel(x, Ghost_Y+16*Ghost_TileHeight-1-imprecision))
+        if(!Ghost_CanMovePixel(x+leftOffset, Ghost_Y+Ghost_TileHeight*16-bottomOffset-imprecision-1))
             return false;
 
         return true;
@@ -996,13 +1040,13 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
     {
         int x=Ghost_X+16*Ghost_TileWidth+step;
 
-        for(int i=imprecision; i<Ghost_TileHeight*16-imprecision; i+=8)
+        for(int i=topOffset+imprecision; i<Ghost_TileHeight*16-bottomOffset-imprecision; i+=8)
         {
-            if(!Ghost_CanMovePixel(x, Ghost_Y+i))
+            if(!Ghost_CanMovePixel(x-rightOffset, Ghost_Y+i))
                 return false;
         }
 
-        if(!Ghost_CanMovePixel(x, Ghost_Y+16*Ghost_TileHeight-1-imprecision))
+        if(!Ghost_CanMovePixel(x-rightOffset, Ghost_Y+Ghost_TileHeight*16-bottomOffset-imprecision-1))
             return false;
 
         return true;
@@ -1056,8 +1100,178 @@ void Ghost_MoveAtAngle(float angle, float step, int imprecision)
 
 void Ghost_MoveTowardLink(float step, int imprecision)
 {
-    float angle=Angle(Ghost_X, Ghost_Y, Link->X, Link->Y);
+    float angle=Angle(Ghost_X+Ghost_TileWidth*8, Ghost_Y+Ghost_TileHeight*8, Link->X+8, Link->Y+8);
     Ghost_MoveXY(VectorX(step, angle), VectorY(step, angle), imprecision);
+}
+
+int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
+{
+    // Don't move while being knocked back
+    if(__Ghost_KnockbackCounter>0)
+        return counter;
+
+    int xStep=0;
+    int yStep=0;
+    step/=100;
+
+    if(counter<=0)
+    {
+        // Snap to grid and maybe turn
+        __Ghost_FixCoords();
+        __Ghost_NewDir4(rate, homing,hunger);
+
+        if(step==0)
+            counter=0;
+        else
+            counter=Floor(16/step);
+    }
+    // If the enemy hit Link, turn around
+    else if(Link->Action==LA_GOTHURTLAND && Abs(Ghost_X-Link->X)<16 && Abs(Ghost_Y-Link->Y)<16)
+    {
+        Ghost_Dir^=1;
+        counter=Floor(16/step)-counter;
+    }
+
+    // These functions use the full step on both axes for diagonal movement
+    if(Ghost_Dir!=DIR_UP && Ghost_Dir!=DIR_DOWN)
+    {
+        if(Ghost_Dir==DIR_LEFT || Ghost_Dir==DIR_LEFTUP || Ghost_Dir==DIR_LEFTDOWN)
+            xStep=-step;
+        else // Right
+            xStep=step;
+    }
+
+    if(Ghost_Dir!=DIR_LEFT && Ghost_Dir!=DIR_RIGHT)
+    {
+        if(Ghost_Dir==DIR_UP || Ghost_Dir==DIR_LEFTUP || Ghost_Dir==DIR_RIGHTUP)
+            yStep=-step;
+        else // Down
+            yStep=step;
+    }
+
+    Ghost_MoveXY(xStep, yStep, 0);
+    return counter-1;
+}
+
+int Ghost_ConstantWalk8(int counter, int step, int rate, int homing, int hunger)
+{
+    // Don't move while being knocked back
+    if(__Ghost_KnockbackCounter>0)
+        return counter;
+
+
+    int xStep=0;
+    int yStep=0;
+    step/=100;
+
+    if(counter<=0)
+    {
+        // Turn
+        __Ghost_NewDir8(rate, homing, hunger);
+        counter=Floor(8/step);
+    }
+
+    // Needs to snap to the grid, so Ghost_Move() would be problematic
+    if(Ghost_Dir!=DIR_UP && Ghost_Dir!=DIR_DOWN)
+    {
+        if(Ghost_Dir==DIR_LEFT || Ghost_Dir==DIR_LEFTUP || Ghost_Dir==DIR_LEFTDOWN)
+            xStep=-step;
+        else // Right
+            xStep=step;
+    }
+
+    if(Ghost_Dir!=DIR_LEFT && Ghost_Dir!=DIR_RIGHT)
+    {
+        if(Ghost_Dir==DIR_UP || Ghost_Dir==DIR_LEFTUP || Ghost_Dir==DIR_RIGHTUP)
+            yStep=-step;
+        else // Down
+            yStep=step;
+    }
+
+    Ghost_MoveXY(xStep, yStep, 0);
+    return counter-1;
+}
+
+float Ghost_HaltingWalk4(int counter, int step, int rate, int homing, int hunger, int haltRate, int haltTime)
+{
+    // Don't move while being knocked back
+    if(__Ghost_KnockbackCounter>0)
+        return counter;
+
+    // The counter is actually two combined...
+    int walkCounter;
+    int haltCounter;
+
+    if(counter==-1)
+    {
+        walkCounter=0;
+        haltCounter=0;
+    }
+    else
+    {
+        walkCounter=counter*10000;
+        haltCounter=counter>>0;
+    }
+
+    if(haltCounter>0)
+        return haltCounter-1;
+
+    step/=100;
+
+    if(walkCounter==0)
+    {
+        // Snap to the grid and possibly turn
+        __Ghost_FixCoords();
+        walkCounter=Floor(16/step);
+
+        if(counter==-1)
+        {
+            __Ghost_NewDir4(rate, homing, hunger);
+
+            // Halt?
+            if(Rand(16)<haltRate)
+            {
+                haltCounter=haltTime;
+                return haltCounter;
+            }
+        }
+    }
+
+    // Turn around after hitting Link
+    else if(Link->Action==LA_GOTHURTLAND && Abs(Ghost_X-Link->X)<16 && Abs(Ghost_Y-Link->Y)<16)
+    {
+        Ghost_Dir^=1;
+        walkCounter=Floor(16/step)-walkCounter;
+    }
+
+    walkCounter--;
+    Ghost_Move(Ghost_Dir, step, 0);
+    if(walkCounter>0)
+        return walkCounter/10000;
+    else
+        return -1;
+}
+
+int Ghost_VariableWalk8(int counter, int step, int rate, int homing, int hunger, int turnCheckTime)
+{
+    // Don't move while being knocked back
+    if(__Ghost_KnockbackCounter>0)
+        return counter;
+
+    step/=100;
+
+    if(!Ghost_CanMove(Ghost_Dir, step, 0))
+        counter=0;
+
+    // Time to turn?
+    if(counter<=0)
+    {
+        __Ghost_NewDir8(rate, homing, hunger);
+        counter=turnCheckTime;
+    }
+
+    Ghost_Move(Ghost_Dir, step, 0);
+    return counter-1;
 }
 
 
@@ -1167,10 +1381,18 @@ void Ghost_SetHitOffsets(npc ghost, float top, float bottom, float left, float r
     if(right>0 && right<1)
         right=Round(right*Ghost_TileWidth*16);
 
+    top=VBound(top, 64, 0);
+    bottom=VBound(bottom, 64, 0);
+    left=VBound(left, 64, 0);
+    right=VBound(right, 64, 0);
+
     ghost->HitXOffset=left;
     ghost->HitYOffset=top;
     ghost->HitWidth=16*Ghost_TileWidth-(left+right);
     ghost->HitHeight=16*Ghost_TileHeight-(top+bottom);
+
+    __Ghost_XOffsets=(left<<8)+right;
+    __Ghost_YOffsets=(top<<8)+bottom;
 }
 
 void Ghost_StoreDefenses(npc ghost, int storedDefese)
@@ -1282,6 +1504,20 @@ void AutoGhost()
             // single frame before the script starts (assuming this is after Waitdraw())
             if(enemy->Attributes[10]!=GH_INVISIBLE_COMBO)
                 enemy->Extend=3;
+        }
+    }
+}
+
+void CleanUpGhostFFCs()
+{
+    if(Link->HP<=0)
+    {
+        ffc f;
+        for(int i=1; i<=32; i++)
+        {
+            f=Screen->LoadFFC(i);
+            if((__Ghost_Scripts[f->Script>>4]&(1<<(f->Script&1111b)))!=0)
+                f->Data=0;
         }
     }
 }
@@ -1731,7 +1967,7 @@ void UpdateEWeapon(eweapon wpn)
         if(wpn->Misc[__EWI_MOVEMENT]!=0)
         {
             // Split in half to reduce checks
-            if(wpn->Misc[__EWI_MOVEMENT]<7)
+            if(wpn->Misc[__EWI_MOVEMENT]<15)
             {
                 // Sine wave
                 if(wpn->Misc[__EWI_MOVEMENT]==EWM_SINE_WAVE)
@@ -1894,39 +2130,52 @@ void UpdateEWeapon(eweapon wpn)
                         }
                     }
                 }
+
+                // Veering
+                else
+                {
+                    int dir=wpn->Misc[__EWI_MOVEMENT]-EWM_VEER;
+                    wpn->Misc[__EWI_XPOS]+=(wpn->Step/100)*RadianCos(wpn->Angle);
+                    wpn->Misc[__EWI_YPOS]+=(wpn->Step/100)*RadianSin(wpn->Angle);
+                    
+                    if(dir==DIR_UP)
+                        wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_WORK];
+                    else if(dir==DIR_DOWN)
+                        wpn->Misc[__EWI_YPOS]+=wpn->Misc[__EWI_WORK];
+                    if(dir==DIR_LEFT)
+                        wpn->Misc[__EWI_XPOS]-=wpn->Misc[__EWI_WORK];
+                    else if(dir==DIR_RIGHT)
+                        wpn->Misc[__EWI_XPOS]+=wpn->Misc[__EWI_WORK];
+                    if(dir==DIR_LEFTUP)
+                    {
+                        wpn->Misc[__EWI_XPOS]-=wpn->Misc[__EWI_WORK]*0.7071;
+                        wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_WORK]*0.7071;
+                    }
+                    else if(dir==DIR_RIGHTUP)
+                    {
+                        wpn->Misc[__EWI_XPOS]+=wpn->Misc[__EWI_WORK]*0.7071;
+                        wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_WORK]*0.7071;
+                    }
+                    if(dir==DIR_LEFTDOWN)
+                    {
+                        wpn->Misc[__EWI_XPOS]-=wpn->Misc[__EWI_WORK]*0.7071;
+                        wpn->Misc[__EWI_YPOS]+=wpn->Misc[__EWI_WORK]*0.7071;
+                    }
+                    else // DIR_RIGHTDOWN
+                    {
+                        wpn->Misc[__EWI_XPOS]+=wpn->Misc[__EWI_WORK]*0.7071;
+                        wpn->Misc[__EWI_YPOS]+=wpn->Misc[__EWI_WORK]*0.7071;
+                    }
+
+                    wpn->X=wpn->Misc[__EWI_XPOS];
+                    wpn->Y=wpn->Misc[__EWI_YPOS];
+                    wpn->Misc[__EWI_WORK]+=wpn->Misc[__EWI_MOVEMENT_ARG];
+                }
             }
-            else // wpn->Misc[__EWI_MOVEMENT]>=7
+            else // wpn->Misc[__EWI_MOVEMENT]>=15
             {
-                // Veering up
-                if(wpn->Misc[__EWI_MOVEMENT]==EWM_VEER_UP)
-                {
-                    wpn->Y-=wpn->Misc[__EWI_WORK];
-                    wpn->Misc[__EWI_WORK]+=wpn->Misc[__EWI_MOVEMENT_ARG];
-                }
-
-                // Veering down
-                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_VEER_DOWN)
-                {
-                    wpn->Y+=wpn->Misc[__EWI_WORK];
-                    wpn->Misc[__EWI_WORK]+=wpn->Misc[__EWI_MOVEMENT_ARG];
-                }
-
-                // Veering left
-                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_VEER_LEFT)
-                {
-                    wpn->X-=wpn->Misc[__EWI_WORK];
-                    wpn->Misc[__EWI_WORK]+=wpn->Misc[__EWI_MOVEMENT_ARG];
-                }
-
-                // Veering right
-                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_VEER_RIGHT)
-                {
-                    wpn->X+=wpn->Misc[__EWI_WORK];
-                    wpn->Misc[__EWI_WORK]+=wpn->Misc[__EWI_MOVEMENT_ARG];
-                }
-
                 // Throw
-                else if(wpn->Misc[__EWI_MOVEMENT]>=EWM_THROW && wpn->Misc[__EWI_MOVEMENT]<=EWM_THROW_BOUNCE_STOP)
+                if(wpn->Misc[__EWI_MOVEMENT]>=EWM_THROW && wpn->Misc[__EWI_MOVEMENT]<=EWM_THROW_BOUNCE_STOP)
                 {
                     // __EWI_WORK: Jump
                     // __EWI_WORK_2: Z position
@@ -1994,6 +2243,62 @@ void UpdateEWeapon(eweapon wpn)
                         wpn->Z=0;
                         KillEWeapon(wpn);
                     }
+                }
+                
+                // Drift
+                else if(wpn->Misc[__EWI_MOVEMENT]>=EWM_DRIFT && wpn->Misc[__EWI_MOVEMENT]<EWM_DRIFT_WAIT+8)
+                {
+                    int dir;
+                    
+                    if(wpn->Misc[__EWI_MOVEMENT]<EWM_DRIFT_WAIT)
+                        dir=wpn->Misc[__EWI_MOVEMENT]-EWM_DRIFT;
+                    else
+                    {
+                        dir=wpn->Misc[__EWI_MOVEMENT]-EWM_DRIFT_WAIT;
+
+                        // Is the weapon moving?
+                        if(wpn->Misc[__EWI_WORK]>=16)
+                        {
+                            wpn->Misc[__EWI_XPOS]+=(wpn->Step/100)*RadianCos(wpn->Angle);
+                            wpn->Misc[__EWI_YPOS]+=(wpn->Step/100)*RadianSin(wpn->Angle);
+                        }
+
+                        // If not, just drift in place
+                        else
+                            wpn->Misc[__EWI_WORK]++;
+                    }
+
+                    if(dir==DIR_UP)
+                        wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_MOVEMENT_ARG];
+                    else if(dir==DIR_DOWN)
+                        wpn->Misc[__EWI_YPOS]+=wpn->Misc[__EWI_MOVEMENT_ARG];
+                    else if(dir==DIR_LEFT)
+                        wpn->Misc[__EWI_XPOS]-=wpn->Misc[__EWI_MOVEMENT_ARG];
+                    else if(dir==DIR_RIGHT)
+                        wpn->Misc[__EWI_XPOS]+=wpn->Misc[__EWI_MOVEMENT_ARG];
+                    else if(dir==DIR_LEFTUP)
+                    {
+                        wpn->Misc[__EWI_XPOS]-=wpn->Misc[__EWI_MOVEMENT_ARG]*0.7071;
+                        wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_MOVEMENT_ARG]*0.7071;
+                    }
+                    else if(dir==DIR_RIGHTUP)
+                    {
+                        wpn->Misc[__EWI_XPOS]+=wpn->Misc[__EWI_MOVEMENT_ARG]*0.7071;
+                        wpn->Misc[__EWI_YPOS]-=wpn->Misc[__EWI_MOVEMENT_ARG]*0.7071;
+                    }
+                    else if(dir==DIR_LEFTDOWN)
+                    {
+                        wpn->Misc[__EWI_XPOS]-=wpn->Misc[__EWI_MOVEMENT_ARG]*0.7071;
+                        wpn->Misc[__EWI_YPOS]+=wpn->Misc[__EWI_MOVEMENT_ARG]*0.7071;
+                    }
+                    else // DIR_RIGHTDOWN
+                    {
+                        wpn->Misc[__EWI_XPOS]+=wpn->Misc[__EWI_MOVEMENT_ARG]*0.7071;
+                        wpn->Misc[__EWI_YPOS]+=wpn->Misc[__EWI_MOVEMENT_ARG]*0.7071;
+                    }
+                    
+                    wpn->X=wpn->Misc[__EWI_XPOS];
+                    wpn->Y=wpn->Misc[__EWI_YPOS];
                 }
             }
         } // End movement updates
@@ -2587,10 +2892,15 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
     __Ghost_PrevY=Ghost_Y;
 
     // Set combo
-    if((__Ghost_Flags&GHF_4WAY)!=0 || (__Ghost_Flags&GHF_8WAY)!=0)
+    if((__Ghost_Flags&GHF_8WAY)!=0)
     {
         if(this->Data!=Ghost_Data+Ghost_Dir)
-            this->Data=Ghost_Data+Ghost_Dir;
+            this->Data=Ghost_Data+VBound(Ghost_Dir, 7, 0);
+    }
+    else if((__Ghost_Flags&GHF_4WAY)!=0)
+    {
+        if(this->Data!=Ghost_Data+Ghost_Dir)
+            this->Data=Ghost_Data+VBound(Ghost_Dir, 3, 0);
     }
     else
     {
@@ -2755,6 +3065,8 @@ void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int 
 
     Ghost_TileWidth=this->TileWidth;
     Ghost_TileHeight=this->TileHeight;
+    __Ghost_XOffsets=0;
+    __Ghost_YOffsets=0;
 
     if(combo!=GH_INVISIBLE_COMBO)
     {
@@ -2772,6 +3084,291 @@ void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int 
 
     Ghost_HP=ghost->HP;
     ghost->Misc[__GHI_IN_USE]=1;
+
+    // Remember that this is a ghost script so it can be cleared at the appropriate times
+    __Ghost_Scripts[this->Script>>4]|=1<<(this->Script&1111b);
+}
+
+void __Ghost_FixCoords()
+{
+    Ghost_X&=0xF0;
+
+    if((Ghost_X&8)!=0)
+        Ghost_X+=16;
+
+    if((Screen->Flags[SF_ROOMTYPE]&100b)!=0) // If sideview
+    {
+        Ghost_Y&=0xF8;
+        if((Ghost_Y&100b)!=0)
+            Ghost_Y+=8;
+    }
+    else
+    {
+        Ghost_Y&=0xF0;
+        if((Ghost_Y&1000b)!=0)
+            Ghost_Y+=16;
+    }
+}
+
+// Determines the direction to Link
+int __Ghost_LinedUp(int range, bool eightWay)
+{
+    // Up or down
+    if(Abs(Link->X-Ghost_X)<=range)
+    {
+        if(Link->Y<Ghost_Y)
+            return DIR_UP;
+        else
+          return DIR_DOWN;
+    }
+    // Left or right
+    else if(Abs(Link->Y-Ghost_Y)<=range)
+    {
+        if(Link->X<Ghost_X)
+          return DIR_LEFT;
+        else
+         return DIR_RIGHT;
+    }
+
+    // Diagonal
+    if (eightWay)
+    {
+        if (Abs(Link->X-Ghost_X)-Abs(Link->Y-Ghost_Y)<=range)
+        {
+            if (Link->Y<Ghost_Y)
+            {
+                if (Link->X<Ghost_X)
+                    return DIR_LEFTUP;
+                else
+                    return DIR_RIGHTUP;
+            }
+            else
+            {
+                if (Link->X<Ghost_X)
+                    return DIR_LEFTDOWN;
+                else
+                    return DIR_RIGHTDOWN;
+            }
+        }
+    }
+
+    // Not in range
+    return -1;
+}
+
+void __Ghost_NewDir4(int rate, int homing, int hunger)
+{
+    int newDir=-1;
+    // Go for bait?
+    if(Rand(4)<hunger)
+    {
+        // See if any is on the screen
+        lweapon bait=LoadLWeaponOf(LW_BAIT);
+
+        if(bait->isValid())
+        {
+            // Found bait; move toward it
+            if(Abs(Ghost_Y-bait->Y)>14)
+            {
+                if(bait->Y<Ghost_Y)
+                    newDir=DIR_UP;
+                else
+                    newDir=DIR_DOWN;
+
+                if(Ghost_CanMove(newDir, 1, 0))
+                {
+                    Ghost_Dir=newDir;
+                    return;
+                }
+            }
+
+            if(bait->X<Ghost_X)
+                newDir=DIR_LEFT;
+            else
+                newDir=DIR_RIGHT;
+
+            if(Ghost_CanMove(newDir, 1, 0))
+            {
+                Ghost_Dir=newDir;
+                return;
+            }
+        }
+    } // End hunger check
+
+    // Homing?
+    if(Rand(256)<homing)
+    {
+        newDir=__Ghost_LinedUp(8, false);
+        if(newDir>=0 && Ghost_CanMove(newDir, 1, 0))
+        {
+            Ghost_Dir=newDir;
+            return;
+        }
+    }
+
+    // Check solidity of surrounding combos
+    bool combos[4];
+    int numDirs;
+    int counter;
+
+    if(Ghost_Y>=16 && Screen->ComboS[ComboAt(Ghost_X, Ghost_Y-16)]==0)
+    {
+        combos[DIR_UP]=true;
+        numDirs++;
+    }
+
+    if(Ghost_Y<=144 && Screen->ComboS[ComboAt(Ghost_X, Ghost_Y+16)]==0)
+    {
+        combos[DIR_DOWN]=true;
+        numDirs++;
+    }
+
+    if(Ghost_X>=16 && Screen->ComboS[ComboAt(Ghost_X-16, Ghost_Y)]==0)
+    {
+        combos[DIR_LEFT]=true;
+        numDirs++;
+    }
+
+    if(Ghost_X<=224 && Screen->ComboS[ComboAt(Ghost_X+16, Ghost_Y)]==0)
+    {
+        combos[DIR_RIGHT]=true;
+        numDirs++;
+    }
+
+    // Trapped?
+    if(numDirs==0)
+    {
+        Ghost_Dir=-1;
+        return;
+    }
+
+    // Pick a direction at random from the ones available
+    counter=Rand(numDirs);
+    for(int dir=0; dir<4; dir++)
+    {
+        if(!combos[dir])
+            continue;
+
+        if(counter==0)
+        {
+            Ghost_Dir=dir;
+            return;
+        }
+        else
+            counter--;
+    }
+}
+
+void __Ghost_NewDir8(int rate, int homing, int hunger)
+{
+    int newDir=-1;
+
+    // If the enemy can keep moving, it can turn voluntarily
+    if(Ghost_CanMove(Ghost_Dir, 1, 0))
+    {
+        if(Rand(4)<hunger)
+        {
+            // Any bait around?
+            lweapon bait=LoadLWeaponOf(LW_BAIT);
+
+            if(bait->isValid())
+            {
+                // Go toward it
+                if(bait->X<Ghost_X)
+                    newDir=DIR_LEFT;
+                else if(bait->X>Ghost_X)
+                    newDir=DIR_RIGHT;
+                else
+                    newDir=0;
+
+                if(Abs(Ghost_Y-bait->Y)>14)
+                {
+                    if(newDir>0)
+                    {
+                        if(bait->Y<Ghost_Y)
+                            newDir+=2;
+                        else
+                            newDir+=4;
+                    }
+                    else
+                    {
+                        if(bait->Y<Ghost_Y)
+                            newDir=DIR_UP;
+                        else
+                            newDir=DIR_DOWN;
+                    }
+                }
+
+                if(Ghost_CanMove(newDir, 1, 0))
+                {
+                    Ghost_Dir=newDir;
+                    Ghost_X<<=0;
+                    Ghost_Y<<=0;
+                    return;
+                }
+            }
+        } // End hunger check
+
+        // Aim at Link?
+        if(Rand(256)<homing)
+        {
+            newDir=__Ghost_LinedUp(8, true);
+            if(newDir>=0 && Ghost_CanMove(newDir, 1, 0))
+            {
+                Ghost_Dir=newDir;
+                Ghost_X<<=0;
+                Ghost_Y<<=0;
+                return;
+            }
+        }
+
+        // Didn't go for bait or Link; keep going straight?
+        if(Rand(16)>=rate)
+            return;
+    }
+
+    // Either randomly chose to turn or has no choice
+
+    // See which ways the enemy can go
+    bool dirs[8];
+    int numDirs;
+    int counter;
+
+    for(int i=0; i<8; i++)
+    {
+        if(Ghost_CanMove(i, 1, 0))
+        {
+            numDirs++;
+            dirs[i]=true;
+        }
+    }
+
+    // Trapped?
+    if(numDirs==0)
+    {
+        Ghost_Dir=-1;
+        Ghost_X<<=0;
+        Ghost_Y<<=0;
+        return;
+    }
+
+    // Pick a random direction
+    counter=Rand(numDirs);
+    for(int dir=0; dir<8; dir++)
+    {
+        if(!dirs[dir])
+            continue;
+
+        if(counter==0)
+        {
+            Ghost_Dir=dir;
+            Ghost_X<<=0;
+            Ghost_Y<<=0;
+            return;
+        }
+        else
+            counter--;
+    }
 }
 
 void __CopyEWeapon(eweapon prototype, int centerX, int centerY, float angle)

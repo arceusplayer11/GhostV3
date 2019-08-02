@@ -1,8 +1,14 @@
 General setup:
 
+There are four files in the zip file: AutoGhost.txt, ghost.zh, ghost.txt, and ghost_legacy.zh.
+The only one of these you need for AutoGhost enemies is ghost.zh. You can put it anywhere, but it's
+simplest to put it in the same directory as ZC, since that's where ZQuest will look by default.
 
 First, you'll need to set up a combo that is invisible and has no type or flag set. This cannot be
-combo 0. You'll also need to set aside a block of 4x4 tiles to leave blank.
+combo 0. You'll also need to set aside a block of 4x4 tiles to leave blank. You should also modify
+the "MISC: Spawn" sprite in Quest > Graphics > Sprites > Weapons/Misc. It needs to have the
+animation speed and number of frames set; 3 frames at a speed of 5 will best match the built-in
+enemies.
 
 You'll have to set a few constants in ghost.zh. Open it in a text editor (a basic one like Notepad;
 office programs sometimes modify punctuation marks, making scripts unusable). The constants are all
@@ -35,7 +41,8 @@ import "std.zh"
 import "string.zh"
 import "ghost.zh"
 
-If any of the files are in different directories, you'll have to specify that, for instance:
+This assumes that all these files are in ZC's directory. If any of them are in different
+directories, you'll have to specify that, for instance:
 import "MyQuest\Scripts\ghost.zh"
 
 Close the window, save the changes, and click Compile. In the Global tab, load GhostZHActiveScript

@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.0.0
+Version 2.1.1
 
 +-------+
 | USAGE |
@@ -237,6 +237,49 @@ bool Ghost_CanMove(int dir, float step, int imprecision)
 bool Ghost_CanMovePixel(int x, int y)
  * Used internally by Ghost_CanMove(). Returns true if the enemy can move onto the given pixel.
 
+float Ghost_HaltingWalk4(int counter, int step, int rate, int homing, int hunger, int haltRate,
+                         int haltTime)
+ * This function mimics the built-in movement function used by walking enemies.
+ * step corresponds to npc->Step.
+ * rate corresponds to npc->Rate and should be between 0 and 16.
+ * homing corresponds to npc->Homing and should be between 0 and 256.
+ * hunger should be between 0 and 4.
+ * haltRate corresponds to npc->Haltrate and should be between 0 and 16.
+ * The haltTime argument determines how long the enemy will stand still when it halts. Zols use
+ * Rand(8)<<4, Gels use (Rand(8)<<3)+2, Goriyas use 1, and all others use 48.
+ * The counter argument should initially be -1, then set to the function's return value each frame.
+ * While the enemy is halted, the return value will be the remaining halt time, which you can use to
+ * determine when to fire. So:
+ *
+ * int counter = -1;
+ * while(true)
+ * {
+ *     counter=Ghost_HaltingWalk4(counter, step, rate, homing, hunger, haltRate, 48);
+ *     if(counter==16) // Fire after halted for 32 frames
+ *         FireEWeapon(...);
+ *     Ghost_Waitframe(...);
+ * }
+ *
+ * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION is not used. It will
+ * also set Ghost_Dir to -1 if the enemy is trapped.
+
+int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
+ * This is the movement function used by Dodongos and Lanmolas. The arguments are the same as above.
+ * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION is not used. It will
+ * also set Ghost_Dir to -1 if the enemy is trapped.
+ 
+int Ghost_ConstantWalk8(int counter, int step, int rate, int homing, int hunger)
+ * This is the movement function used by Moldorms. The arguments are the same as above.
+ * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION is not used. It will
+ * also set Ghost_Dir to -1 if the enemy is trapped.
+
+int Ghost_VariableWalk8(int counter, int step, int rate, int homing, int hunger, int turnCheckTime)
+ * This is the movement function used by Digdoggers, Manhandlas, Patras, and fairies. The
+ * turnCheckTime argument deterines how many frames the enemy moves before checking whether it
+ * should change direction. The other arguments are the same as above.
+ * This function depends on Ghost_Dir and will set it even if GHF_SET_DIRECTION is not used. It will
+ * also set Ghost_Dir to -1 if the enemy is trapped.
+
 
 +--------------+
 | MODIFICATION |
@@ -252,7 +295,8 @@ void Ghost_Transform(ffc this, npc ghost, int combo, int cset, int tileWidth, in
 
 void Ghost_SetHitOffsets(npc ghost, float top, float bottom, float left, float right)
  * If you want the enemy's hitbox to be smaller than the FFC, use this function to adjust it. Each
- * argument will cause the hitbox to shrink away from the corresponding edge.
+ * argument will cause the hitbox to shrink away from the corresponding edge. This applies to both
+ * collision detection and movement.
  * For each argument, if the number is 1 or greater, it will be interpreted as the difference
  * in pixels; if the number is between 0 and 1, it will be treated as a fraction of the FFC's full
  * size. So, for instance, a top argument of 0.25 would shrink the hitbox by 1/4 of the FFC's
@@ -308,6 +352,9 @@ void AutoGhost()
  * after WaitDraw(); otherwise, the enemy's spawn animation will appear for a single frame before
  * the script activates.
 
+void CleanUpGhostFFCs()
+ * This makes ghosted enemy FFCs invisible when Link dies. This should be used in the global script
+ * before Waitdraw().
 
 npc SpawnNPC(int id)
  * Spawns an npc with the given ID in a random location. This will avoid solid combos, pits, water,
@@ -404,14 +451,18 @@ void SetEWeaponMovement(eweapon wpn, int type, int arg)
  *   arg: Maximum rotation per frame in radians
  * EWM_RANDOM_REAIM: Stop frequently and aim in a random direction
  *    arg: Number of re-aims
- * EWM_VEER_UP: Accelerate upward.
+ * EWM_VEER + dir: Accelerate in a given direction. You can add a direction to the type argument:
+ *      SetEWeaponMovement(wpn, EWM_VEER + DIR_LEFT, 0.025);
+ *    There are also eight additional constants that combine the two, one for each direction:
+ *      SetEWeaponMovement(wpn, EWM_VEER_RIGHTDOWN, 0.01);
  *    arg: Acceleration
- * EWM_VEER_DOWN: Accelerate downward.
- *    arg: Acceleration
- * EWM_VEER_LEFT: Accelerate left.
- *    arg: Acceleration
- * EWM_VEER_RIGHT: Accelerate right.
- *    arg: Acceleration
+ * EWM_DRIFT + dir: Drift in the given direction at a constant speed. Like EWM_VEER, you can add a
+ *    direction to the type argument or use EWM_DRIFT_*.
+ *    arg: Drift speed
+ * EWM_DRIFT_WAIT + dir: Drift in the given direction at a constant speed and wait 16 frames before
+ *    beginning normal movement. This copies the behavior of boss fireballs. Again, you can add a
+ *    direction to the type argument or use EWM_DRIFT_WAIT_*.
+ *    arg: Drift speed
  * EWM_THROW: Arc through the air as if thrown. The weapon dies (see below) when it hits the ground.
  *    arg: Initial upward velocity
  * EWM_THROW_STOP: Like EWM_THROW, except the weapon only stops moving when it hits the ground.
