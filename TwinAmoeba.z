@@ -2,7 +2,7 @@
 // import "ghost.zh"
 
 // Spawns two invincible slime enemies and jumps back and forth between them.
-// Appears on screen 2 in the demo quest.
+
 const int TWA_CORE_COMBO=24;
 const int TWA_SLIME_ID=179;
 const float TWA_JUMP_SPEED=2;

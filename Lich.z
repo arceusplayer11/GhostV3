@@ -2,7 +2,7 @@
 // import "ghost.zh"
 
 // Moves up and down the left side of the screen creating Stalfos and firing a variety of projectiles.
-// Appears on screen 3 in the demo quest.
+
 const int LICH_FIREBALL_SPRITE_1=11;
 const int LICH_FIREBALL_SPRITE_2=89;
 const int LICH_FIREBALL_SPRITE_3=17;

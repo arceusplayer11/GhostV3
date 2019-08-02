@@ -3,7 +3,7 @@
 
 // A simple enemy that moves straight toward Link, periodically shooting
 // fireballs off to his sides. Not much of an enemy, just a script example.
-// Appears on screen 1 in the demo quest.
+// Appears on the first indoor screen in the demo quest.
 
 ffc script SimpleGhostZHExample
 {

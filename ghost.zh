@@ -1,7 +1,7 @@
 // See ghost_zh_readme.txt for documentation.
 
 // World settings
-const int GH_DRAWOVERTHRESHOLD= 32;
+const int GH_DRAW_OVER_THRESHOLD= 32;
 const float GH_GRAVITY= 0.16;
 const float GH_TERMINAL_VELOCITY= 3.2;
 
@@ -11,12 +11,12 @@ const float GH_TERMINAL_VELOCITY= 3.2;
 const int GHI_KNOCKBACK_COUNTER= 11;
 const int GHI_BASE_CSET=         12;
 const int GHI_FLASH_COUNTER=     13;
-const int GHI_FLAGS=         14;
+const int GHI_FLAGS=             14;
 const int GHI_PREV_HP=           15;
 
 // eweapon->Misc[] indices
 // Like the above, these must be unique numbers between 0 and 15.
-const int EWI_STEP=         5;
+const int EWI_STEP=         5; // Only used by homing re-aim and random re-aim movement types; others can use this index freely
 const int EWI_XPOS=         6;
 const int EWI_YPOS=         7;
 const int EWI_WORK=         8;
@@ -29,14 +29,14 @@ const int EWI_ON_DEATH_ARG= 14;
 const int EWI_FLAGS=        15;
 
 // Arguments to SetFlags()
-const int GHF_STUN=           000001b;
-const int GHF_KNOCKBACK=      000010b;
-const int GHF_NO_FALL=        000100b;
-const int GHF_SET_DIRECTION=  001000b;
-const int GHF_SET_OVERLAY=    010000b;
-const int GHF_NORMAL=         001011b;
+const int GHF_KNOCKBACK=      00001b;
+const int GHF_NO_FALL=        00010b;
+const int GHF_SET_DIRECTION=  00100b;
+const int GHF_SET_OVERLAY=    01000b;
+const int GHF_NORMAL=         00101b;
 
-const int GHF_GOT_HIT=        100000b; // Internal use
+// Internal use
+const int GHF_GOT_HIT=        10000b;
 
 // Arguments to SetEWeaponMovement()
 const int EWM_SINE_WAVE=      1;
@@ -174,9 +174,9 @@ bool GhostWaitframeM(ffc this, npc ghost, float x, float y, float z, bool clearO
     // Draw over if high enough
     if((this->Misc[GHI_FLAGS]&GHF_SET_OVERLAY)!=0)
     {
-        if(z>=GH_DRAWOVERTHRESHOLD && !this->Flags[FFCF_OVERLAY])
+        if(z>=GH_DRAW_OVER_THRESHOLD && !this->Flags[FFCF_OVERLAY])
             this->Flags[FFCF_OVERLAY]=true;
-        else if(z<GH_DRAWOVERTHRESHOLD && this->Flags[FFCF_OVERLAY])
+        else if(z<GH_DRAW_OVER_THRESHOLD && this->Flags[FFCF_OVERLAY])
             this->Flags[FFCF_OVERLAY]=false;
     }
     
@@ -193,11 +193,10 @@ bool GhostWaitframeM(ffc this, npc ghost, float x, float y, float z, bool clearO
     Waitframe();
     
     CheckHit(this, ghost);
-    if((this->Misc[GHI_FLAGS]&GHF_STUN)!=0)
-        CheckStun(this, ghost);
+    CheckStun(this, ghost);
     
     // Dead?
-    if(!ghost->isValid() || ghost->HP==0)
+    if(!ghost->isValid() || ghost->HP<=0)
     {
         if(clearOnDeath)
         {
@@ -380,7 +379,7 @@ void CheckHit(ffc this, npc ghost)
 
 bool CheckStun(ffc this, npc ghost)
 {
-    if(CheckStunWeaponCollision(ghost))
+    if(ghost->Stun>0)
     {
         // Stop all movement
         float vxBackup=this->Vx;
@@ -394,14 +393,12 @@ bool CheckStun(ffc this, npc ghost)
         this->Ay=0;
         
         // Do nothing except get hit until recovered
-        for(int timer=160; timer>0; timer--)
+        while(ghost->Stun>0)
         {
             Waitframe();
             if(!ghost->isValid() || ghost->HP<=0)
                 return false;
             CheckHit(this, ghost);
-            if(CheckStunWeaponCollision(ghost))
-                timer=160;
         }
         
         // Restore movement
@@ -411,21 +408,6 @@ bool CheckStun(ffc this, npc ghost)
         this->Ay=ayBackup;
     }
     return true;
-}
-
-bool CheckStunWeaponCollision(npc ghost)
-{
-    lweapon wpn;
-    for(int i=1; i<=Screen->NumLWeapons(); i++)
-    {
-        wpn=Screen->LoadLWeapon(i);
-        if((wpn->Damage==0 || wpn->ID==LW_BRANG) &&
-           wpn->X+15>ghost->X && wpn->X<ghost->X+ghost->HitWidth &&
-           wpn->Y+15>ghost->Y && wpn->Y<ghost->Y+ghost->HitHeight &&
-           Abs(wpn->Z-ghost->Z)<16)
-            return true;
-    }
-    return false;
 }
 
 // Other ghost functions
@@ -699,6 +681,12 @@ void ReplaceGhost(npc oldGhost, npc newGhost, bool copyHP)
     oldGhost->HP=-1000;
 }
 
+void SetHP(ffc this, npc ghost, int newHP)
+{
+    ghost->HP=newHP;
+    this->Misc[GHI_PREV_HP]=newHP;
+}
+
 // EWeapon functions
 
 eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step, int damage, bool blockable, int sprite, bool rotate, int sound)
@@ -707,7 +695,6 @@ eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step, int damag
     wpn->X=x;
     wpn->Y=y;
     wpn->Step=step;
-    wpn->Misc[EWI_STEP]=step;
     wpn->Damage=damage;
     wpn->Angular=true;
     wpn->Angle=angle;
@@ -741,7 +728,6 @@ eweapon FireNonAngularEWeapon(int weaponID, int x, int y, int direction, int ste
     wpn->Y=y;
     wpn->Dir=direction;
     wpn->Step=step;
-    wpn->Misc[EWI_STEP]=step;
     wpn->Damage=damage;
     if(sprite>=0)
         wpn->UseSprite(sprite);
@@ -763,6 +749,8 @@ void SetEWeaponMovement(eweapon wpn, int type, int arg)
     wpn->Misc[EWI_WORK]=0;
     wpn->Misc[EWI_MOVEMENT]=type;
     wpn->Misc[EWI_MOVEMENT_ARG]=arg;
+    if(type==EWM_HOMING_REAIM || type==EWM_RANDOM_REAIM)
+        wpn->Misc[EWI_STEP]=wpn->Step;
 }
 
 void SetEWeaponLifespan(eweapon wpn, int type, int arg)
@@ -781,7 +769,7 @@ void UpdateEWeapons()
 {
     eweapon wpn;
     
-    for(int i=1; i<=Screen->NumEWeapons(); i++)
+    for(int i=Screen->NumEWeapons(); i>0; i--)
     {
         wpn=Screen->LoadEWeapon(i);
         
@@ -806,8 +794,8 @@ void UpdateEWeapons()
                         float offset;
                         wpn->Misc[EWI_WORK]+=15;
                         offset=wpn->Misc[EWI_MOVEMENT_ARG]*Sin(wpn->Misc[EWI_WORK]);
-                        wpn->Misc[EWI_XPOS]+=(wpn->Misc[EWI_STEP]/100)*RadianCos(wpn->Angle);
-                        wpn->Misc[EWI_YPOS]+=(wpn->Misc[EWI_STEP]/100)*RadianSin(wpn->Angle);
+                        wpn->Misc[EWI_XPOS]+=(wpn->Step/100)*RadianCos(wpn->Angle);
+                        wpn->Misc[EWI_YPOS]+=(wpn->Step/100)*RadianSin(wpn->Angle);
                         wpn->X=wpn->Misc[EWI_XPOS]+offset*RadianCos(wpn->Angle+1.5708);
                         wpn->Y=wpn->Misc[EWI_YPOS]+offset*RadianSin(wpn->Angle+1.5708);
                     }
@@ -816,8 +804,8 @@ void UpdateEWeapons()
                         float offset;
                         wpn->Misc[EWI_WORK]+=36;
                         offset=wpn->Misc[EWI_MOVEMENT_ARG]*Sin(wpn->Misc[EWI_WORK]);
-                        wpn->Misc[EWI_XPOS]+=(wpn->Misc[EWI_STEP]/100)*RadianCos(wpn->Angle);
-                        wpn->Misc[EWI_YPOS]+=(wpn->Misc[EWI_STEP]/100)*RadianSin(wpn->Angle);
+                        wpn->Misc[EWI_XPOS]+=(wpn->Step/100)*RadianCos(wpn->Angle);
+                        wpn->Misc[EWI_YPOS]+=(wpn->Step/100)*RadianSin(wpn->Angle);
                         wpn->X=wpn->Misc[EWI_XPOS]+offset*RadianCos(wpn->Angle+1.5708);
                         wpn->Y=wpn->Misc[EWI_YPOS]+offset*RadianSin(wpn->Angle+1.5708);
                     }
@@ -967,7 +955,7 @@ void UpdateEWeapons()
                     else if(wpn->Misc[EWI_MOVEMENT]==EWM_THROW)
                     {
                         wpn->Jump=0; // Override engine handling of Z movement for the few weapon types that have it
-                        if(wpn->Misc[EWI_WORK]==0 && EWI_MOVEMENT_ARG!=0)
+                        if(wpn->Misc[EWI_WORK]==0 && wpn->Misc[EWI_MOVEMENT_ARG]!=0)
                         {
                             wpn->Misc[EWI_WORK]=wpn->Misc[EWI_MOVEMENT_ARG];
                             wpn->Misc[EWI_MOVEMENT_ARG]=0;
@@ -997,9 +985,8 @@ void UpdateEWeapons()
                 }
                 else if(wpn->Misc[EWI_LIFESPAN]==EWL_SLOW_TO_HALT)
                 {
-                    wpn->Misc[EWI_STEP]=Max(0, wpn->Misc[EWI_STEP]-wpn->Misc[EWI_LIFESPAN_ARG]);
-                    wpn->Step=wpn->Misc[EWI_STEP];
-                    if(wpn->Misc[EWI_STEP]<=0)
+                    wpn->Step=Max(0, wpn->Step-wpn->Misc[EWI_LIFESPAN_ARG]);
+                    if(wpn->Step<=0)
                         wpn->Misc[EWI_FLAGS]|=EWF_DEAD;
                 }
             }
@@ -1217,7 +1204,7 @@ npc SpawnNPC(int id)
     npc theNPC;
     
     // Tiles used by or next to other NPCs are undesirable
-    for(int i=1; i<=Screen->NumNPCs(); i++)
+    for(int i=Screen->NumNPCs(); i>0; i--)
     {
         checkNPC=Screen->LoadNPC(i);
         checkCombo=ComboAt(checkNPC->X, checkNPC->Y);

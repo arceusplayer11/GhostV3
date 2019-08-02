@@ -3,7 +3,8 @@
 
 // Moves left and right for several seconds, regularly shooting splitting
 // fireballs. After that, rolls into a ball and bounces around the screen.
-// Appears on screen 4 in the demo quest.
+// Used as the final boss in the demo quest.
+
 const int IFL_HAND1_FFC=2;
 const int IFL_HAND2_FFC=3;
 const int IFL_WALK_COMBO=28;
@@ -37,6 +38,8 @@ ffc script Iflyte
         ghost=GhostInitWait(this, 1, false, IFL_WALK_COMBO);
         hand1->Data=IFL_HAND1_COMBO;
         hand2->Data=IFL_HAND2_COMBO;
+        
+        SetHP(this, ghost, ghost->HP+1000); // Used for custom death animation
         
         Game->PlayMIDI(IFL_BOSS_MIDI);
         

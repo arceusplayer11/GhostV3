@@ -27,14 +27,13 @@ npc GhostInitSpawn(ffc this, int enemyID)
 void SetFlags(ffc this, int flags)
  * Set flags that control the behavior of update functions. Use GHF constants ORed together for the flags argument.
  *
- * GHF_STUN: The enemy can be stunned by 0 damage weapons.
  * GHF_KNOCKBACK: The enemy can be knocked back when hit.
  * GHF_NO_FALL: ghost->Jump will be set to 0 each frame.
  * GHF_SET_DIRECTION: The NPC's direction  will automatically be set based on which way it's moved. Recommended if
  *    GHF_KNOCKBACK is used.
  * GHF_SET_OVERLAY: Set the "Draw Over" flag each frame based on Z position. The height at which it changes is
- *    determined by GH_DRAWOVERTHRESHOLD.
- * GHF_NORMAL: Combines GHF_STUN, GHF_KNOCKBACK, and GHF_SETDIRECTION.
+ *    determined by GH_DRAW_OVER_THRESHOLD.
+ * GHF_NORMAL: Combines GHF_KNOCKBACK and GHF_SETDIRECTION.
 
 
 +------------+
@@ -56,8 +55,8 @@ bool GhostWaitframeM(ffc this, npc ghost, float x, float y, float z, bool clearO
  * for movement. However, FFC positions have no Z value, so the enemy will always be on the ground.
  * GhostWaitframeM() allows you to specify a position manually.
  *
- * If you want to make a custom Waitframe method that incorporates one of these, be aware that, if the enemy is stunned, the
- * function won't return until it recovers.
+ * If you want to make a custom Waitframe method that incorporates one of these, be aware that if the enemy is stunned, the
+ * function won't return until it recovers or dies.
 
 bool GhostWaitframesN(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
 bool GhostWaitframesF(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
@@ -72,15 +71,13 @@ bool GhostWaitframesM(ffc this, npc ghost, float x, float y, float z, bool clear
 These functions are used internally by the Waitframe replacements, but are available to use if you'd rather write your own.
 
 void CheckHit(ffc this, npc ghost)
- * This makes the FFC react when the enemy is damaged. It will cause the FFC to flash and be knocked back. 
+ * This makes the FFC react when the enemy is damaged. It will cause the FFC to flash and be knocked back. This will handle
+ * stunning, only damage.
 
 bool CheckStun(ffc this, npc ghost)
- * Checks whether the NPC has been hit by any boomerangs or 0 damage weapons. If so, the enemy is stunned, and the function does
- * not return until it recovers or the NPC dies. It will call CheckHit() each frame during that time. The return value is true
- * if the NPC is still alive and false if it's dead.
-
-bool CheckStunWeaponCollision(npc ghost)
- * Checks whether any boomerangs or 0 damage weapons are colliding with the enemy.
+ * Checks whether the NPC has been stunned. If so, the function does not return until the NPC either recovers or dies.
+ * CheckHit() will be called each frame during that time. The return value is true if the NPC is still alive and false if it's
+ * dead.
 
 
 +-----------------------+
@@ -107,6 +104,9 @@ void SwapGhost(npc oldGhost, npc newGhost, bool copyHP)
 
 void ReplaceGhost(npc oldGhost, npc newGhost, bool copyHP)
  * Copies data from the old ghost to the new one, then silently kills the old one.
+
+void SetHP(ffc this, npc ghost, int newHP)
+ * Changes the NPC's HP without interfering with the enemy's flashing.
 
 
 +----------+
@@ -162,7 +162,7 @@ void SetEWeaponLifespan(eweapon wpn, int type, int arg)
  *    arg: Timer
  * EWL_NEAR_LINK: Die when within a certain distance of Link.
  *    arg: Distance
- * EWL_SLOW_TO_HALT: Slow down until stopped, then die.
+ * EWL_SLOW_TO_HALT: Slow down until stopped, then die. This may behave oddly with some movement types.
  *    arg: Step per frame
 
 void SetEWeaponDeathEffect(eweapon wpn, int type, int arg)
