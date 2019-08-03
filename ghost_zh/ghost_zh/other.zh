@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.1
+// Version 2.7.2
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
@@ -127,7 +127,6 @@ int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
     return choice-1;
 }
 
-
 int FindSpawnPoint(int type, int flag)
 {
     int tileRatings[176];
@@ -211,7 +210,6 @@ int FindSpawnPoint(int type, int flag)
     return choice-1;
 }
 
-
 npc SpawnNPC(int id)
 {
     npc theNPC;
@@ -224,12 +222,10 @@ npc SpawnNPC(int id)
     return theNPC;
 }
 
-
 int FindUnusedFFC()
 {
     return FindUnusedFFC(0);
 }
-
 
 int FindUnusedFFC(int startingFrom)
 {
@@ -239,14 +235,15 @@ int FindUnusedFFC(int startingFrom)
     {
         f=Screen->LoadFFC(i);
         
-        if((f->Data==0 || f->Data==GH_INVISIBLE_COMBO) && f->Script==0)
+        if((f->Data==0 || f->Data==GH_INVISIBLE_COMBO) &&
+           f->Script==0 &&
+           !f->Flags[FFCF_CHANGER])
             return i;
     }
     
     // Couldn't find one
     return 0;
 }
-
 
 void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
 {
@@ -312,7 +309,6 @@ void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
     ghost->DrawXOffset=xOffset;
 }
 
-
 void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
 {
     if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
@@ -360,18 +356,15 @@ void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
     ghost->DrawXOffset=xOffset;
 }
 
-
 bool Ghost_GotHit()
 {
     return (__Ghost_InternalFlags&__GHFI_GOT_HIT)!=0;
 }
 
-
 bool Ghost_WasFrozen()
 {
     return (__Ghost_InternalFlags&__GHFI_WAS_FROZEN)!=0;
 }
-
 
 void Ghost_DeathAnimation(ffc this, npc ghost, int type)
 {
@@ -390,48 +383,19 @@ void Ghost_DeathAnimation(ffc this, npc ghost, int type)
             ghost->Z=Ghost_Z;
         }
         this->Data=0;
+        Ghost_Data=0;
     }
 }
-
-
-void Ghost_SetPosition(ffc this, npc ghost)
-{
-    if(!ghost->isValid())
-        return;
-    
-    // Real Z
-    if(GH_FAKE_Z==0 && !Ghost_FlagIsSet(GHF_FAKE_Z))
-    {
-        ghost->X=Ghost_X;
-        ghost->Y=Ghost_Y;
-        ghost->Z=Ghost_Z;
-    }
-
-    // Fake Z
-    else
-    {
-        ghost->X=Ghost_X;
-        ghost->Y=Ghost_Y-Ghost_Z;
-        ghost->Z=0;
-    }
-
-    // Don't let the FFC go too far offscreen, or else it will disappear
-    this->X=Clamp(Ghost_X+ghost->DrawXOffset, -64, 256);
-    this->Y=Clamp(Ghost_Y-Ghost_Z+ghost->DrawYOffset-ghost->DrawZOffset, -64, 176);
-}
-
 
 void Ghost_MarkAsInUse(npc ghost)
 {
     ghost->Misc[__GHI_NPC_DATA]|=0x10000;
 }
 
-
 bool Ghost_IsInUse(npc ghost)
 {
     return ghost->Misc[__GHI_NPC_DATA]!=0;
 }
-
 
 float Ghost_GetAttribute(npc ghost, int index, float default, float min, float max)
 {
@@ -449,7 +413,6 @@ float Ghost_GetAttribute(npc ghost, int index, float default, float min, float m
     return attr;
 }
 
-
 float Ghost_GetAttribute(npc ghost, int index, float default)
 {
     if(index<0 || index>11)
@@ -461,7 +424,6 @@ float Ghost_GetAttribute(npc ghost, int index, float default)
         return default;
     return attr;
 }
-
 
 void Ghost_AddCombo(int combo, float x, float y, int width, int height)
 {
@@ -480,12 +442,10 @@ void Ghost_AddCombo(int combo, float x, float y, int width, int height)
     __Ghost_AdditionalCombos[__GHI_AC_COUNT]+=1;
 }
 
-
 void Ghost_AddCombo(int combo, float x, float y)
 {
     Ghost_AddCombo(combo, x, y, 1, 1);
 }
-
 
 void Ghost_ClearCombos()
 {
@@ -493,81 +453,20 @@ void Ghost_ClearCombos()
     __Ghost_AdditionalCombos[__GHI_AC_COUNT]=0;
 }
 
-
 bool ClockIsActive()
 {
     __ghzhData[__GHI_CLOCK_TIMER]!=0;
 }
-
 
 void SuspendGhostZHScripts()
 {
     __ghzhData[__GHI_GLOBAL_FLAGS]|=__GHGF_SUSPEND;
 }
 
-
 void ResumeGhostZHScripts()
 {
     __ghzhData[__GHI_GLOBAL_FLAGS]&=~__GHGF_SUSPEND;
 }
-
-
-void __Ghost_DrawShadow(npc ghost)
-{
-    // No shadow needed if the enemy isn't in the air
-    if(Ghost_Z==0)
-        return;
-    
-    // Must be using fake Z, have Extend of 4, or be of type "Other (Floating)"
-    if(!(Ghost_FlagIsSet(GHF_FAKE_Z) || GH_FAKE_Z>0 ||
-         ghost->Extend==4 || ghost->Type==NPCT_OTHERFLOAT))
-        return;
-    
-    if(GH_SHADOW_FLICKER!=0 && (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
-        return;
-    
-    int x;
-    int y;
-    int tile;
-    int size;
-    
-    // 1x1 shadow
-    if(Ghost_TileWidth<GH_LARGE_SHADOW_MIN_WIDTH ||
-       Ghost_TileHeight<GH_LARGE_SHADOW_MIN_HEIGHT ||
-       GH_LARGE_SHADOW_TILE==0)
-    {
-        x=Ghost_X+8*(Ghost_TileWidth-1);
-        y=Ghost_Y+16*(Ghost_TileHeight-1);
-        size=1;
-        if(Ghost_FlagIsSet(GHF_STATIC_SHADOW))
-            tile=GH_SHADOW_TILE;
-        else
-            tile=GH_SHADOW_TILE+__ghzhData[__GHI_SHADOW_FRAME];
-    }
-    // 2x2 shadow
-    else
-    {
-        x=Ghost_X+8*(Ghost_TileWidth-2);
-        y=Ghost_Y+16*(Ghost_TileHeight-2);
-        size=2;
-        if(Ghost_FlagIsSet(GHF_STATIC_SHADOW))
-            tile=GH_LARGE_SHADOW_TILE;
-        else
-            tile=GH_LARGE_SHADOW_TILE+2*__ghzhData[__GHI_LARGE_SHADOW_FRAME];
-    }
-    
-    if(GH_SHADOW_TRANSLUCENT>0)
-    {
-        Screen->DrawTile(1, x, y, tile, size, size, GH_SHADOW_CSET,
-                         -1, -1, 0, 0, 0, 0, true, OP_TRANS);
-    }
-    else
-    {
-        Screen->DrawTile(1, x, y, tile, size, size, GH_SHADOW_CSET,
-                         -1, -1, 0, 0, 0, 0, true, OP_OPAQUE);
-    }
-}
-
 
 void __Ghost_Explode(ffc this, npc ghost, bool flash)
 {
@@ -614,6 +513,8 @@ void __Ghost_Explode(ffc this, npc ghost, bool flash)
         for(int j=0; j<16; j++)
         {
             Ghost_SetPosition(this, ghost); // Make sure it doesn't wander off
+            if(flash)
+                __Ghost_UpdateFlashing(this, ghost);
             Ghost_WaitframeLight(this, ghost);
         }
     }
@@ -623,11 +524,10 @@ void __Ghost_Explode(ffc this, npc ghost, bool flash)
         ghost->HP=-1000;
         ghost->DrawXOffset=1000;
     }
-    this->Data=GH_INVISIBLE_COMBO;
-    Ghost_Data=GH_INVISIBLE_COMBO;
+    this->Data=0;
+    Ghost_Data=0;
     Ghost_ClearCombos();
 }
-
 
 // Used in Ghost_WaitframeLight() to determine whether the enemy needs drawn
 bool __Ghost_IsFlickering(npc ghost)

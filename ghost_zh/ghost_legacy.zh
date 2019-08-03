@@ -284,17 +284,23 @@ bool GhostWaitframeM(ffc this, npc ghost, float x, float y, float z, bool clearO
             this->Flags[FFCF_OVERLAY]=false;
     }
     
-    if((ghost->Misc[GHI_FLAGS]&GHF_NO_FALL)!=0)
-        ghost->Jump=0;
-    
-    // Set position
-    ghost->X=x;
-    ghost->Y=y;
-    ghost->Z=z;
-    this->X=Max(-64, Min(256, x)); // The FFC shouldn't go too far offscreen, or it will disappear
-    this->Y=Max(-64, Min(176, y-z));
-    
-    Waitframe();
+    do
+    {
+        // Stop falling and set position
+        if(ghost->isValid())
+        {
+            if((ghost->Misc[GHI_FLAGS]&GHF_NO_FALL)!=0)
+                ghost->Jump=0;
+            
+            ghost->X=x;
+            ghost->Y=y;
+            ghost->Z=z;
+        }
+        this->X=Max(-64, Min(256, x)); // The FFC shouldn't go too far offscreen, or it will disappear
+        this->Y=Max(-64, Min(176, y-z));
+        
+        Waitframe();
+    } while((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0);
     
     // Dead?
     if(!ghost->isValid())

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.1
+// Version 2.7.2
 
 
 bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
@@ -662,6 +662,7 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
         {
             Ghost_ClearCombos();
             this->Data=0;
+            Ghost_Data=0;
         }
         
         if(quitOnDeath)
@@ -697,6 +698,7 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
             ghost->Y=Ghost_Y+8*(Ghost_TileHeight-1);
             ghost->Z=Ghost_Z;
             this->Data=0;
+            Ghost_Data=0;
         }
         
         if(quitOnDeath)
@@ -722,9 +724,12 @@ void __Ghost_UpdateFlashing(ffc this, npc ghost)
     
     if((__Ghost_InternalFlags&__GHFI_CSET_FORCED)==0)
     {
-        if((__Ghost_FlashCounter>0 && GH_ENEMIES_FLICKER==0) || // Got hit?
-           (ghost->MiscFlags&1000000b)!=0) // "Is Flashing" flag set?
-            this->CSet=__ghzhData[__GHI_FLASH_CSET];
+        if(__Ghost_FlashCounter>0 && GH_ENEMIES_FLICKER==0) // Got hit?
+            // 9-8-7-6-9-8-7-6
+            this->CSet=9-(__ghzhData[__GHI_FLASH_COUNTER]>>1);
+        else if((ghost->MiscFlags&1000000b)!=0) // "Is Flashing" flag set?
+            // 6-7-8-9-6-7-8-9
+            this->CSet=6+(__ghzhData[__GHI_FLASH_COUNTER]&3);
         else if(endFlash)
             this->CSet=Ghost_CSet;
     }

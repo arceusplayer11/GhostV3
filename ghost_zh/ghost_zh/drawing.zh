@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.1
+// Version 2.7.2
 
 int __ghzhDrawData[1000];
 
@@ -166,3 +166,60 @@ void __SetUpDrawingArray(ffc this, npc ghost, int array)
             array[__GHI_CD_COUNT]++;
     }
 }
+
+void __Ghost_DrawShadow(npc ghost)
+{
+    // No shadow needed if the enemy isn't in the air
+    if(Ghost_Z==0)
+        return;
+    
+    // Must be using fake Z, have Extend of 4, or be of type "Other (Floating)"
+    if(!(Ghost_FlagIsSet(GHF_FAKE_Z) || GH_FAKE_Z>0 ||
+         ghost->Extend==4 || ghost->Type==NPCT_OTHERFLOAT))
+        return;
+    
+    if(GH_SHADOW_FLICKER!=0 && (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+        return;
+    
+    int x;
+    int y;
+    int tile;
+    int size;
+    
+    // 1x1 shadow
+    if(Ghost_TileWidth<GH_LARGE_SHADOW_MIN_WIDTH ||
+       Ghost_TileHeight<GH_LARGE_SHADOW_MIN_HEIGHT ||
+       GH_LARGE_SHADOW_TILE==0)
+    {
+        x=Ghost_X+8*(Ghost_TileWidth-1);
+        y=Ghost_Y+16*(Ghost_TileHeight-1);
+        size=1;
+        if(Ghost_FlagIsSet(GHF_STATIC_SHADOW))
+            tile=GH_SHADOW_TILE;
+        else
+            tile=GH_SHADOW_TILE+__ghzhData[__GHI_SHADOW_FRAME];
+    }
+    // 2x2 shadow
+    else
+    {
+        x=Ghost_X+8*(Ghost_TileWidth-2);
+        y=Ghost_Y+16*(Ghost_TileHeight-2);
+        size=2;
+        if(Ghost_FlagIsSet(GHF_STATIC_SHADOW))
+            tile=GH_LARGE_SHADOW_TILE;
+        else
+            tile=GH_LARGE_SHADOW_TILE+2*__ghzhData[__GHI_LARGE_SHADOW_FRAME];
+    }
+    
+    if(GH_SHADOW_TRANSLUCENT>0)
+    {
+        Screen->DrawTile(1, x, y, tile, size, size, GH_SHADOW_CSET,
+                         -1, -1, 0, 0, 0, 0, true, OP_TRANS);
+    }
+    else
+    {
+        Screen->DrawTile(1, x, y, tile, size, size, GH_SHADOW_CSET,
+                         -1, -1, 0, 0, 0, 0, true, OP_OPAQUE);
+    }
+}
+

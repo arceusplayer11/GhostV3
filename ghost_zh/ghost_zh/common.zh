@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.1
+// Version 2.7.2
 
 // Used for DrawGhostFFCs()
 const int __GHI_DRAW_COMBO      = 0;
@@ -82,7 +82,7 @@ int __ghzhData[8];
 
 // __ghzhData indices
 const int __GHI_GLOBAL_FLAGS       = 0;
-const int __GHI_FLASH_CSET         = 1;
+const int __GHI_FLASH_COUNTER      = 1;
 const int __GHI_SHADOW_FRAME       = 2;
 const int __GHI_SHADOW_TIMER       = 3;
 const int __GHI_LARGE_SHADOW_FRAME = 4;

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.1
+// Version 2.7.2
 
 void StartGhostZH()
 {
@@ -23,7 +23,7 @@ void UpdateGhostZH2()
 void InitializeGhostZHData()
 {
     __ghzhData[__GHI_GLOBAL_FLAGS]=0;
-    __ghzhData[__GHI_FLASH_CSET]=6;
+    __ghzhData[__GHI_FLASH_COUNTER]=0;
     __ghzhData[__GHI_SHADOW_FRAME]=0;
     __ghzhData[__GHI_SHADOW_TIMER]=0;
     __ghzhData[__GHI_LARGE_SHADOW_FRAME]=0;
@@ -52,19 +52,12 @@ void UpdateGhostZHData1()
 
 void UpdateGhostZHData2()
 {
-    // The flicker flag is toggled every frame. The flashing CSet should
-    // only be updated every other frame, so it's included here.
+    // Update the flash counter and toggle the flicker flag
+    __ghzhData[__GHI_FLASH_COUNTER]=(__ghzhData[__GHI_FLASH_COUNTER]+1)%8;
     if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)==0)
         __ghzhData[__GHI_GLOBAL_FLAGS]|=__GHGF_FLICKER;
     else
-    {
         __ghzhData[__GHI_GLOBAL_FLAGS]&=~__GHGF_FLICKER;
-        
-        // Flash CSet goes 6-7-8-9-6-7-8-9...
-        __ghzhData[__GHI_FLASH_CSET]++;
-        if(__ghzhData[__GHI_FLASH_CSET]>9)
-            __ghzhData[__GHI_FLASH_CSET]=6;
-    }
     
     // Update shadow animation
     if(GH_SHADOW_FRAMES>1)
@@ -198,6 +191,8 @@ void AutoGhost()
             f=Screen->LoadFFC(ffcID);
             f->Data=GH_INVISIBLE_COMBO;
             f->CSet=enemy->CSet;
+            f->TileWidth=1;
+            f->TileHeight=1;
             f->X=enemy->X;
             f->Y=enemy->Y-enemy->Z;
             f->Vx=0;

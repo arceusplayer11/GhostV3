@@ -1,3 +1,13 @@
+2.7.2 (2014-08-20)
+* AutoGhost() will no longer grab changers.
+* AutoGhost() now sets the FFC's size.
+* FindUnusedFFC() will no longer return changers.
+* When an enemy dies, its FFC is set to 0 instead of GH_INVISIBLE_COMBO.
+* Fixed some walkability checking issues in the walking functions.
+* Fixed the exploding and flashing death animation not flashing.
+* Corrected flashing CSets.
+* Legacy Waitframes are now included when ghost.zh scripts are suspended.
+
 2.7.1 (2014-01-30)
 * AutoGhost() doesn't run when ghost.zh scripts are suspended.
 * Fixed enemies being unable to drop items if they use a death animation.

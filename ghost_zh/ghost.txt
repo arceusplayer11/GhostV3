@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.7.1
+Version 2.7.2
 
 
 This file is documentation for script writers. If you just want to set up
@@ -389,6 +389,7 @@ bool Ghost_CheckFreeze(ffc this, npc ghost)
 
 void Ghost_Move(int dir, float step, int imprecision)
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
+
 
 
 
