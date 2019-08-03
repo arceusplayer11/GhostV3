@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.5.2
+// Version 2.6.0
 
 // Old flags - 16 bits, can be ORed together
 const int GHF_KNOCKBACK          = 0000000000000001b;
@@ -28,6 +28,7 @@ const int GHF_FLYING_ENEMY    = 0x10000;
 const int GHF_IGNORE_NO_ENEMY = 0x10001;
 const int GHF_WATER_ONLY      = 0x10002;
 const int GHF_DEEP_WATER_ONLY = 0x10003;
+const int GHF_STATIC_SHADOW   = 0x10004;
 
 // Internal enemy flags
 const int __GHFI_GOT_HIT               = 000001b;

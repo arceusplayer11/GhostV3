@@ -1,17 +1,24 @@
 // ghost.zh
-// Version 2.5.2
+// Version 2.6.0
 
 // See ghost.txt for documentation.
 
 // Standard settings -----------------------------------------------------------
 
-// Shadow settings
+// Small (1x1) shadow settings
 const int GH_SHADOW_TILE = 27400;
 const int GH_SHADOW_CSET = 7;
 const int GH_SHADOW_FRAMES = 4;
 const int GH_SHADOW_ANIM_SPEED = 8;
 const int GH_SHADOW_TRANSLUCENT = 1; // 0 = No, 1 = Yes
 const int GH_SHADOW_FLICKER = 0; // 0 = No, 1 = Yes
+
+// Large (2x2) shadow settings
+// If GH_LARGE_SHADOW_TILE is 0, large shadows will be disabled
+const int GH_LARGE_SHADOW_TILE = 27392; // Top-left corner
+const int GH_LARGE_SHADOW_CSET = 7;
+const int GH_LARGE_SHADOW_FRAMES = 4;
+const int GH_LARGE_SHADOW_ANIM_SPEED = 8;
 
 // AutoGhost settings
 const int AUTOGHOST_MIN_FFC = 1; // Min: 1, Max: 32
@@ -47,8 +54,8 @@ const int AUTOGHOST_READ_NAME = -1;
 // beginning of the script name
 const int AUTOGHOST_DELIMITER = 64;
 
-// Misc. attribute 11 can be set to this instead of GH_INVISIBLE_COMBO. Must be
-// a negative number.
+// Misc. attribute 11 can be set to this instead of GH_INVISIBLE_COMBO.
+// Must be a negative number.
 const int __GH_INVISIBLE_ALT = -1;
 
 // This will use the invisible combo, but also set npc->Extend to 3, hiding
@@ -73,35 +80,44 @@ const int __GH_KNOCKBACK_TIME = 16;
 // Default: 4
 const int __GH_KNOCKBACK_STEP = 4;
 
+// The imprecision setting used when a movement function is called internally
+// (except for walking functions).
+const int __GH_DEFAULT_IMPRECISION = 2;
+
 // npc->Misc[] index
 // Set this so it doesn't conflict with other scripts. Legal values are 0-15.
 const int __GHI_GHZH_DATA = 15;
 
 // eweapon->Misc[] indices
 // These must be unique numbers between 0 and 15.
-const int __EWI_FLAGS        = 15; // Every index but this one can be used by non-ghost.zh EWeapons
-const int __EWI_DUMMY_SOUND  = 1; // Only used by dummies
-const int __EWI_DUMMY_STEP   = 2; // Only used by dummies
-const int __EWI_DUMMY_SPRITE = 3; // Only used by dummies
-const int __EWI_ID           = 4;
-const int __EWI_XPOS         = 5;
-const int __EWI_YPOS         = 6;
-const int __EWI_WORK         = 7;
-const int __EWI_WORK_2       = 8; // Only used by a few movement types
-const int __EWI_MOVEMENT     = 9;
-const int __EWI_MOVEMENT_ARG = 10;
-const int __EWI_LIFESPAN     = 11;
-const int __EWI_LIFESPAN_ARG = 12;
-const int __EWI_ON_DEATH     = 13;
-const int __EWI_ON_DEATH_ARG = 14;
+const int __EWI_FLAGS          = 15; // Every index but this one can be used by non-ghost.zh EWeapons
+const int __EWI_ID             = 3;
+const int __EWI_XPOS           = 4;
+const int __EWI_YPOS           = 5;
+const int __EWI_WORK           = 6;
+const int __EWI_WORK_2         = 7; // Only used by a few movement types
+const int __EWI_MOVEMENT       = 8;
+const int __EWI_MOVEMENT_ARG   = 9;
+const int __EWI_MOVEMENT_ARG_2 = 10;
+const int __EWI_LIFESPAN       = 11;
+const int __EWI_LIFESPAN_ARG   = 12;
+const int __EWI_ON_DEATH       = 13;
+const int __EWI_ON_DEATH_ARG   = 14;
+
+// These are only used by dummy EWeapons;
+// they can use the same values as __EWI_XPOS and __EWI_YPOS
+const int __EWI_DUMMY_SOUND    = 2;
+const int __EWI_DUMMY_STEP     = 4;
+const int __EWI_DUMMY_SPRITE   = 5;
 
 // End advanced settings -------------------------------------------------------
 
 
-//import "ghost_zh/clock.zh"
 import "ghost_zh/common.zh"
 import "ghost_zh/deprecated.zh"
 import "ghost_zh/eweapon.zh"
+import "ghost_zh/eweapon_death.zh"
+import "ghost_zh/eweapon_movement.zh"
 import "ghost_zh/flags.zh"
 import "ghost_zh/global.zh"
 import "ghost_zh/init.zh"

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.5.2
+// Version 2.6.0
 
 // Used for DrawGhostFFCs()
 const int __GHI_DRAW_COMBO      = 0;
@@ -27,6 +27,16 @@ const int __GHI_AC_OPACITY           = 23;
 const int __GHI_AC_BASE_X            = 24;
 const int __GHI_AC_BASE_Y            = 25;
 const int __GH_AC_DATA_SIZE          = 5; // Number of repeating elements
+
+// Enemy properties - used with GetEnemyProperty and SetEnemyProperty
+// These must match tempGhostData in Ghost_WaitframeLight
+const int ENPROP_X = 0;
+const int ENPROP_Y = 1;
+const int ENPROP_Z = 2;
+const int ENPROP_JUMP = 3;
+const int ENPROP_DIR = 11;
+const int ENPROP_HP = 20;
+const int ENPROP_CSET = 10;
 
 // Global variables
 
@@ -65,9 +75,21 @@ int __Ghost_YOffsets;
 int __Ghost_Scripts[32];
 int __Ghost_AdditionalCombos[21]; // Size is 5 * max combos + 1
 
-int __ghzhData[5];
+int __ghzhData[7];
 int __ghzhPrevScreen;
 
+// __ghzhData indices
+const int __GH_GLOBAL_FLAGS       = 0;
+const int __GH_FLASH_CSET         = 1;
+const int __GH_SHADOW_FRAME       = 2;
+const int __GH_SHADOW_TIMER       = 3;
+const int __GH_LARGE_SHADOW_FRAME = 4;
+const int __GH_LARGE_SHADOW_TIMER = 5;
+const int __GH_CLOCK_TIMER        = 6;
+
+// Global flags
+const int __GHGF_FLICKER = 01b;
+const int __GHGF_SUSPEND = 10b;
 
 
 // Get a normal direction (a DIR_ constant) from a number outside that range

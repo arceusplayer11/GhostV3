@@ -1,5 +1,153 @@
 // ghost.zh
-// Version 2.5.2
+// Version 2.6.0
+
+
+void Ghost_MoveXY(float xStep, float yStep, int imprecision)
+{
+    // If this is sideview, most enemies can't move upward
+    if(yStep<0 && IsSideview() && !Ghost_FlagIsSet(GHF_NO_FALL))
+        yStep=0;
+
+    // If moving more than 8 pixels along either axis, go 8 at a time
+    while(Abs(xStep)>8 || Abs(yStep)>8)
+    {
+        if(Abs(xStep)>=Abs(yStep))
+        {
+            if(xStep>0)
+            {
+                Ghost_MoveXY(8, 0, imprecision);
+                xStep-=8;
+            }
+            else
+            {
+                Ghost_MoveXY(-8, 0, imprecision);
+                xStep+=8;
+            }
+        }
+        else // yStep>=xStep
+        {
+            if(yStep>0)
+            {
+                Ghost_MoveXY(0, 8, imprecision);
+                yStep-=8;
+            }
+            else
+            {
+                Ghost_MoveXY(0, -8, imprecision);
+                yStep+=8;
+            }
+        }
+    }
+    
+    int edge; // Position of leading edge
+    int edgeDiff; // Difference between Ghost_X/Ghost_Y and edge
+    int startHT; // The half-tile position where the edge starts
+    int endHT; // And where it ends up
+    
+    if(xStep<0) // Left
+    {
+        edgeDiff=__Ghost_XOffsets>>8;
+        edge=Ghost_X+edgeDiff;
+        
+        startHT=(edge/8)<<0;
+        endHT=((edge+xStep)/8)<<0;
+        
+        // If the edge ends up on the same half-tile line it's already on,
+        // there's no need to check walkability
+        if(startHT==endHT)
+            edge+=xStep;
+        else if(Ghost_CanMove(DIR_LEFT, -xStep, imprecision))
+            edge+=xStep;
+        else // Can't move all the way; snap to the grid
+            edge=(edge>>3)<<3;
+        
+        Ghost_X=edge-edgeDiff;
+    }
+    else if(xStep>0) // Right
+    {
+        edgeDiff=16*Ghost_TileWidth-(__Ghost_XOffsets&0xFF)-1;
+        edge=Ghost_X+edgeDiff;
+        
+        startHT=(edge/8)<<0;
+        endHT=((edge+xStep)/8)<<0;
+        
+        if(startHT==endHT)
+            edge+=xStep;
+        else if(Ghost_CanMove(DIR_RIGHT, xStep, imprecision))
+            edge+=xStep;
+        else
+            edge=(((edge+7)>>3)<<3)-1;
+        
+        Ghost_X=edge-edgeDiff;
+    }
+    
+    if(yStep<0) // Up
+    {
+        edgeDiff=__Ghost_YOffsets>>8;
+        edge=Ghost_Y+edgeDiff;
+        
+        startHT=(edge/8)<<0;
+        endHT=((edge+yStep)/8)<<0;
+        
+        // If the edge ends up on the same half-tile line it's already on,
+        // there's no need to check walkability
+        if(startHT==endHT)
+            edge+=yStep;
+        else if(Ghost_CanMove(DIR_UP, -yStep, imprecision))
+            edge+=yStep;
+        else // Can't move all the way; snap to the grid
+            edge=(edge>>3)<<3;
+        
+        Ghost_Y=edge-edgeDiff;
+    }
+    else if(yStep>0) // Down
+    {
+        edgeDiff=16*Ghost_TileHeight-(__Ghost_YOffsets&0xFF)-1;
+        edge=Ghost_Y+edgeDiff;
+        
+        startHT=(edge/8)<<0;
+        endHT=((edge+yStep)/8)<<0;
+        
+        if(startHT==endHT)
+            edge+=yStep;
+        else if(Ghost_CanMove(DIR_DOWN, yStep, imprecision))
+            edge+=yStep;
+        else
+            edge=(((edge+7)>>3)<<3)-1;
+        
+        Ghost_Y=edge-edgeDiff;
+    }
+    
+    if(Ghost_FlagIsSet(GHF_SET_DIRECTION) && (__Ghost_InternalFlags&__GHFI_DIR_FORCED)==0)
+    {
+        // Use 8 directions if 8-way flag is set
+        if(Ghost_FlagIsSet(GHF_8WAY))
+            Ghost_Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
+        
+        // Otherwise, 4 directions
+        else
+        {
+            if(Abs(xStep)<Abs(yStep))
+            {
+                if(yStep<0)
+                    Ghost_Dir=DIR_UP;
+                else
+                    Ghost_Dir=DIR_DOWN;
+            }
+            else
+            {
+                if(xStep<0)
+                    Ghost_Dir=DIR_LEFT;
+                else
+                    Ghost_Dir=DIR_RIGHT;
+            }
+        }
+        
+        __Ghost_PrevX=Ghost_X;
+        __Ghost_PrevY=Ghost_Y;
+    }
+}
+
 
 void Ghost_Move(int dir, float step, int imprecision)
 {
@@ -41,122 +189,6 @@ void Ghost_Move(int dir, float step, int imprecision)
 }
 
 
-void Ghost_MoveXY(float xStep, float yStep, int imprecision)
-{
-    // If this is sideview, most enemies can't move upward
-    if(yStep<0 && IsSideview() && !Ghost_FlagIsSet(GHF_NO_FALL))
-        yStep=0;
-    
-    if(yStep<0)
-    {
-        // If the enemy's going very fast, move 8 pixels at a time to ensure
-        // walkability checking is handled correctly and it moves as far as possible
-        if(yStep<-8)
-        {
-            int yStep2=yStep;
-            for(; yStep2<-8; yStep2+=8)
-                Ghost_MoveXY(0, -8, imprecision);
-            
-            // Move all the way
-            if(Ghost_CanMove(DIR_UP, -yStep2, imprecision))
-                Ghost_Y+=yStep2;
-            // Can't go that far; go as far as possible
-            // (i.e. snap to the grid on this axis)
-            else
-                Ghost_Y=(Ghost_Y+yStep+8)&0xFFF8;
-        }
-        else if(Ghost_CanMove(DIR_UP, -yStep, imprecision))
-            Ghost_Y+=yStep;
-        else
-            Ghost_Y=(Ghost_Y+yStep+8)&0xFFF8;
-    }
-    else if(yStep>0)
-    {
-        if(yStep>8)
-        {
-            int yStep2=yStep;
-            for(; yStep2>8; yStep2-=8)
-                Ghost_MoveXY(0, 8, imprecision);
-            
-            if(Ghost_CanMove(DIR_DOWN, yStep2, imprecision))
-                Ghost_Y+=yStep2;
-            else if(Ghost_Y%8!=0)
-                Ghost_Y=(Ghost_Y+yStep)&0xFFF8;
-        }
-        else if(Ghost_CanMove(DIR_DOWN, yStep, imprecision))
-            Ghost_Y+=yStep;
-        else if(Ghost_Y%8!=0)
-            Ghost_Y=(Ghost_Y+yStep)&0xFFF8;
-    }
-    
-    if(xStep<0)
-    {
-        if(xStep<-8)
-        {
-            int xStep2=xStep;
-            for(; xStep2<-8; xStep2+=8)
-                Ghost_MoveXY(-8, 0, imprecision);
-            
-            if(Ghost_CanMove(DIR_LEFT, -xStep2, imprecision))
-                Ghost_X+=xStep2;
-            else
-                Ghost_X=(Ghost_X+xStep+8)&0xFFF8;//Ghost_X&=0xFFF8;
-        }
-        else if(Ghost_CanMove(DIR_LEFT, -xStep, imprecision))
-            Ghost_X+=xStep;
-        else
-            Ghost_X=(Ghost_X+xStep+8)&0xFFF8;//Ghost_X&=0xFFF8;
-    }
-    else if(xStep>0)
-    {
-        if(xStep>8)
-        {
-            int xStep2=xStep;
-            for(; xStep2>8; xStep2-=8)
-                Ghost_MoveXY(8, 0, imprecision);
-            
-            if(Ghost_CanMove(DIR_RIGHT, xStep2, imprecision))
-                Ghost_X+=xStep2;
-            else if(Ghost_X%8!=0)
-                Ghost_X=(Ghost_X+xStep)&0xFFF8;
-        }
-        else if(Ghost_CanMove(DIR_RIGHT, xStep, imprecision))
-            Ghost_X+=xStep;
-        else if(Ghost_X%8!=0)
-            Ghost_X=(Ghost_X+xStep)&0xFFF8;
-    }
-    
-    if(Ghost_FlagIsSet(GHF_SET_DIRECTION) && (__Ghost_InternalFlags&__GHFI_DIR_FORCED)==0)
-    {
-        // Use 8 directions if 8-way flag is set
-        if(Ghost_FlagIsSet(GHF_8WAY))
-            Ghost_Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
-        
-        // Otherwise, 4 directions
-        else
-        {
-            if(Abs(xStep)<Abs(yStep))
-            {
-                if(yStep<0)
-                    Ghost_Dir=DIR_UP;
-                else
-                    Ghost_Dir=DIR_DOWN;
-            }
-            else
-            {
-                if(xStep<0)
-                    Ghost_Dir=DIR_LEFT;
-                else
-                    Ghost_Dir=DIR_RIGHT;
-            }
-        }
-        
-        __Ghost_PrevX=Ghost_X;
-        __Ghost_PrevY=Ghost_Y;
-    }
-}
-
-
 void Ghost_MoveAtAngle(float angle, float step, int imprecision)
 {
     Ghost_MoveXY(VectorX(step, angle), VectorY(step, angle), imprecision);
@@ -174,109 +206,188 @@ bool Ghost_CanMove(int dir, float step, int imprecision, bool inAir)
 {
     if(step==0)
         return true;
+    
+    dir=__NormalizeDir(dir);
+    
+    // More than 8 pixels? Step 8 at a time
+    while(step>8)
+    {
+        if(!__Ghost_CanMoveSingle(dir, step-8, imprecision, inAir))
+            return false;
+        step-=8;
+    }
+    
+    return __Ghost_CanMoveSingle(dir, step, imprecision, inAir);
+}
 
-    int leftOffset=__Ghost_XOffsets>>8;
-    int rightOffset=__Ghost_XOffsets&255;
-    int topOffset=__Ghost_YOffsets>>8;
-    int bottomOffset=__Ghost_YOffsets&255;
 
-    if(dir==DIR_UP)
+// Check a single line for movability; needed when checking CanMove
+// over more than 8 tiles
+bool __Ghost_CanMoveSingle(int dir, float step, int imprecision, bool inAir)
+{
+    int i;
+    float leadingEdge; // X or Y position of the leading edge
+    int edgeSize; // Length of that edge (ignoring imprecision)
+    float edgeStart; // X or Y at the top or left end of the leading edge
+    int numCheckPoints; // Number of points to check, excluding endpoints
+    
+    if(dir==DIR_LEFT)
+    {
+        // The edge size is tile height minus hit box offsets
+        edgeSize=16*Ghost_TileHeight-(__Ghost_YOffsets>>8)-(__Ghost_YOffsets&0xFF);
+        
+        // The leading edge is the left edge of the hitbox
+        leadingEdge=Ghost_X+(__Ghost_XOffsets>>8)-step;
+        
+        // The edge starts at the top of the hitbox
+        edgeStart=Ghost_Y+(__Ghost_YOffsets>>8);
+        
+        // Check every eight pixels; -1 cuts off the last point
+        numCheckPoints=edgeSize/8-1;
+        
+        // Check the non-end points
+        for(i=1; i<=numCheckPoints; i++)
+        {
+            if(!Ghost_CanMovePixel(leadingEdge, edgeStart+i*8, inAir))
+                return false;
+        }
+        
+        // Then the endpoints
+        if(!Ghost_CanMovePixel(leadingEdge, edgeStart+imprecision, inAir))
+            return false;
+        if(!Ghost_CanMovePixel(leadingEdge, edgeStart+edgeSize-imprecision-1, inAir))
+            return false;
+        
+        return true;
+    }
+    else if(dir==DIR_RIGHT)
+    {
+        edgeSize=16*Ghost_TileHeight-(__Ghost_YOffsets>>8)-(__Ghost_YOffsets&0xFF);
+        leadingEdge=Ghost_X+16*Ghost_TileWidth-(__Ghost_XOffsets&0xFF)-1+step;
+        edgeStart=Ghost_Y+(__Ghost_YOffsets>>8);
+        numCheckPoints=edgeSize/8-1;
+        
+        for(i=1; i<=numCheckPoints; i++)
+        {
+            if(!Ghost_CanMovePixel(leadingEdge, edgeStart+i*8, inAir))
+                return false;
+        }
+        
+        if(!Ghost_CanMovePixel(leadingEdge, edgeStart+imprecision, inAir))
+            return false;
+        if(!Ghost_CanMovePixel(leadingEdge, edgeStart+edgeSize-imprecision-1, inAir))
+            return false;
+        
+        return true;
+    }
+    else if(dir==DIR_UP)
     {
         // Most enemies can't move upward on sideview screens
         if(IsSideview() && !Ghost_FlagIsSet(GHF_NO_FALL))
             return false;
         
-        int y=Ghost_Y-step;
-
-        // Check every 8 pixels for solid, pit, or water
-        for(int i=leftOffset+imprecision; i<Ghost_TileWidth*16-rightOffset-imprecision; i+=8)
+        edgeSize=16*Ghost_TileWidth-(__Ghost_XOffsets>>8)-(__Ghost_XOffsets&0xFF);
+        leadingEdge=Ghost_Y+(__Ghost_YOffsets>>8)-step;
+        edgeStart=Ghost_X+(__Ghost_XOffsets>>8);
+        numCheckPoints=edgeSize/8-1;
+        
+        for(i=1; i<=numCheckPoints; i++)
         {
-            if(!Ghost_CanMovePixel(Ghost_X+i, y+topOffset, inAir))
+            if(!Ghost_CanMovePixel(edgeStart+i*8, leadingEdge, inAir))
                 return false;
         }
-
-        // One last pixel...
-        if(!Ghost_CanMovePixel(Ghost_X+Ghost_TileWidth*16-rightOffset-imprecision-1, y+topOffset, inAir))
+        
+        if(!Ghost_CanMovePixel(edgeStart+imprecision, leadingEdge, inAir))
             return false;
-
+        if(!Ghost_CanMovePixel(edgeStart+edgeSize-imprecision-1, leadingEdge, inAir))
+            return false;
+        
         return true;
     }
     else if(dir==DIR_DOWN)
     {
-        int y=(Ghost_Y+16*Ghost_TileHeight-1)+step;
-
-        for(int i=leftOffset+imprecision; i<Ghost_TileWidth*16-rightOffset-imprecision; i+=8)
+        edgeSize=16*Ghost_TileWidth-(__Ghost_XOffsets>>8)-(__Ghost_XOffsets&0xFF);
+        leadingEdge=Ghost_Y+16*Ghost_TileHeight-(__Ghost_YOffsets&0xFF)-1+step;
+        edgeStart=Ghost_X+(__Ghost_XOffsets>>8);
+        numCheckPoints=edgeSize/8-1;
+        
+        for(i=1; i<=numCheckPoints; i++)
         {
-            if(!Ghost_CanMovePixel(Ghost_X+i, y-bottomOffset, inAir))
+            if(!Ghost_CanMovePixel(edgeStart+i*8, leadingEdge, inAir))
                 return false;
         }
-
-        if(!Ghost_CanMovePixel(Ghost_X+Ghost_TileWidth*16-rightOffset-imprecision-1, y-bottomOffset, inAir))
+        
+        if(!Ghost_CanMovePixel(edgeStart+imprecision, leadingEdge, inAir))
             return false;
-
+        if(!Ghost_CanMovePixel(edgeStart+edgeSize-imprecision-1, leadingEdge, inAir))
+            return false;
+        
         return true;
     }
-    else if(dir==DIR_LEFT)
-    {
-        int x=Ghost_X-step;
-
-        for(int i=topOffset+imprecision; i<Ghost_TileHeight*16-bottomOffset-imprecision; i+=8)
-        {
-            if(!Ghost_CanMovePixel(x+leftOffset, Ghost_Y+i, inAir))
-                return false;
-        }
-
-        if(!Ghost_CanMovePixel(x+leftOffset, Ghost_Y+Ghost_TileHeight*16-bottomOffset-imprecision-1, inAir))
-            return false;
-
-        return true;
-    }
-    else if(dir==DIR_RIGHT)
-    {
-        int x=(Ghost_X+16*Ghost_TileWidth-1)+step;
-
-        for(int i=topOffset+imprecision; i<Ghost_TileHeight*16-bottomOffset-imprecision; i+=8)
-        {
-            if(!Ghost_CanMovePixel(x-rightOffset, Ghost_Y+i))
-                return false;
-        }
-
-        if(!Ghost_CanMovePixel(x-rightOffset, Ghost_Y+Ghost_TileHeight*16-bottomOffset-imprecision-1))
-            return false;
-
-        return true;
-    }
+    
+    // Diagonal directions - move along one axis and test the other
     else if(dir==DIR_LEFTUP)
     {
-        float tempX=Ghost_X;
-
-        Ghost_X-=step*0.7071;
-        bool ret=Ghost_CanMove(DIR_UP, step*0.7071, imprecision);
-        Ghost_X=tempX;
+        bool ret;
+        step*=0.7071;
+        
+        Ghost_X-=step;
+        ret=Ghost_CanMove(DIR_UP, step, imprecision, inAir);
+        Ghost_X+=step;
+        if(!ret)
+            return false;
+        
+        Ghost_Y-=step;
+        ret=Ghost_CanMove(DIR_LEFT, step, imprecision, inAir);
+        Ghost_Y+=step;
         return ret;
     }
     else if(dir==DIR_RIGHTUP)
     {
-        float tempX=Ghost_X;
-        Ghost_X+=step*0.7071;
-        bool ret=Ghost_CanMove(DIR_UP, step*0.7071, imprecision);
-        Ghost_X=tempX;
+        bool ret;
+        step*=0.7071;
+        
+        Ghost_X+=step;
+        ret=Ghost_CanMove(DIR_UP, step, imprecision, inAir);
+        Ghost_X-=step;
+        if(!ret)
+            return false;
+        
+        Ghost_Y-=step;
+        ret=Ghost_CanMove(DIR_RIGHT, step, imprecision, inAir);
+        Ghost_Y+=step;
         return ret;
     }
     else if(dir==DIR_LEFTDOWN)
     {
-        float tempX=Ghost_X;
-        Ghost_X-=step*0.7071;
-        bool ret=Ghost_CanMove(DIR_DOWN, step*0.7071, imprecision);
-        Ghost_X=tempX;
+        bool ret;
+        step*=0.7071;
+        
+        Ghost_X-=step;
+        ret=Ghost_CanMove(DIR_DOWN, step, imprecision, inAir);
+        Ghost_X+=step;
+        if(!ret)
+            return false;
+        
+        Ghost_Y+=step;
+        ret=Ghost_CanMove(DIR_LEFT, step, imprecision, inAir);
+        Ghost_Y-=step;
         return ret;
     }
     else if(dir==DIR_RIGHTDOWN)
     {
-        float tempX=Ghost_X;
-        Ghost_X+=step*0.7071;
-        bool ret=Ghost_CanMove(DIR_DOWN, step*0.7071, imprecision);
-        Ghost_X=tempX;
+        bool ret;
+        step*=0.7071;
+        
+        Ghost_X+=step;
+        ret=Ghost_CanMove(DIR_DOWN, step, imprecision, inAir);
+        Ghost_X-=step;
+        if(!ret)
+            return false;
+        
+        Ghost_Y+=step;
+        ret=Ghost_CanMove(DIR_RIGHT, step, imprecision, inAir);
+        Ghost_Y-=step;
         return ret;
     }
     else // Invalid direction
@@ -817,26 +928,26 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
     // Don't bother checking upward in sideview if GHF_NO_FALL isn't set
     if(!IsSideview() || Ghost_FlagIsSet(GHF_NO_FALL))
     {
-        if(__FullTileWalkable(Ghost_X, Ghost_Y-16))
+        if(Ghost_CanMovePixel(Ghost_X, Ghost_Y-16))
         {
             combos[DIR_UP]=true;
             numDirs++;
         }
     }
     
-    if(__FullTileWalkable(Ghost_X, Ghost_Y+16))
+    if(Ghost_CanMovePixel(Ghost_X, Ghost_Y+16))
     {
         combos[DIR_DOWN]=true;
         numDirs++;
     }
     
-    if(__FullTileWalkable(Ghost_X-16, Ghost_Y))
+    if(Ghost_CanMovePixel(Ghost_X-16, Ghost_Y))
     {
         combos[DIR_LEFT]=true;
         numDirs++;
     }
     
-    if(__FullTileWalkable(Ghost_X+16, Ghost_Y))
+    if(Ghost_CanMovePixel(Ghost_X+16, Ghost_Y))
     {
         combos[DIR_RIGHT]=true;
         numDirs++;

@@ -1,16 +1,5 @@
 // ghost.zh
-// Version 2.5.2
-
-// __ghzhData indices
-const int __GH_GLOBAL_FLAGS = 0;
-const int __GH_FLASH_CSET   = 1;
-const int __GH_SHADOW_FRAME = 2;
-const int __GH_SHADOW_TIMER = 3;
-const int __GH_CLOCK_TIMER  = 4;
-
-// Global flags
-const int __GHGF_FLICKER = 01b;
-const int __GHGF_SUSPEND = 10b;
+// Version 2.6.0
 
 
 void InitializeGhostZHData()
@@ -19,6 +8,8 @@ void InitializeGhostZHData()
     __ghzhData[__GH_FLASH_CSET]=6;
     __ghzhData[__GH_SHADOW_FRAME]=0;
     __ghzhData[__GH_SHADOW_TIMER]=0;
+    __ghzhData[__GH_LARGE_SHADOW_FRAME]=0;
+    __ghzhData[__GH_LARGE_SHADOW_TIMER]=0;
     __ghzhData[__GH_CLOCK_TIMER]=0;
 }
 
@@ -36,6 +27,7 @@ void UpdateGhostZHData()
     if(__ghzhData[__GH_FLASH_CSET]>9)
         __ghzhData[__GH_FLASH_CSET]=6;
     
+    // Update shadow animation
     if(GH_SHADOW_FRAMES>1)
     {
         __ghzhData[__GH_SHADOW_TIMER]++;
@@ -44,6 +36,16 @@ void UpdateGhostZHData()
             __ghzhData[__GH_SHADOW_TIMER]=0;
             __ghzhData[__GH_SHADOW_FRAME]=
               (__ghzhData[__GH_SHADOW_FRAME]+1)%GH_SHADOW_FRAMES;
+        }
+    }
+    if(GH_LARGE_SHADOW_FRAMES>1)
+    {
+        __ghzhData[__GH_LARGE_SHADOW_TIMER]++;
+        if(__ghzhData[__GH_LARGE_SHADOW_TIMER]>=GH_LARGE_SHADOW_ANIM_SPEED)
+        {
+            __ghzhData[__GH_LARGE_SHADOW_TIMER]=0;
+            __ghzhData[__GH_LARGE_SHADOW_FRAME]=
+              (__ghzhData[__GH_LARGE_SHADOW_FRAME]+1)%GH_LARGE_SHADOW_FRAMES;
         }
     }
     
@@ -102,7 +104,11 @@ void DrawGhostFFCs()
         for(int i=1; i<=Screen->NumNPCs(); i++)
         {
             ghost=Screen->LoadNPC(i);
+            if((ghost->Misc[__GHI_GHZH_DATA]&0x10000)==0)
+                // Not a ghost.zh enemy
+                continue;
             array=ghost->Misc[__GHI_GHZH_DATA]&0x0FFFF;
+            array=array[23];
             
             if(array==0)
                 continue;
@@ -152,7 +158,11 @@ void DrawGhostFFCs()
         for(int i=1; i<=Screen->NumNPCs(); i++)
         {
             ghost=Screen->LoadNPC(i);
+            if((ghost->Misc[__GHI_GHZH_DATA]&0x10000)==0)
+                // Not a ghost.zh enemy
+                continue;
             array=ghost->Misc[__GHI_GHZH_DATA]&0x0FFFF;
+            array=array[23];
             
             if(array==0)
                 continue;

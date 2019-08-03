@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.5.2
+Version 2.6.0
 
 
 This file is documentation for script writers. If you just want to set up
@@ -292,6 +292,9 @@ void Ghost_UnsetFlag(int flag)
  * 
  * GHF_IGNORE_NO_ENEMY
  *    The enemy will ignore all enemy blocking flags and combos.
+ *
+ * GHF_STATIC_SHADOW
+ *    The enemy's shadow will not animate.
 
 void Ghost_ClearFlags()
  * Unsets all flags.
@@ -499,6 +502,20 @@ void Ghost_StopKnockback()
 | OTHER |
 +-------+
 
+void SetEnemyProperty(npc enemy, int property, float newValue)
+float GetEnemyProperty(npc enemy, int property)
+ * These functions allow some of the properties of ghost.zh scripts to be read
+ * and set from other scripts. The enemy passed in does not need to be
+ * a scripted enemy; regular enemies will be detected and handled accordingly.
+ * property must be one of the following:
+ * ENPROP_X
+ * ENPROP_Y
+ * ENPROP_Z
+ * ENPROP_JUMP
+ * ENPROP_DIR
+ * ENPROP_HP
+ * ENPROP_CSET
+
 int findSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
  * Finds a random combo position meeting the given criteria some distance away
  * from Link and enemies. This can be useful if you want the enemy to spawn in
@@ -598,9 +615,10 @@ eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step,
                     int damage, int sprite, int sound, int flags)
  * Create an eweapon with the given properties. The angle is given in radians.
  * The sprite argument should be the ID of a sprite from Quest > Graphics >
- * Sprites > Weapons/Misc. The sprite will not be set if this argument is -1.
- * If you don't want any sound to be played, pass in 0 for that argument. The
- * flags argument should be one or more EWF constants ORed together, or 0
+ * Sprites > Weapons/Misc.  If you don't want any sound to be played, pass in 0
+ * for that argument. You can also pass in -1 for the sprite and sound arguments
+ * to use the defaults for the weapon type. The flags argument should be one or
+ * more EWF constants ORed together, or 0
  * for none.
  *
  * EWF_UNBLOCKABLE
@@ -656,79 +674,69 @@ eweapon CreateBigDummyEWeapon(int weaponID, int step, int damage, int sprite,
                               int sound, int flags, int width, int height)
  * Creates a dummy eweapon larger than 1x1. Width and height are given in tiles.
 
-void SetEWeaponMovement(eweapon wpn, int type, int arg)
+void SetEWeaponMovement(eweapon wpn, int type, float arg, float arg2)
  * This sets an eweapon's movement pattern. The type argument should be one of
- * the EWM constants. The effect of arg varies depending on the type of
+ * the EWM constants. The effect of arg and arg2 vary depending on the type of
  * movement.
  *
  * EWM_SINE_WAVE
  *    Move in a sine wave.
  *    arg: Amplitude
- * 
- * EWM_SINE_WAVE_FAST
- *    Move in a sine wave with a shorter wavelength.
- *    arg: Amplitude
+ *    arg2: Angular frequency in degrees per frame
  * 
  * EWM_HOMING
  *    Turn toward Link each frame.
  *    arg: Maximum rotation per frame in radians
+ *    arg2: Homing time in frames - after this many frames, the weapon
+ *          will die. Use -1 to home indefinitely.
  * 
  * EWM_HOMING_REAIM
  *   Move in straight lines, stopping and re-aiming at Link.
  *   arg: Number of re-aims
+ *   arg2: Time between re-aims
  * 
  * EWM_RANDOM
  *   Turn randomly each frame.
  *   arg: Maximum rotation per frame in radians
+ *   arg2: Rotation time in frames - after this many frames, the weapon
+ *         will die. Use -1 to home indefinitely.
  * 
  * EWM_RANDOM_REAIM: Stop frequently and aim in a random direction
  *    arg: Number of re-aims
+ *    arg2: 
  * 
- * EWM_VEER + dir
- *    Accelerate in a given direction. You can add a direction to the type
- *    argument:
- *      SetEWeaponMovement(wpn, EWM_VEER + DIR_LEFT, 0.025);
- *    There are also eight additional constants that combine the two, one for
- *    each direction:
- *      SetEWeaponMovement(wpn, EWM_VEER_RIGHTDOWN, 0.01);
- *    arg: Acceleration
+ * EWM_VEER
+ *    Accelerate in a given direction.
+ *    arg: Direction of acceleration
+ *    arg2: Rate of acceleration
  * 
- * EWM_DRIFT + dir
+ * EWM_DRIFT
  *    Drift in the given direction at a constant speed. Like EWM_VEER, you can
  *    add a direction to the type argument or use EWM_DRIFT_*.
- *    arg: Drift speed
+ *    arg: Drift direction
+ *    arg2: Drift speed
  * 
- * EWM_DRIFT_WAIT + dir
+ * EWM_DRIFT_WAIT
  *    Drift in the given direction at a constant speed and wait 16 frames before
- *    beginning normal movement. This copies the behavior of boss fireballs.
- *    Again, you can add a direction to the type argument or use
- *    EWM_DRIFT_WAIT_*.
- *    arg: Drift speed
+ *    beginning normal movement. This mimics the behavior of boss fireballs.
+ *    arg: Drift direction
+ *    arg2: Drift speed
  * 
  * EWM_THROW
- *    Arc through the air as if thrown. The weapon dies (see below) when it
- *    hits the ground.
+ *    Arc through the air as if thrown. The weapon stops moving when it hits
+ *    the ground.
  *    arg: Initial upward velocity; use -1 to make the weapon travel the
  *         distance to Link
- * 
- * EWM_THROW_STOP
- *    Like EWM_THROW, except the weapon only stops moving when it hits the
- *    ground.
- *    arg: Initial upward velocity
- * 
- * EWM_THROW_BOUNCE
- *    Like EWM_THROW, plus the weapon bounces when it hits the ground. The
- *    weapon dies when it stops bouncing.
- *    arg: Initial upward velocity
- * 
- * EWM_THROW_BOUNCE_STOP
- *    Like EWM_THROW_BOUNCE, except the weapon only stops moving when it
- *    finishes bouncing.
- *    arg: Initial upward velocity
+ *    arg2: OR together these flags, or use 0 for none:
+ *          EWMF_BOUNCE: The weapon will bounce on impact
+ *          EWMF_DIE: The weapon will die on impact rather than simply stopping
  * 
  * EWM_FALL
- *    Fall straight down. The weapon dies when it hits the ground.
+ *    Fall straight down. The weapon stops moving when it hits the ground.
  *    arg: Initial height
+ *    arg2: OR together these flags, or use 0 for none:
+ *          EWMF_BOUNCE: The weapon will bounce on impact
+ *          EWMF_DIE: The weapon will die on impact rather than simply stopping
 
 void SetEWeaponLifespan(eweapon wpn, int type, int arg)
  * This controls the conditions under which a weapon dies. "Dying" does not mean

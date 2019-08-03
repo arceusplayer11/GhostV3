@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.5.2
+// Version 2.6.0
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
@@ -509,18 +509,43 @@ void __Ghost_DrawShadow()
     if(GH_SHADOW_FLICKER!=0 && (__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
         return;
     
-    int x=Ghost_X+8*(Ghost_TileWidth-1);
-    int y=Ghost_Y+16*(Ghost_TileHeight-1);
-
+    int x;
+    int y;
+    int tile;
+    int size;
+    
+    // 1x1 shadow
+    if(Ghost_TileWidth<3 || Ghost_TileHeight<3 || GH_LARGE_SHADOW_TILE==0)
+    {
+        x=Ghost_X+8*(Ghost_TileWidth-1);
+        y=Ghost_Y+16*(Ghost_TileHeight-1);
+        size=1;
+        if(Ghost_FlagIsSet(GHF_STATIC_SHADOW))
+            tile=GH_SHADOW_TILE;
+        else
+            tile=GH_SHADOW_TILE+__ghzhData[__GH_SHADOW_FRAME];
+    }
+    // 2x2 shadow
+    else
+    {
+        x=Ghost_X+8*(Ghost_TileWidth-2);
+        y=Ghost_Y+16*(Ghost_TileHeight-2);
+        size=2;
+        if(Ghost_FlagIsSet(GHF_STATIC_SHADOW))
+            tile=GH_LARGE_SHADOW_TILE;
+        else
+            tile=GH_LARGE_SHADOW_TILE+2*__ghzhData[__GH_LARGE_SHADOW_FRAME];
+    }
+    
     if(GH_SHADOW_TRANSLUCENT>0)
     {
-        Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GH_SHADOW_FRAME],
-                         1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 64);
+        Screen->DrawTile(1, x, y, tile, size, size, GH_SHADOW_CSET,
+                         -1, -1, 0, 0, 0, 0, true, OP_TRANS);
     }
     else
     {
-        Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GH_SHADOW_FRAME],
-                         1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 128);
+        Screen->DrawTile(1, x, y, tile, size, size, GH_SHADOW_CSET,
+                         -1, -1, 0, 0, 0, 0, true, OP_OPAQUE);
     }
 }
 
@@ -578,3 +603,77 @@ void __Ghost_Explode(ffc this, npc ghost, bool flash)
     Ghost_Data=GH_INVISIBLE_COMBO;
     Ghost_ClearCombos();
 }
+
+
+// Used in Ghost_WaitframeLight() to determine whether the enemy needs drawn
+bool __Ghost_IsFlickering(npc ghost)
+{
+    // No flickering this frame
+    if((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_FLICKER)==0)
+        return false;
+    
+    // "Is Flickering" flag is set
+    if((ghost->MiscFlags&10000000b)!=0)
+        return true;
+    
+    // Enemy is flickering from being hit
+    if(GH_ENEMIES_FLICKER!=0 && __Ghost_FlashCounter>0)
+        return true;
+    
+    // Nothing left to check, must not be flickering
+    return false;
+}
+
+
+void SetEnemyProperty(npc enemy, int property, float newValue)
+{
+    if((enemy->Misc[__GHI_GHZH_DATA]&0x10000)!=0)
+    {
+        float array=enemy->Misc[__GHI_GHZH_DATA]&0xFFFF;
+        array[property]=newValue;
+    }
+    else
+    {
+        if(property==ENPROP_X)
+            enemy->X=newValue;
+        else if(property==ENPROP_Y)
+            enemy->Y=newValue;
+        else if(property==ENPROP_Z)
+            enemy->Z=newValue;
+        else if(property==ENPROP_JUMP)
+            enemy->Jump=newValue;
+        else if(property==ENPROP_DIR)
+            enemy->Dir=newValue;
+        else if(property==ENPROP_HP)
+            enemy->HP=newValue;
+        else //ENPROP_CSET
+            enemy->CSet=newValue;
+    }
+}
+
+float GetEnemyProperty(npc enemy, int property)
+{
+    if((enemy->Misc[__GHI_GHZH_DATA]&0x10000)!=0)
+    {
+        float array=enemy->Misc[__GHI_GHZH_DATA]&0xFFFF;
+        return array[property];
+    }
+    else
+    {
+        if(property==ENPROP_X)
+            return enemy->X;
+        else if(property==ENPROP_Y)
+            return enemy->Y;
+        else if(property==ENPROP_Z)
+            return enemy->Z;
+        else if(property==ENPROP_JUMP)
+            return enemy->Jump;
+        else if(property==ENPROP_DIR)
+            return enemy->Dir;
+        else if(property==ENPROP_HP)
+            return enemy->HP;
+        else //ENPROP_CSET
+            return enemy->CSet;
+    }
+}
+    

@@ -1,8 +1,38 @@
 // ghost.zh
-// Version 2.5.2
+// Version 2.6.0
 
-// The functions in this file are provided only for backward compatibility.
-// They should not be used in new scripts.
+// The functions and constants in this file are provided only for backward
+// compatibility. They should not be used in new scripts.
+
+const int EWM_SINE_WAVE_FAST    = 2;
+const int EWM_THROW_STOP        = 16;
+const int EWM_THROW_BOUNCE      = 17;
+const int EWM_THROW_BOUNCE_STOP = 18;
+
+const int EWM_VEER_UP              = 7;
+const int EWM_VEER_DOWN            = 8;
+const int EWM_VEER_LEFT            = 9;
+const int EWM_VEER_RIGHT           = 10;
+const int EWM_VEER_LEFTUP          = 11;
+const int EWM_VEER_RIGHTUP         = 12;
+const int EWM_VEER_LEFTDOWN        = 13;
+const int EWM_VEER_RIGHTDOWN       = 14;
+const int EWM_DRIFT_UP             = 20;
+const int EWM_DRIFT_DOWN           = 21;
+const int EWM_DRIFT_LEFT           = 22;
+const int EWM_DRIFT_RIGHT          = 23;
+const int EWM_DRIFT_LEFTUP         = 24;
+const int EWM_DRIFT_RIGHTUP        = 25;
+const int EWM_DRIFT_LEFTDOWN       = 26;
+const int EWM_DRIFT_RIGHTDOWN      = 27;
+const int EWM_DRIFT_WAIT_UP        = 28;
+const int EWM_DRIFT_WAIT_DOWN      = 29;
+const int EWM_DRIFT_WAIT_LEFT      = 30;
+const int EWM_DRIFT_WAIT_RIGHT     = 31;
+const int EWM_DRIFT_WAIT_LEFTUP    = 32;
+const int EWM_DRIFT_WAIT_RIGHTUP   = 33;
+const int EWM_DRIFT_WAIT_LEFTDOWN  = 34;
+const int EWM_DRIFT_WAIT_RIGHTDOWN = 35;
 
 void Ghost_Init(ffc this, npc ghost, int flags)
 {
@@ -138,4 +168,37 @@ void UpdateClock()
 void Ghost_Explode(ffc this, npc ghost)
 {
     __Ghost_Explode(this, ghost, false);
+}
+
+
+void SetEWeaponMovement(eweapon wpn, int type, int arg)
+{
+    if(type==EWM_SINE_WAVE)
+        SetEWeaponMovement(wpn, EWM_SINE_WAVE, arg, 15);
+    else if(type==EWM_SINE_WAVE_FAST)
+        SetEWeaponMovement(wpn, EWM_SINE_WAVE, arg, 36);
+    else if(type==EWM_HOMING)
+        SetEWeaponMovement(wpn, EWM_HOMING, arg, -1);
+    else if(type==EWM_HOMING_REAIM)
+        SetEWeaponMovement(wpn, EWM_HOMING_REAIM, arg, 45);
+    else if(type==EWM_RANDOM)
+        SetEWeaponMovement(wpn, EWM_RANDOM, arg, -1);
+    else if(type==EWM_RANDOM_REAIM)
+        SetEWeaponMovement(wpn, EWM_RANDOM_REAIM, arg, 45);
+    else if(type>=EWM_VEER && type<=EWM_VEER_RIGHTDOWN)
+        SetEWeaponMovement(wpn, EWM_VEER, type-EWM_VEER, arg);
+    else if(type==EWM_THROW)
+        SetEWeaponMovement(wpn, EWM_THROW, arg, EWMF_DIE);
+    else if(type==EWM_THROW_STOP)
+        SetEWeaponMovement(wpn, EWM_THROW, arg, 0);
+    else if(type==EWM_THROW_BOUNCE)
+        SetEWeaponMovement(wpn, EWM_THROW, arg, EWMF_BOUNCE|EWMF_DIE);
+    else if(type==EWM_THROW_BOUNCE_STOP)
+        SetEWeaponMovement(wpn, EWM_THROW, arg, EWMF_BOUNCE);
+    else if(type==EWM_FALL)
+        SetEWeaponMovement(wpn, EWM_FALL, arg, EWMF_DIE);
+    else if(type>=EWM_DRIFT && type<=EWM_DRIFT_RIGHTDOWN)
+        SetEWeaponMovement(wpn, EWM_DRIFT, type-EWM_DRIFT, arg);
+    else if(type>=EWM_DRIFT_WAIT && type<=EWM_DRIFT_WAIT_RIGHTDOWN)
+        SetEWeaponMovement(wpn, EWM_DRIFT_WAIT, type-EWM_DRIFT_WAIT, arg);
 }

@@ -1,3 +1,16 @@
+2.6.0 (2013-02-27)
+* Added GetEnemyProperty() and SetEnemyProperty().
+* SetEWeaponMovement() now takes another argument. Some similar weapon movement
+    types have been merged with the differing functionality now controlled by
+    the second argument.
+* The movement functions have been rewritten to be more accurate and faster.
+* The FireEWeapon functions can now take -1 for the sprite and sound arguments
+    to use defaults for the weapon type.
+* 2x2 shadows are now used for enemies 3x3 and larger.
+    (Only applies if GH_FAKE_Z or GHF_FAKE_Z is used)
+* Added GHF_STATIC_SHADOW for enemies whose shadows should never animate.
+    (Only applies if GH_FAKE_Z or GHF_FAKE_Z is used)
+
 2.5.0 (2012-12-09)
 * Split ghost.zh into multiple files.
 * Drawing has been moved to the global script, so enemies won't disappear
