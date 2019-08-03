@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.0
+// Version 2.8.1
 
 // Arguments to SetEWeaponMovement()
 const int EWM_SINE_WAVE         = 1;
@@ -264,12 +264,8 @@ void SetEWeaponMovement(eweapon wpn, int type, int arg, int arg2)
             if((wpn->Misc[__EWI_FLAGS]&__EWFI_DUMMY)!=0)
                 wpn->Misc[__EWI_MOVEMENT_ARG]=-1;
 
-            // A rough approximation, but close enough
             else
-            {
-                float time=Distance(wpn->X, wpn->Y, Link->X, Link->Y)/(wpn->Step/100);
-                wpn->Misc[__EWI_MOVEMENT_ARG]=GH_GRAVITY*time/2;
-            }
+                wpn->Misc[__EWI_MOVEMENT_ARG]=__GetEWeaponThrowHeight(wpn);
         }
     }
     else if(type==EWM_FALL)
@@ -280,6 +276,44 @@ void SetEWeaponMovement(eweapon wpn, int type, int arg, int arg2)
     }
 }
 
+// Returns the Z velocity at which a weapon should be thrown
+// to land at Link's position.
+float __GetEWeaponThrowHeight(eweapon wpn)
+{
+    float step=wpn->Step/100;
+    if(step<=0)
+        return 1;
+    
+    float dist=Distance(wpn->X+wpn->HitWidth/2, wpn->Y+wpn->HitHeight/2,
+      Link->X+8, Link->Y+8);
+    if(dist<1)
+        return 1;
+    
+    float travelTime=dist/step;
+    float ret=0;
+    
+    // Every increase in velocity of GH_GRAVITY means two frames in the air.
+    // This might overshoot by a frame, but that's all right.
+    while(ret<=GH_TERMINAL_VELOCITY)
+    {
+        ret+=GH_GRAVITY;
+        travelTime-=2;
+        if(travelTime<=0)
+            return ret;
+    }
+    
+    // Needs to exceed terminal velocity. Slightly trickier here, because
+    // an increase of GH_GRAVITY may mean more than two more frames in the air.
+    float excess=0; // Distance left to fall after reaching TV
+    while(travelTime>excess/GH_TERMINAL_VELOCITY)
+    {
+        ret+=GH_GRAVITY;
+        excess+=ret-GH_TERMINAL_VELOCITY;
+        travelTime-=2;
+    }
+    
+    return ret;
+}
 
 // Set an eweapon's lifespan
 void SetEWeaponLifespan(eweapon wpn, int type, int arg)
@@ -884,10 +918,7 @@ void __CopyEWeapon(eweapon prototype, int centerX, int centerY, float angle)
 
     // Special case for thrown weapons with automatic velocity
     if(prototype->Misc[__EWI_MOVEMENT]==EWM_THROW && prototype->Misc[__EWI_MOVEMENT_ARG]==-1)
-    {
-        float time=Distance(centerX, centerY, Link->X+8, Link->Y+8)/(wpn->Step/100);
-        wpn->Misc[__EWI_MOVEMENT_ARG]=GH_GRAVITY*time/2;
-    }
+        wpn->Misc[__EWI_MOVEMENT_ARG]=__GetEWeaponThrowHeight(wpn);
     else
         wpn->Misc[__EWI_MOVEMENT_ARG]=prototype->Misc[__EWI_MOVEMENT_ARG];
 

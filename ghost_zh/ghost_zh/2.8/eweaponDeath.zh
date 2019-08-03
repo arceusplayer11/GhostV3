@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.0
+// Version 2.8.1
 
 // All the EWeapon death effect functions are in this file.
 
@@ -101,13 +101,14 @@ void __DoEWeaponDeathAimAtLink(eweapon wpn)
         wpn->Step=300;
         wpn->Misc[__EWI_ON_DEATH]=0;
     }
+    
     // Spin while waiting
-    wpn->Angle+=0.3;
-    return;
-    if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0 ||
-       (wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
+    if(wpn->Angular)
+    {
         wpn->Angle+=0.3;
-    else if(false)
+        SetEWeaponDir(wpn);
+    }
+    else
     {
         // Pick a direction based on the counter
         int dir=wpn->Misc[__EWI_ON_DEATH_ARG]&110b;

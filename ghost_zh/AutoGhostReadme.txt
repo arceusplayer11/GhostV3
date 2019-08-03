@@ -5,8 +5,8 @@ General setup:
 
 Extract ghost.zh and the ghost_zh directory from the zip file. On Windows and
 Linux, these should go in the same directory as ZC itself. On Mac, right-click
-ZQuest and select "Show Package Contents." The files should go in
-Contents/Resources. To be sure you've got the right directory, look for
+the ZQuest application and select "Show Package Contents." The files should go
+in Contents/Resources. To be sure you've got the right directory, look for
 std.zh and sring.zh.
 
 First, you'll need to set aside a 4x4 block of tiles to leave blank. Set up
@@ -116,8 +116,8 @@ __GH_ALWAYS_USE_NAME
 
 
 If you're making multiple quests at once that use different settings, you
-should use a different copy of ghost.zh for each one.
-
+should use a different copy of ghost.zh for each one. You only need to copy
+ghost.zh itself, not the ghost_zh directory.
 
 In ZQuest, go to Quest > Scripts > Compile ZScript... > Edit and enter this:
 

@@ -1,9 +1,9 @@
 ghost.zh
-Version 2.8.0
+Version 2.8.1
 
 
 This file is documentation for script writers. If you just want to set up
-existing scripts, see AutoGhost.txt.
+existing scripts, see autoGhostReadme.txt.
 
 
 +-------+
@@ -25,7 +25,7 @@ attributes - must still be accessed via the npc pointer.
 
 The enemy used can be of any type and with any settings. Its HP, damage, and
 defenses will be used normally. Its regular tiles and animation will be used
-if the FFC is set to use GH_INVISIBILE_COMBO; otherwise, it will be made
+if the FFC is set to use GH_INVISIBLE_COMBO; otherwise, it will be made
 invisible. Other enemy data can be used as you see fit.
 
 There are also a number of functions used to create and control eweapons. They

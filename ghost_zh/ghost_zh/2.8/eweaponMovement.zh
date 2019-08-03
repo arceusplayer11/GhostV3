@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.0
+// Version 2.8.1
 
 // All the EWeapon movement update functions are in this file.
 
@@ -86,7 +86,7 @@ void __UpdateEWMHomingReaim(eweapon wpn)
             wpn->Angle=RadianAngle(wpn->X, wpn->Y, Link->X, Link->Y);
             wpn->Step=wpn->Misc[__EWI_WORK_2];
             SetEWeaponDir(wpn);
-            if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0) // TODO: No longer needed?
+            if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
                 SetEWeaponRotation(wpn);
         }
         // Spin in place while waiting
@@ -154,10 +154,10 @@ void __UpdateEWMRandomReaim(eweapon wpn)
         if(wpn->Misc[__EWI_WORK]==0) // Start up again
         {
             wpn->Misc[__EWI_WORK]=45;
-            wpn->Angle=Rand(31416)/5000;
+            wpn->Angle=Rand(62832)*0.0001;
             wpn->Step=wpn->Misc[__EWI_WORK_2];
             SetEWeaponDir(wpn);
-            if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0) // TODO: No longer needed?
+            if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
                 SetEWeaponRotation(wpn);
         }
         // Spin in place while waiting

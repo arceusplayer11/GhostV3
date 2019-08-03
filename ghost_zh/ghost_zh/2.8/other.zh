@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.0
+// Version 2.8.1
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
@@ -59,7 +59,7 @@ int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
                 Screen->ComboT[i]==CT_NOJUMPZONE)
             tileRatings[i]=-1;
         // Too close to Link
-        else if(Abs(ComboX(i)-Link->X)<32 && Abs(ComboY(i)-Link->Y))
+        else if(Abs(ComboX(i)-Link->X)<32 && Abs(ComboY(i)-Link->Y)<32)
             tileRatings[i]=-1;
         // All other combos
         else
@@ -175,7 +175,7 @@ int FindSpawnPoint(int type, int flag)
         }
         
         // Too close to Link
-        else if(Abs(ComboX(i)-Link->X)<32 && Abs(ComboY(i)-Link->Y))
+        else if(Abs(ComboX(i)-Link->X)<32 && Abs(ComboY(i)-Link->Y)<32)
             tileRatings[i]=-1;
     }
     
