@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.7.0
+Version 2.7.1
 
 
 This file is documentation for script writers. If you just want to set up
@@ -389,6 +389,9 @@ bool Ghost_CheckFreeze(ffc this, npc ghost)
 
 void Ghost_Move(int dir, float step, int imprecision)
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
+
+
+
 void Ghost_MoveAtAngle(float angle, float step, int imprecision)
 void Ghost_MoveTowardLink(float step, int imprecision)
  * Makes the enemy move. Ghost_CanMove() will be checked automatically. The
@@ -557,7 +560,7 @@ float GetEnemyProperty(npc enemy, int property)
  * ENPROP_HP
  * ENPROP_CSET
 
-int findSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
+int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
  * Finds a random combo position meeting the given criteria some distance away
  * from Link and enemies. This can be useful if you want the enemy to spawn in
  * a random position that ZC would not select itself. The result is undefined
@@ -568,7 +571,7 @@ int findSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
  * waterOK: All deep water combos are okay
  * pitsOK: Direct warps are okay
 
-int findSpawnPoint(int type, int flag)
+int FindSpawnPoint(int type, int flag)
  * Like the above, but finds a combo with the given combo type or flag,
  * regardless of solidity. Only layer 0 is checked. Use -1 for either argument
  * to ignore it.

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.0
+// Version 2.7.1
 
 
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
@@ -874,6 +874,7 @@ float Ghost_FloaterWalk(float counter, int normalStep,
         {
             int stepFactor=((accelTime*accelSteps-stateTimer)/accelTime)<<0;
             step=stepFactor*accelAmount;
+
         }
     }
     
@@ -1014,32 +1015,13 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
     int numDirs;
     int counter;
     
-    // Don't bother checking upward in sideview if GHF_NO_FALL isn't set
-    if(!IsSideview() || Ghost_FlagIsSet(GHF_NO_FALL))
+    for(int i=0; i<4; i++)
     {
-        if(Ghost_CanMovePixel(Ghost_X, Ghost_Y-16))
+        if(Ghost_CanMove(i, 1, 0))
         {
-            combos[DIR_UP]=true;
+            combos[i]=true;
             numDirs++;
         }
-    }
-    
-    if(Ghost_CanMovePixel(Ghost_X, Ghost_Y+16))
-    {
-        combos[DIR_DOWN]=true;
-        numDirs++;
-    }
-    
-    if(Ghost_CanMovePixel(Ghost_X-16, Ghost_Y))
-    {
-        combos[DIR_LEFT]=true;
-        numDirs++;
-    }
-    
-    if(Ghost_CanMovePixel(Ghost_X+16, Ghost_Y))
-    {
-        combos[DIR_RIGHT]=true;
-        numDirs++;
     }
     
     // Trapped?

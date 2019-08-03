@@ -1,3 +1,9 @@
+2.7.1 (2014-01-30)
+* AutoGhost() doesn't run when ghost.zh scripts are suspended.
+* Fixed enemies being unable to drop items if they use a death animation.
+* FindUnusedFFC() now checks for GH_INVISIBLE_COMBO.
+* Fixed walkability checking issues when turning in the walking functions.
+
 2.7.0 (2013-11-21)
 * Added Ghost_FloaterWalk().
 * Added EWF_ROTATE_360.

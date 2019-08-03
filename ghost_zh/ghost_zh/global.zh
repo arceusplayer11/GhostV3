@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.0
+// Version 2.7.1
 
 void StartGhostZH()
 {
@@ -151,6 +151,10 @@ void CleanUpGhostFFCs()
 // Detects AutoGhost enemies and sets up FFCs for them
 void AutoGhost()
 {
+    // Shouldn't run if scripts are suspended.
+    if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
+        return;
+    
     npc enemy;
     int ffcID=0;
     ffc f;

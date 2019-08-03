@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.0
+// Version 2.7.1
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
@@ -239,7 +239,7 @@ int FindUnusedFFC(int startingFrom)
     {
         f=Screen->LoadFFC(i);
         
-        if(f->Data==0 && f->Script==0)
+        if((f->Data==0 || f->Data==GH_INVISIBLE_COMBO) && f->Script==0)
             return i;
     }
     
@@ -396,6 +396,9 @@ void Ghost_DeathAnimation(ffc this, npc ghost, int type)
 
 void Ghost_SetPosition(ffc this, npc ghost)
 {
+    if(!ghost->isValid())
+        return;
+    
     // Real Z
     if(GH_FAKE_Z==0 && !Ghost_FlagIsSet(GHF_FAKE_Z))
     {
@@ -570,7 +573,9 @@ void __Ghost_Explode(ffc this, npc ghost, bool flash)
 {
     lweapon explosion;
     npc deathSFXNPC;
-
+    int baseX=Ghost_X+ghost->DrawXOffset;
+    int baseY=(Ghost_Y+ghost->DrawYOffset)-(Ghost_Z+ghost->DrawZOffset);
+    
     // The enemy's death sound should play at the start of the animation, but the enemy has to stay
     // alive until the end. There isn't a good way to do that, so here's a stupid way, instead.
     // Make another of the same enemy, hide it, and kill it. After the animation finishes,
@@ -596,25 +601,28 @@ void __Ghost_Explode(ffc this, npc ghost, bool flash)
     if(flash)
         __Ghost_FlashCounter=10000;
     else
-        Ghost_StopFlashing();
+        __Ghost_FlashCounter=0;
     
     // One explosion every 16 frames, 15 times
     for(int i=0; i<15; i++)
     {
         explosion=Screen->CreateLWeapon(LW_BOMBBLAST);
-        explosion->X=Ghost_X+ghost->DrawXOffset+Rand(16*Ghost_TileWidth)-8;
-        explosion->Y=(Ghost_Y+ghost->DrawYOffset)-
-                     (Ghost_Z+ghost->DrawZOffset)+
-                     Rand(16*Ghost_TileHeight)-8;
+        explosion->X=baseX+Rand(16*Ghost_TileWidth)-8;
+        explosion->Y=baseY+Rand(16*Ghost_TileHeight)-8;
         explosion->CollDetection=false;
+        
         for(int j=0; j<16; j++)
         {
-            Ghost_SetPosition(this, ghost);
+            Ghost_SetPosition(this, ghost); // Make sure it doesn't wander off
             Ghost_WaitframeLight(this, ghost);
         }
     }
-
-    ghost->X=1024;
+    
+    if(ghost->isValid())
+    {
+        ghost->HP=-1000;
+        ghost->DrawXOffset=1000;
+    }
     this->Data=GH_INVISIBLE_COMBO;
     Ghost_Data=GH_INVISIBLE_COMBO;
     Ghost_ClearCombos();
