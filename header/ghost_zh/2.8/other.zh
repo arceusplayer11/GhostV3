@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.4
+// Version 2.8.3
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
@@ -645,8 +645,7 @@ void SetEnemyProperty(npc enemy, int property, float newValue)
     if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
     {
         float array=enemy->Misc[__GHI_NPC_DATA]&0xFFFF;
-        if(array>0)
-            array[property]=newValue;
+        array[property]=newValue;
     }
     
     if(property==ENPROP_X)
@@ -667,10 +666,11 @@ void SetEnemyProperty(npc enemy, int property, float newValue)
 
 float GetEnemyProperty(npc enemy, int property)
 {
-    float array=enemy->Misc[__GHI_NPC_DATA]&0xFFFF;
-    
-    if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0 && array>0)
+    if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
+    {
+        float array=enemy->Misc[__GHI_NPC_DATA]&0xFFFF;
         return array[property];
+    }
     else
     {
         if(property==ENPROP_X)

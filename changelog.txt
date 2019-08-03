@@ -1,3 +1,7 @@
+2.8.3 (2019-03-19)
+* Renamed a couple of variables to fix conflicts in ZC 2.53.
+* Now packaged with HTML documentation instead of text files.
+
 2.8.2 (2017-09-10)
 * Added an option to determine whether ffc->Link is reset in __GhCleanUp().
 * Include ffc->Delay in __GhCleanUp().
