@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.1
+// Version 2.6.2
 
 
 void InitializeGhostZHData()
@@ -107,10 +107,15 @@ void DrawGhostFFCs()
             if((ghost->Misc[__GHI_GHZH_DATA]&0x10000)==0)
                 // Not a ghost.zh enemy
                 continue;
-            array=ghost->Misc[__GHI_GHZH_DATA]&0x0FFFF;
-            array=array[23];
             
-            if(array==0)
+            // Get the temp data array
+            array=ghost->Misc[__GHI_GHZH_DATA]&0x0FFFF;
+            if(array<=0)
+                continue;
+            
+            // And, from that, get the drawing data array
+            array=array[23];
+            if(array<=0)
                 continue;
             
             // Draw additional FFCs first so they're under the main one
@@ -161,9 +166,12 @@ void DrawGhostFFCs()
             if((ghost->Misc[__GHI_GHZH_DATA]&0x10000)==0)
                 // Not a ghost.zh enemy
                 continue;
-            array=ghost->Misc[__GHI_GHZH_DATA]&0x0FFFF;
-            array=array[23];
             
+            array=ghost->Misc[__GHI_GHZH_DATA]&0x0FFFF;
+            if(array<=0)
+                continue;
+            
+            array=array[23];
             if(array==0)
                 continue;
             
