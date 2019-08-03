@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.2
+// Version 2.7.0
 
 // Arguments to SetEWeaponMovement()
 const int EWM_SINE_WAVE         = 1;
@@ -47,17 +47,18 @@ const int EWD_AIMED  = 3;
 // EWeapon flags
 const int EWF_UNBLOCKABLE    = 0000000001b;
 const int EWF_ROTATE         = 0000000010b;
-const int EWF_SHADOW         = 0000000100b;
-const int EWF_FLICKER        = 0000001000b;
-const int EWF_NO_COLLISION   = 0000010000b;
+const int EWF_ROTATE_360     = 0000000100b;
+const int EWF_SHADOW         = 0000001000b;
+const int EWF_FLICKER        = 0000010000b;
+const int EWF_NO_COLLISION   = 0000100000b;
 
 // Internal EWeapon flags
-const int __EWFI_DEAD              = 000100000b;
-const int __EWFI_DUMMY             = 001000000b;
-const int __EWFI_IS_GHZH_EWPN      = 010000000b;
-const int __EWFI_DUMMY_CHECK       = 011000000b;
-const int __EWFI_DEATH_EFFECT_DONE = 100000000b;
-const int __EWFI_INTERNAL          = 111100000b;
+const int __EWFI_DEAD              = 0001000000b;
+const int __EWFI_DUMMY             = 0010000000b;
+const int __EWFI_IS_GHZH_EWPN      = 0100000000b;
+const int __EWFI_DUMMY_CHECK       = 0110000000b;
+const int __EWFI_DEATH_EFFECT_DONE = 1000000000b;
+const int __EWFI_INTERNAL          = 1111000000b;
 
 
 
@@ -311,29 +312,13 @@ void SetEWeaponDeathEffect(eweapon wpn, eweapon prototype, int numShots, int spr
 // Update a weapon's movement, lifespan, and death effects
 void UpdateEWeapon(eweapon wpn)
 {
-    if((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
+    if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
         return;
     
-    // Start flags
-
-    // Flicker
-    if((wpn->Misc[__EWI_FLAGS]&EWF_FLICKER)!=0)
-    {
-        // Weapons can't be made invisible; use DrawXOffset instead
-        if(wpn->DrawXOffset<1000)
-            wpn->DrawXOffset+=1000;
-        else
-            wpn->DrawXOffset-=1000;
-    }
-
-    // Shadow
-    if((wpn->Misc[__EWI_FLAGS]&EWF_SHADOW)!=0)
-    {
-        if(wpn->Z>0)
-            DrawEWeaponShadow(wpn);
-    }
-
-    // End flags
+    // Needed for EWF_ROTATE_360
+    int startX=wpn->X;
+    int startY=wpn->Y;
+    bool selfPropelled=true;
 
     // Is the weapon still active?
     if((wpn->Misc[__EWI_FLAGS]&__EWFI_DEAD)==0)
@@ -358,15 +343,30 @@ void UpdateEWeapon(eweapon wpn)
             else // wpn->Misc[__EWI_MOVEMENT]>EWM_RANDOM_REAIM
             {
                 if(wpn->Misc[__EWI_MOVEMENT]==EWM_VEER)
+                {
+                    startX=wpn->Misc[__EWI_XPOS];
+                    startY=wpn->Misc[__EWI_YPOS];
                     __UpdateEWMVeer(wpn);
+                    selfPropelled=false;
+                }
                 else if(wpn->Misc[__EWI_MOVEMENT]==EWM_THROW)
                     __UpdateEWMThrow(wpn);
                 else if(wpn->Misc[__EWI_MOVEMENT]==EWM_FALL)
                     __UpdateEWMFall(wpn);
                 else if(wpn->Misc[__EWI_MOVEMENT]==EWM_DRIFT)
+                {
+                    startX=wpn->Misc[__EWI_XPOS];
+                    startY=wpn->Misc[__EWI_YPOS];
                     __UpdateEWMDrift(wpn);
+                    selfPropelled=false;
+                }
                 else //EWM_DRIFT_WAIT
+                {
+                    startX=wpn->Misc[__EWI_XPOS];
+                    startY=wpn->Misc[__EWI_YPOS];
                     __UpdateEWMDriftWait(wpn);
+                    selfPropelled=false;
+                }
             }
         } // End movement updates
         
@@ -438,6 +438,172 @@ void UpdateEWeapon(eweapon wpn)
                 __DoEWeaponDeathRunScript(wpn);
         }
     } // End death effects
+    
+    // Start flags
+
+    if((wpn->Misc[__EWI_FLAGS]&EWF_SHADOW)!=0)
+    {
+        if(wpn->Z>0)
+            DrawEWeaponShadow(wpn);
+    }
+    
+    if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0)
+    {
+        wpn->DrawXOffset=1000;
+        
+        // Flickering? Nothing to do here.
+        if((wpn->Misc[__EWI_FLAGS]&EWF_FLICKER)!=0 &&
+           (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+            return;
+        
+        float endX;
+        float endY;
+        float angle;
+        
+        // Get the angle first
+        if(wpn->Angular)
+            angle=RadtoDeg(wpn->Angle);
+        else
+        {
+            int dir=__NormalizeDir(wpn->Dir);
+            
+            if(dir==DIR_UP)
+                angle=-90;
+            else if(dir==DIR_RIGHTUP)
+                angle=-45;
+            else if(dir==DIR_RIGHT)
+                angle=0;
+            else if(dir==DIR_RIGHTDOWN)
+                angle=45;
+            else if(dir==DIR_DOWN)
+                angle=90;
+            else if(dir==DIR_LEFTDOWN)
+                angle=135;
+            else if(dir==DIR_LEFT)
+                angle=180;
+            else // DIR_LEFTUP
+                angle=-135;
+        }
+        
+        if(selfPropelled)
+        {
+            endX=wpn->X+wpn->Step/100*Cos(angle);
+            endY=wpn->Y+wpn->Step/100*Sin(angle);
+        }
+        else
+        {
+            endX=wpn->Misc[__EWI_XPOS];
+            endY=wpn->Misc[__EWI_YPOS];
+        }
+        
+        // If the weapon's moving, use that angle instead of
+        // wpn->Angle or wpn->Dir
+        if(!(startX==endX && startY==endY))
+            angle=Angle(startX, startY, endX, endY);
+        
+        int flip;
+        if(angle>=0 && angle<180)
+            flip=0;
+        else
+            flip=2;
+        
+        // Currently, these are always drawn on layer 4.
+        // That should probably be changed...
+        Screen->DrawTile(4, endX, endY-wpn->Z, wpn->Tile, 1, 1, wpn->CSet,
+                         -1, -1, endX, endY-wpn->Z, angle, flip, true, OP_OPAQUE);
+    }
+    else // EWF_ROTATE_360 isn't set
+    {
+        if((wpn->Misc[__EWI_FLAGS]&EWF_FLICKER)!=0)
+        {
+            // Weapons can't be made invisible; use DrawXOffset instead
+            if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+                wpn->DrawXOffset=1000;
+            else
+                wpn->DrawXOffset=0;
+        }
+        
+        if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
+            SetEWeaponRotation(wpn);
+    }
+
+    // End flags
+}
+
+// Used when Link is holding up an item. UpdateEWeapon() doesn't run, but
+// the appearance-related flags still need handled.
+void __UpdateEWeaponVisualFlags(eweapon wpn)
+{
+    if((wpn->Misc[__EWI_FLAGS]&EWF_SHADOW)!=0)
+    {
+        if(wpn->Z>0)
+            DrawEWeaponShadow(wpn);
+    }
+    
+    if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0)
+    {
+        wpn->DrawXOffset=1000;
+        
+        // Flickering? Nothing to do here.
+        if((wpn->Misc[__EWI_FLAGS]&EWF_FLICKER)!=0 &&
+           (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+            return;
+        
+        // This works a little differently than in UpdateEWeapon(). Since
+        // movement isn't updating normally, the angle or direction are
+        // always used. It's not perfect, but it'll have to do.
+        
+        float angle;
+        
+        if(wpn->Angular)
+            angle=RadtoDeg(wpn->Angle);
+        else
+        {
+            int dir=__NormalizeDir(wpn->Dir);
+            
+            if(dir==DIR_UP)
+                angle=-90;
+            else if(dir==DIR_RIGHTUP)
+                angle=-45;
+            else if(dir==DIR_RIGHT)
+                angle=0;
+            else if(dir==DIR_RIGHTDOWN)
+                angle=45;
+            else if(dir==DIR_DOWN)
+                angle=90;
+            else if(dir==DIR_LEFTDOWN)
+                angle=135;
+            else if(dir==DIR_LEFT)
+                angle=180;
+            else // DIR_LEFTUP
+                angle=-135;
+        }
+        
+        int flip;
+        if(angle>=0 && angle<180)
+            flip=0;
+        else
+            flip=2;
+        
+        // Currently, these are always drawn on layer 4.
+        // That should probably be changed...
+        Screen->DrawTile(4, wpn->X, wpn->Y-wpn->Z, wpn->Tile, 1, 1, wpn->CSet,
+                         -1, -1, wpn->X, wpn->Y-wpn->Z, angle, flip, true, OP_OPAQUE);
+    }
+    else // EWF_ROTATE_360 isn't set
+    {
+        if((wpn->Misc[__EWI_FLAGS]&EWF_FLICKER)!=0)
+        {
+            // Weapons can't be made invisible; use DrawXOffset instead
+            if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+                wpn->DrawXOffset=1000;
+            else
+                wpn->DrawXOffset=0;
+        }
+        
+        if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
+            SetEWeaponRotation(wpn);
+    }
 }
 
 // Set the weapon's direction based on its angle;
@@ -532,17 +698,17 @@ void KillEWeapon(eweapon wpn)
 // Draw a shadow under an eweapon
 void DrawEWeaponShadow(eweapon wpn)
 {
-    if(GH_SHADOW_FLICKER>0 && (__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+    if(GH_SHADOW_FLICKER>0 && (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
         return;
     
     int x=CenterX(wpn)-8+wpn->DrawXOffset;
     int y=wpn->Y+(wpn->TileHeight-1)*16+wpn->DrawYOffset;
 
     if(GH_SHADOW_TRANSLUCENT>0)
-        Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GH_SHADOW_FRAME],
+        Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GHI_SHADOW_FRAME],
                          1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 64);
     else
-        Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GH_SHADOW_FRAME],
+        Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GHI_SHADOW_FRAME],
                          1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 128);
 }
 

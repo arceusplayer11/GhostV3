@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.2
+// Version 2.7.0
 
 
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
@@ -222,7 +222,7 @@ bool Ghost_CanMove(int dir, float step, int imprecision, bool inAir)
 
 
 // Check a single line for movability; needed when checking CanMove
-// over more than 8 tiles
+// over more than 8 pixels
 bool __Ghost_CanMoveSingle(int dir, float step, int imprecision, bool inAir)
 {
     int i;
@@ -284,8 +284,6 @@ bool __Ghost_CanMoveSingle(int dir, float step, int imprecision, bool inAir)
     {
         // Most enemies can't move upward on sideview screens
         if(IsSideview() && !Ghost_FlagIsSet(GHF_NO_FALL))
-
-
 
             return false;
         
@@ -776,7 +774,8 @@ float Ghost_HaltingWalk4(int counter, int step, int rate, int homing, int hunger
 }
 
 
-int Ghost_VariableWalk8(int counter, int step, int rate, int homing, int hunger, int turnCheckTime)
+int Ghost_VariableWalk8(int counter, int step, int rate, int homing,
+                        int hunger, int turnCheckTime)
 {
     // Don't move while being knocked back
     if(__Ghost_KnockbackCounter>0)
@@ -796,6 +795,93 @@ int Ghost_VariableWalk8(int counter, int step, int rate, int homing, int hunger,
 
     Ghost_Move(Ghost_Dir, step, 0);
     return counter-1;
+}
+
+
+float Ghost_FloaterWalk(float counter, int normalStep,
+                        int accelTime, float accelAmount, int accelSteps,
+                        int rate, int homing, int hunger,
+                        int turnCheckTime, int restTime)
+{
+    // Bits 16-15: state
+    // Bits 14-0: walk counter
+    // Fraction: state timer    
+    int state=counter&0x18000;
+    int stateTimer=(counter%1)*10000;
+    int walkCounter=counter&0x07FFF;
+    int step=0;
+    
+    if(counter==-1) // First call - initialize
+    {
+        state=0x08000; // Speeding up
+        stateTimer=0;
+        walkCounter=0;
+    }
+    
+    stateTimer=Min(stateTimer+1, 9999);
+    
+    // Resting
+    if(state==0x00000)
+    {
+        if(stateTimer>=restTime) // Time to move
+        {
+            state=0x08000;
+            stateTimer=0;
+        }
+    }
+    
+    // Speeding up
+    else if(state==0x08000)
+    {
+        rate=0;
+        
+        if(stateTimer>=accelTime*accelSteps) // Full speed
+        {
+            state=0x10000;
+            stateTimer=0;
+        }
+        else
+            step=(((stateTimer-1)/accelTime)<<0)*accelAmount;
+    }
+    
+    // Full speed
+    else if(state==0x10000)
+    {
+        step=normalStep;
+        
+        if(stateTimer>48)
+        {
+            if(Rand(768)==0) // It'll stop eventually...
+            {
+                step=accelAmount*accelSteps;
+                state=0x18000;
+                stateTimer=0;
+            }
+        }
+    }
+    
+    // Slowing down
+    else // state==0x18000
+    {
+        rate=0;
+        
+        if(stateTimer>accelTime*accelSteps) // Stopped
+        {
+            state=0x00000;
+            stateTimer=0;
+        }
+        else
+        {
+            int stepFactor=((accelTime*accelSteps-stateTimer)/accelTime)<<0;
+            step=stepFactor*accelAmount;
+        }
+    }
+    
+    if(step>0)
+        walkCounter=Ghost_VariableWalk8(walkCounter, step, rate, homing, hunger, turnCheckTime);
+    
+    counter=(state|walkCounter)+(stateTimer/10000);
+    return counter;
 }
 
 

@@ -1,3 +1,15 @@
+2.7.0 (2013-11-21)
+* Added Ghost_FloaterWalk().
+* Added EWF_ROTATE_360.
+* Added settings to change how big an enemy must be to use large shadows.
+* Added an option to use scripted shadows rather than built-in ones
+    whenever possible.
+* Added new Ghost_Waitframe() variants to simplify usage; you can now leave out
+    the quitOnDeath and clearOnDeath arguments (they'll both be true) or
+    specify a death animation
+* The global script functions have been consolidated into three. This should
+    eliminate the need to update the global script for future updates.
+
 2.6.0 (2013-02-27)
 * Added GetEnemyProperty() and SetEnemyProperty().
 * SetEWeaponMovement() now takes another argument. Some similar weapon movement

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.2
+// Version 2.7.0
 
 // Old flags - 16 bits, can be ORed together
 const int GHF_KNOCKBACK          = 0000000000000001b;

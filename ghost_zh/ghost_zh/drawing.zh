@@ -1,0 +1,168 @@
+// ghost.zh
+// Version 2.7.0
+
+int __ghzhDrawData[1000];
+
+// Combo drawing array indices
+const int __GHI_CD_COUNT = 0;
+const int __GHI_CD_CSET  = 1;
+const int __GHI_CD_FLAGS = 2;
+const int __GHI_CD_DATA  = 3;
+
+// Data offsets
+const int __GH_CD_COMBO    = 0;
+const int __GH_CD_X        = 1;
+const int __GH_CD_Y        = 2;
+const int __GH_CD_WIDTH    = 3;
+const int __GH_CD_HEIGHT   = 4;
+const int __GH_CD_ROTATION = 5;
+
+const int __GH_CD_DATA_SIZE = 6;
+
+// Drawing flags
+const int __GHDF_TRANS   = 001b;
+const int __GHDF_FLICKER = 010b;
+const int __GHDF_OVERLAY = 100b;
+
+
+int __GetDrawingArray(npc ghost)
+{
+    if((ghost->Misc[__GHI_NPC_DATA]&0x10000)==0)
+        // Not a ghost.zh enemy
+        return 0;
+    
+    // Get the temp data array
+    int array=ghost->Misc[__GHI_NPC_DATA]&0x0FFFF;
+    if(array==0)
+        return 0;
+    
+    // And, from that, get the drawing data array
+    array=array[23];
+    return array;
+}
+
+void DrawGhostFFCs()
+{
+    int array;
+    int baseIndex;
+    npc ghost;
+    
+    int opacity;
+    int layer;
+    
+    int normalLayer;
+    int overlayLayer;
+    
+    if(__GH_USE_DRAWCOMBO!=0)
+    {
+        if((Screen->Flags[SF_VIEW]&10000b)!=0)
+            normalLayer=1;
+        else
+            normalLayer=2;
+        overlayLayer=4;
+    }
+    else
+    {
+        normalLayer=1;
+        overlayLayer=5;
+    }
+    
+    for(int i=1; i<=Screen->NumNPCs(); i++)
+    {
+        ghost=Screen->LoadNPC(i);
+        array=__GetDrawingArray(ghost);
+        if(array==0)
+            continue;
+        
+        // Got an array; draw all the combos
+        
+        // ... Except the ones that are flickering
+        if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+        {
+            if((array[__GHI_CD_FLAGS]&__GHDF_FLICKER)!=0)
+                continue;
+        }
+        
+        if((array[__GHI_CD_FLAGS]&__GHDF_TRANS)!=0)
+            opacity=OP_TRANS;
+        else
+            opacity=OP_OPAQUE;
+        
+        if((array[__GHI_CD_FLAGS]&__GHDF_OVERLAY)!=0)
+            layer=overlayLayer;
+        else
+            layer=normalLayer;
+        
+        baseIndex=__GHI_CD_DATA;
+        for(int j=0; j<array[__GHI_CD_COUNT]; j++)
+        {
+            if(array[baseIndex+__GH_CD_COMBO]!=GH_INVISIBLE_COMBO &&
+               array[baseIndex+__GH_CD_COMBO]!=0)
+            {
+                Screen->DrawCombo(layer,
+                                  array[baseIndex+__GH_CD_X],
+                                  array[baseIndex+__GH_CD_Y],
+                                  array[baseIndex+__GH_CD_COMBO],
+                                  array[baseIndex+__GH_CD_WIDTH],
+                                  array[baseIndex+__GH_CD_HEIGHT],
+                                  array[__GHI_CD_CSET],
+                                  -1, -1, 0, 0, 0, 0, 0,
+                                  true, opacity);
+            }
+            
+            baseIndex+=__GH_CD_DATA_SIZE;
+        }
+    }
+}
+
+void __SetUpDrawingArray(ffc this, npc ghost, int array)
+{
+    int flags=0;
+    
+    if(this->Flags[FFCF_OVERLAY])
+        flags|=__GHDF_OVERLAY;
+    
+    if(this->Flags[FFCF_TRANS])
+        flags|=__GHDF_TRANS;
+    
+    if(__Ghost_IsFlickering(ghost))
+        flags|=__GHDF_FLICKER;
+    
+    array[__GHI_CD_CSET]=this->CSet;
+    array[__GHI_CD_FLAGS]=flags;
+    
+    int baseIndex=__GHI_CD_DATA;
+    float baseX=Ghost_X+ghost->DrawXOffset;
+    float baseY=Ghost_Y+ghost->DrawYOffset-(Ghost_Z+ghost->DrawZOffset);
+    
+    // Set up additional combos
+    if(__Ghost_AdditionalCombos[0]>0)
+    {
+        int baseACIndex=__GHI_AC_DATA;
+        
+        for(int i=0; i<__Ghost_AdditionalCombos[__GHI_AC_COUNT]; i++)
+        {
+            array[baseIndex+__GH_CD_COMBO]=__Ghost_AdditionalCombos[baseACIndex+__GH_AC_COMBO];
+            array[baseIndex+__GH_CD_X]=baseX+__Ghost_AdditionalCombos[baseACIndex+__GH_AC_X];
+            array[baseIndex+__GH_CD_Y]=baseY+__Ghost_AdditionalCombos[baseACIndex+__GH_AC_Y];
+            array[baseIndex+__GH_CD_WIDTH]=__Ghost_AdditionalCombos[baseACIndex+__GH_AC_WIDTH];
+            array[baseIndex+__GH_CD_HEIGHT]=__Ghost_AdditionalCombos[baseACIndex+__GH_AC_HEIGHT];
+            
+            baseIndex+=__GH_CD_DATA_SIZE;
+            baseACIndex+=__GH_AC_DATA_SIZE;
+            array[__GHI_CD_COUNT]++;
+        }
+    }
+    
+    // Set up the main combo
+    if(__GH_USE_DRAWCOMBO!=0)
+    {
+            array[baseIndex+__GH_CD_COMBO]=this->Data;
+            array[baseIndex+__GH_CD_X]=baseX;
+            array[baseIndex+__GH_CD_Y]=baseY;
+            array[baseIndex+__GH_CD_WIDTH]=this->TileWidth;
+            array[baseIndex+__GH_CD_HEIGHT]=this->TileHeight;
+            
+            array[__GHI_CD_COUNT]++;
+    }
+}

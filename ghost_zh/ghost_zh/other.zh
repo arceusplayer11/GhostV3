@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.2
+// Version 2.7.0
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
@@ -252,7 +252,7 @@ void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
 {
     // This function doesn't work too well when scripts are suspended.
     // This isn't an ideal solution, but it's better than nothing.
-    if((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
+    if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
         return;
     
     lweapon graphic;
@@ -315,7 +315,7 @@ void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
 
 void Ghost_SpawnAnimationFlicker(ffc this, npc ghost)
 {
-    if((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
+    if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
         return;
     
     int combo=this->Data;
@@ -379,6 +379,18 @@ void Ghost_DeathAnimation(ffc this, npc ghost, int type)
         __Ghost_Explode(this, ghost, false);
     else if(type==2)
         __Ghost_Explode(this, ghost, true);
+    else
+    {
+        if(ghost->isValid())
+        {
+            ghost->TileWidth=1;
+            ghost->TileHeight=1;
+            ghost->X=Ghost_X+8*(Ghost_TileWidth-1);
+            ghost->Y=Ghost_Y+8*(Ghost_TileHeight-1);
+            ghost->Z=Ghost_Z;
+        }
+        this->Data=0;
+    }
 }
 
 
@@ -408,13 +420,13 @@ void Ghost_SetPosition(ffc this, npc ghost)
 
 void Ghost_MarkAsInUse(npc ghost)
 {
-    ghost->Misc[__GHI_GHZH_DATA]|=0x10000;
+    ghost->Misc[__GHI_NPC_DATA]|=0x10000;
 }
 
 
 bool Ghost_IsInUse(npc ghost)
 {
-    return ghost->Misc[__GHI_GHZH_DATA]!=0;
+    return ghost->Misc[__GHI_NPC_DATA]!=0;
 }
 
 
@@ -451,18 +463,18 @@ float Ghost_GetAttribute(npc ghost, int index, float default)
 void Ghost_AddCombo(int combo, float x, float y, int width, int height)
 {
     // Already at the limit?
-    if(__Ghost_AdditionalCombos[0]==__GH_MAX_ADDITIONAL_COMBOS)
+    if(__Ghost_AdditionalCombos[__GHI_AC_COUNT]==__GH_AC_MAX_ADDITIONAL_COMBOS)
         return;
     
     // Store its data
     int start=__Ghost_AdditionalCombos[0]*__GH_AC_DATA_SIZE+1;
     
-    __Ghost_AdditionalCombos[start+__GHI_AC_COMBO]=combo;
-    __Ghost_AdditionalCombos[start+__GHI_AC_X]=x;
-    __Ghost_AdditionalCombos[start+__GHI_AC_Y]=y;
-    __Ghost_AdditionalCombos[start+__GHI_AC_WIDTH]=width;
-    __Ghost_AdditionalCombos[start+__GHI_AC_HEIGHT]=height;
-    __Ghost_AdditionalCombos[0]+=1;
+    __Ghost_AdditionalCombos[start+__GH_AC_COMBO]=combo;
+    __Ghost_AdditionalCombos[start+__GH_AC_X]=x;
+    __Ghost_AdditionalCombos[start+__GH_AC_Y]=y;
+    __Ghost_AdditionalCombos[start+__GH_AC_WIDTH]=width;
+    __Ghost_AdditionalCombos[start+__GH_AC_HEIGHT]=height;
+    __Ghost_AdditionalCombos[__GHI_AC_COUNT]+=1;
 }
 
 
@@ -475,38 +487,40 @@ void Ghost_AddCombo(int combo, float x, float y)
 void Ghost_ClearCombos()
 {
     // No need to clear all the data
-    __Ghost_AdditionalCombos[0]=0;
+    __Ghost_AdditionalCombos[__GHI_AC_COUNT]=0;
 }
 
 
 bool ClockIsActive()
 {
-    __ghzhData[__GH_CLOCK_TIMER]!=0;
+    __ghzhData[__GHI_CLOCK_TIMER]!=0;
 }
 
 
 void SuspendGhostZHScripts()
 {
-    __ghzhData[__GH_GLOBAL_FLAGS]|=__GHGF_SUSPEND;
+    __ghzhData[__GHI_GLOBAL_FLAGS]|=__GHGF_SUSPEND;
 }
 
 
 void ResumeGhostZHScripts()
 {
-    __ghzhData[__GH_GLOBAL_FLAGS]&=~__GHGF_SUSPEND;
+    __ghzhData[__GHI_GLOBAL_FLAGS]&=~__GHGF_SUSPEND;
 }
 
 
-void __Ghost_DrawShadow()
+void __Ghost_DrawShadow(npc ghost)
 {
-    // Only needed if the enemy is in the air and fake Z is used
+    // No shadow needed if the enemy isn't in the air
     if(Ghost_Z==0)
         return;
     
-    if(!(Ghost_FlagIsSet(GHF_FAKE_Z) || GH_FAKE_Z>0))
+    // Must be using fake Z, have Extend of 4, or be of type "Other (Floating)"
+    if(!(Ghost_FlagIsSet(GHF_FAKE_Z) || GH_FAKE_Z>0 ||
+         ghost->Extend==4 || ghost->Type==NPCT_OTHERFLOAT))
         return;
     
-    if(GH_SHADOW_FLICKER!=0 && (__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+    if(GH_SHADOW_FLICKER!=0 && (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
         return;
     
     int x;
@@ -515,7 +529,9 @@ void __Ghost_DrawShadow()
     int size;
     
     // 1x1 shadow
-    if(Ghost_TileWidth<3 || Ghost_TileHeight<3 || GH_LARGE_SHADOW_TILE==0)
+    if(Ghost_TileWidth<GH_LARGE_SHADOW_MIN_WIDTH ||
+       Ghost_TileHeight<GH_LARGE_SHADOW_MIN_HEIGHT ||
+       GH_LARGE_SHADOW_TILE==0)
     {
         x=Ghost_X+8*(Ghost_TileWidth-1);
         y=Ghost_Y+16*(Ghost_TileHeight-1);
@@ -523,7 +539,7 @@ void __Ghost_DrawShadow()
         if(Ghost_FlagIsSet(GHF_STATIC_SHADOW))
             tile=GH_SHADOW_TILE;
         else
-            tile=GH_SHADOW_TILE+__ghzhData[__GH_SHADOW_FRAME];
+            tile=GH_SHADOW_TILE+__ghzhData[__GHI_SHADOW_FRAME];
     }
     // 2x2 shadow
     else
@@ -534,7 +550,7 @@ void __Ghost_DrawShadow()
         if(Ghost_FlagIsSet(GHF_STATIC_SHADOW))
             tile=GH_LARGE_SHADOW_TILE;
         else
-            tile=GH_LARGE_SHADOW_TILE+2*__ghzhData[__GH_LARGE_SHADOW_FRAME];
+            tile=GH_LARGE_SHADOW_TILE+2*__ghzhData[__GHI_LARGE_SHADOW_FRAME];
     }
     
     if(GH_SHADOW_TRANSLUCENT>0)
@@ -565,7 +581,7 @@ void __Ghost_Explode(ffc this, npc ghost, bool flash)
     deathSFXNPC->Y=176;
     deathSFXNPC->ItemSet=0;
     deathSFXNPC->HP=0;
-    deathSFXNPC->Misc[__GHI_GHZH_DATA]=0x10000;
+    deathSFXNPC->Misc[__GHI_NPC_DATA]=0x10000;
     
     this->CSet=Ghost_CSet;
     this->Flags[FFCF_OVERLAY]=false;
@@ -608,10 +624,6 @@ void __Ghost_Explode(ffc this, npc ghost, bool flash)
 // Used in Ghost_WaitframeLight() to determine whether the enemy needs drawn
 bool __Ghost_IsFlickering(npc ghost)
 {
-    // No flickering this frame
-    if((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_FLICKER)==0)
-        return false;
-    
     // "Is Flickering" flag is set
     if((ghost->MiscFlags&10000000b)!=0)
         return true;
@@ -624,12 +636,11 @@ bool __Ghost_IsFlickering(npc ghost)
     return false;
 }
 
-
 void SetEnemyProperty(npc enemy, int property, float newValue)
 {
-    if((enemy->Misc[__GHI_GHZH_DATA]&0x10000)!=0)
+    if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
     {
-        float array=enemy->Misc[__GHI_GHZH_DATA]&0xFFFF;
+        float array=enemy->Misc[__GHI_NPC_DATA]&0xFFFF;
         array[property]=newValue;
     }
     else
@@ -653,9 +664,9 @@ void SetEnemyProperty(npc enemy, int property, float newValue)
 
 float GetEnemyProperty(npc enemy, int property)
 {
-    if((enemy->Misc[__GHI_GHZH_DATA]&0x10000)!=0)
+    if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
     {
-        float array=enemy->Misc[__GHI_GHZH_DATA]&0xFFFF;
+        float array=enemy->Misc[__GHI_NPC_DATA]&0xFFFF;
         return array[property];
     }
     else

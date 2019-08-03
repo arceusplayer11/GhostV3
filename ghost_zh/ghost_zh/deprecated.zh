@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.2
+// Version 2.7.0
 
 // The functions and constants in this file are provided only for backward
 // compatibility. They should not be used in new scripts.
@@ -40,14 +40,12 @@ void Ghost_Init(ffc this, npc ghost, int flags)
     Ghost_SetFlags(flags);
 }
 
-
 npc Ghost_InitCreate(ffc this, int enemyID, int flags)
 {
     npc ghost=Ghost_InitCreate(this, enemyID);
     Ghost_SetFlags(flags);
     return ghost;
 }
-
 
 npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos, int flags)
 {
@@ -56,14 +54,12 @@ npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos, int flags)
     return ghost;
 }
 
-
 npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos, int flags)
 {
     npc ghost=Ghost_InitWait2(this, enemyID, useEnemyPos);
     Ghost_SetFlags(flags);
     return ghost;
 }
-
 
 npc Ghost_InitSpawn(ffc this, int enemyID, int flags)
 {
@@ -72,7 +68,6 @@ npc Ghost_InitSpawn(ffc this, int enemyID, int flags)
     return ghost;
 }
 
-
 npc Ghost_InitAutoGhost(ffc this, int enemyID, int flags)
 {
     npc ghost=Ghost_InitAutoGhost(this, enemyID);
@@ -80,12 +75,10 @@ npc Ghost_InitAutoGhost(ffc this, int enemyID, int flags)
     return ghost;
 }
 
-
 void Ghost_SetFlags(int flags)
 {
     __Ghost_Flags=flags;
 }
-
 
 void Ghost_WaitframeLight()
 {
@@ -117,7 +110,7 @@ void Ghost_WaitframeLight()
     do
     {
         Waitframe();
-    } while((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0);
+    } while((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0);
     
     // Restore the global variables
     Ghost_X=tempGhostX;
@@ -201,4 +194,10 @@ void SetEWeaponMovement(eweapon wpn, int type, int arg)
         SetEWeaponMovement(wpn, EWM_DRIFT, type-EWM_DRIFT, arg);
     else if(type>=EWM_DRIFT_WAIT && type<=EWM_DRIFT_WAIT_RIGHTDOWN)
         SetEWeaponMovement(wpn, EWM_DRIFT_WAIT, type-EWM_DRIFT_WAIT, arg);
+}
+
+void UpdateGhostZHData()
+{
+    UpdateGhostZHData1();
+    UpdateGhostZHData2();
 }

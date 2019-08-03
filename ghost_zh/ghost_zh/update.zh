@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.2
+// Version 2.7.0
 
 
 bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
@@ -91,7 +91,6 @@ bool Ghost_Waitframe(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
     return __Ghost_WaitframePart2(this, ghost, clearOnDeath, quitOnDeath);
 }
 
-
 bool Ghost_Waitframe2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
 {
     Ghost_X=ghost->X;
@@ -116,7 +115,6 @@ bool Ghost_Waitframe2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
     
     return __Ghost_WaitframePart2(this, ghost, clearOnDeath, quitOnDeath);
 }
-
 
 void Ghost_WaitframeLight(ffc this, npc ghost)
 {
@@ -151,127 +149,78 @@ void Ghost_WaitframeLight(ffc this, npc ghost)
         // 23 is for either drawingData or tempGhostAdditionalCombos;
         // update DrawGhostFFCs if that changes
     };
-    int tempGhostAdditionalCombos[26];
-    
+    int tempGhostAdditionalCombos[21]; // Same size as __Ghost_AdditionalCombos
+                                       // Change it in the loop below, too
     if(__Ghost_AdditionalCombos[0]>0)
     {
         for(int i=0; i<21; i++)
             tempGhostAdditionalCombos[i]=__Ghost_AdditionalCombos[i];
     }
     
-    // Position additional FFCs, set draw data, make FFCs invisible if flickering.
-    
+    // Give ghost an array pointer so its data can be found by other scripts
     if(ghost->isValid())
-        ghost->Misc[__GHI_GHZH_DATA]=0x10000|tempGhostData;
+        ghost->Misc[__GHI_NPC_DATA]=0x10000|tempGhostData;
     
+    // Position additional FFCs, set draw data, make FFCs invisible if flickering.
     do
     {
         if(ghost->isValid())
         {
-            // Not flickering
-            if(!__Ghost_IsFlickering(ghost))
+            // Set up drawing array if needed. The array size depends on what
+            // might need drawn. If only ZScript had malloc...
+            if(__GH_USE_DRAWCOMBO!=0)
             {
-                // Using DrawCombo
-                if(__GH_USE_DRAWCOMBO>0)
+                // DrawCombo and additional combos
+                if(__Ghost_AdditionalCombos[__GHI_AC_COUNT]>0)
                 {
-                    int tempData;
-                    
-                    // Store all the data needed for DrawGhostFFCs() in an array
-                    int drawingData[9];
-                    drawingData[__GHI_DRAW_COMBO]=this->Data;
-                    drawingData[__GHI_DRAW_CSET]=this->CSet;
-                    drawingData[__GHI_DRAW_X]=Ghost_X+ghost->DrawXOffset;
-                    drawingData[__GHI_DRAW_Y]=Ghost_Y+ghost->DrawYOffset-(Ghost_Z+ghost->DrawZOffset);
-                    drawingData[__GHI_DRAW_WIDTH]=this->TileWidth;
-                    drawingData[__GHI_DRAW_HEIGHT]=this->TileHeight;
-                    
-                    if(this->Flags[FFCF_OVERLAY])
-                        drawingData[__GHI_DRAW_LAYER]=4;
-                    else
-                    {
-                        if((Screen->Flags[SF_VIEW]&10000b)!=0) 
-                            // Layer 2 is background - draw on layer 1
-                            drawingData[__GHI_DRAW_LAYER]=1;
-                        else
-                            drawingData[__GHI_DRAW_LAYER]=2;
-                    }
-                    
-                    if(this->Flags[FFCF_TRANS])
-                        drawingData[__GHI_DRAW_OPACITY]=64;
-                    else
-                        drawingData[__GHI_DRAW_OPACITY]=128;
-                    
-                    // Additional combos?
-                    int additionalCombos[21];
-                    if(__Ghost_AdditionalCombos[0]>0)
-                    {
-                        for(int i=0; i<21; i++)
-                            additionalCombos[i]=__Ghost_AdditionalCombos[i];
-                        drawingData[__GHI_DRAW_ADDITIONAL]=additionalCombos;
-                    }
-                    else
-                        drawingData[__GHI_DRAW_ADDITIONAL]=0;
-                    
-                    // Store the address of the array
-                    tempGhostData[23]=drawingData;
-                    
-                    tempData=this->Data;
-                    this->Data=GH_INVISIBLE_COMBO;
-                    
-                    Waitframe();
-                    
-                    this->Data=tempData;
+                    // Array size is 4 + (__GH_AC_MAX_ADDITIONAL_COMBOS + 1) * __GHCD_DATA_SIZE
+                    int drawData[34];
+                    __SetUpDrawingArray(this, ghost, drawData);
+                    tempGhostData[23]=drawData;
+                    __HideFFCAndWait(this);
                 }
                 
-                // Not using DrawCombo
+                // DrawCombo and no additional combos
                 else
                 {
-                    // Additional combos?
-                    if(__Ghost_AdditionalCombos[0]>0)
-                    {
-                        tempGhostAdditionalCombos[__GHI_AC_CSET]=this->CSet;
-                        
-                        if(this->Flags[FFCF_OVERLAY])
-                            tempGhostAdditionalCombos[__GHI_AC_LAYER]=5;
-                        else
-                            tempGhostAdditionalCombos[__GHI_AC_LAYER]=1;
-                        
-                        if(this->Flags[FFCF_TRANS])
-                            tempGhostAdditionalCombos[__GHI_AC_OPACITY]=OP_TRANS;
-                        else
-                            tempGhostAdditionalCombos[__GHI_AC_OPACITY]=OP_OPAQUE;
-                        
-                        tempGhostAdditionalCombos[__GHI_AC_BASE_X]=Ghost_X+ghost->DrawXOffset;
-                        tempGhostAdditionalCombos[__GHI_AC_BASE_Y]=Ghost_Y+ghost->DrawYOffset-(Ghost_Z+ghost->DrawZOffset);
-                        
-                        tempGhostData[23]=tempGhostAdditionalCombos;
-                    }
-                    
-                    Waitframe();
+                    // 4 + __GHCD_DATA_SIZE
+                    int drawData[10];
+                    __SetUpDrawingArray(this, ghost, drawData);
+                    tempGhostData[23]=drawData;
+                    __HideFFCAndWait(this);
                 }
             }
-            
-            // Flickering
-            else
+            else // __GH_USE_DRAWCOMBO==0
             {
-                int tempData=this->Data;
-                this->Data=GH_INVISIBLE_COMBO;
+                // Additional combos, no DrawCombo
+                if(__Ghost_AdditionalCombos[__GHI_AC_COUNT]>0)
+                {
+                    // 4 + __GH_AC_MAX_ADDITIONAL_COMBOS * __GHCD_DATA_SIZE
+                    int drawData[28];
+                    __SetUpDrawingArray(this, ghost, drawData);
+                    tempGhostData[23]=drawData;
+                    
+                    // Hide the FFC if the enemy is flickering.
+                    if(__Ghost_IsFlickering(ghost) &&
+                       (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+                        __HideFFCAndWait(this);
+                    else
+                        Waitframe();
+                }
                 
-                Waitframe();
-                
-                this->Data=tempData;
+                // No DrawCombo or additional combos
+                else
+                {
+                    if(__Ghost_IsFlickering(ghost) &&
+                       (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)==0)
+                        __HideFFCAndWait(this);
+                    else
+                        Waitframe();
+                }
             }
         }
-        
-        else // ghost is not valid 
-        {
-            int tempData=this->Data;
-            this->Data=GH_INVISIBLE_COMBO;
-            
-            Waitframe();
-            
-            this->Data=tempData;
-        }
+        else // ghost is not valid
+            __HideFFCAndWait(this);
         
         // Restore the global variables
         Ghost_X=tempGhostData[0];
@@ -304,12 +253,21 @@ void Ghost_WaitframeLight(ffc this, npc ghost)
                 __Ghost_AdditionalCombos[i]=tempGhostAdditionalCombos[i];
         }
         
-    } while((__ghzhData[__GH_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0);
+    } while((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0);
     
     if(ghost->isValid())
-        ghost->Misc[__GHI_GHZH_DATA]=0x10000;
+        ghost->Misc[__GHI_NPC_DATA]=0x10000;
 }
 
+// Hides the FFC and waits a frame.
+// Just used to reduce redundancy in Ghost_WaitframeLight
+void __HideFFCAndWait(ffc this)
+{
+    int tempData=this->Data;
+    this->Data=GH_INVISIBLE_COMBO;
+    Waitframe();
+    this->Data=tempData;
+}
 
 bool Ghost_Waitframes(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
 {
@@ -321,7 +279,6 @@ bool Ghost_Waitframes(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, 
     return true;
 }
 
-
 bool Ghost_Waitframes2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
 {
     for(; numFrames>0; numFrames--)
@@ -332,13 +289,57 @@ bool Ghost_Waitframes2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath,
     return true;
 }
 
-
 void Ghost_WaitframesLight(ffc this, npc ghost, int numFrames)
 {
     for(; numFrames>0; numFrames--)
         Ghost_WaitframeLight(this, ghost);
 }
 
+void Ghost_Waitframe(ffc this, npc ghost)
+{
+    Ghost_Waitframe(this, ghost, true, true);
+}
+
+void Ghost_Waitframe2(ffc this, npc ghost)
+{
+    Ghost_Waitframe2(this, ghost, true, true);
+}
+
+void Ghost_Waitframes(ffc this, npc ghost, int numFrames)
+{
+    Ghost_Waitframes(this, ghost, true, true, numFrames);
+}
+
+void Ghost_Waitframes2(ffc this, npc ghost, int numFrames)
+{
+    Ghost_Waitframes2(this, ghost, true, true, numFrames);
+}
+
+bool Ghost_Waitframe(ffc this, npc ghost, int deathAnimation, bool quitOnDeath)
+{
+    if(!Ghost_Waitframe(this, ghost, false, false))
+    {
+        Ghost_DeathAnimation(this, ghost, deathAnimation);
+        if(quitOnDeath)
+            Quit();
+        return false;
+    }
+    
+    return true;
+}
+
+bool Ghost_Waitframe2(ffc this, npc ghost, int deathAnimation, bool quitOnDeath)
+{
+    if(!Ghost_Waitframe2(this, ghost, false, false))
+    {
+        Ghost_DeathAnimation(this, ghost, deathAnimation);
+        if(quitOnDeath)
+            Quit();
+        return false;
+    }
+    
+    return true;
+}
 
 void Ghost_CheckHit(ffc this, npc ghost)
 {
@@ -482,7 +483,6 @@ void Ghost_CheckHit(ffc this, npc ghost)
     }
 }
 
-
 bool Ghost_CheckFreeze(ffc this, npc ghost)
 {
     if((Ghost_FlagIsSet(GHF_CLOCK) && ClockIsActive()) ||
@@ -506,7 +506,7 @@ bool Ghost_CheckFreeze(ffc this, npc ghost)
               (Ghost_FlagIsSet(GHF_STUN) && ghost->Stun>0))
         {
             __Ghost_UpdateFlashing(this, ghost);
-            __Ghost_DrawShadow();
+            __Ghost_DrawShadow(ghost);
             Ghost_WaitframeLight(this, ghost);
             
             if(!ghost->isValid())
@@ -535,7 +535,6 @@ bool Ghost_CheckFreeze(ffc this, npc ghost)
     
     return true;
 }
-
 
 // Before waiting: Update direction, set combo, set overlay flag, draw shadow
 void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
@@ -609,18 +608,23 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
         }
     }
     
-    // Resize, if necessary
+    // Resize, if necessary.
+    // This is a bit ugly; the npc and ffc should be handled together. That
+    // causes problems if you set both the size and offsets before the first
+    // waitframe, though.
     if(this->TileWidth!=Ghost_TileWidth)
-    {
         this->TileWidth=Ghost_TileWidth;
+    if(ghost->TileWidth!=Ghost_TileWidth)
+    {
         ghost->TileWidth=Ghost_TileWidth;
         ghost->HitWidth=16*Ghost_TileWidth;
         ghost->HitXOffset=0;
     }
     
     if(this->TileHeight!=Ghost_TileHeight)
-    {
         this->TileHeight=Ghost_TileHeight;
+    if(ghost->TileHeight!=Ghost_TileHeight)
+    {
         ghost->TileHeight=Ghost_TileHeight;
         ghost->HitHeight=16*Ghost_TileHeight;
         ghost->HitYOffset=0;
@@ -645,9 +649,8 @@ void __Ghost_WaitframePart1(ffc this, npc ghost, bool useNPCDir)
     else if(__Ghost_FlashCounter<=0)
         this->CSet=Ghost_CSet;
     
-    __Ghost_DrawShadow();
+    __Ghost_DrawShadow(ghost);
 }
-
 
 // After waiting: Check whether the enemy was hit, stunned, or killed
 bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath)
@@ -660,29 +663,30 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
             Ghost_ClearCombos();
             this->Data=0;
         }
+        
         if(quitOnDeath)
             Quit();
+            
+        Ghost_HP=0;
         return false;
     }
-
+    
     // Is it dead?
     bool dead=false;
-
+    
     if(ghost->HP<=0)
         dead=true;
-
+    
+    // Not dead; was it hit, stunned, or frozen?
     if(!dead)
     {
-        // Hit?
         Ghost_CheckHit(this, ghost);
-
-        // Stunned or frozen by a clock?
         dead=!Ghost_CheckFreeze(this, ghost);
     }
-
+    
     Ghost_HP=ghost->HP;
-
-    // Dead yet?
+    
+    // Dead; clean up
     if(dead)
     {
         if(clearOnDeath)
@@ -694,7 +698,7 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
             ghost->Z=Ghost_Z;
             this->Data=0;
         }
-
+        
         if(quitOnDeath)
             Quit();
 
@@ -703,7 +707,6 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
     
     return true;
 }
-
 
 // Update the flash/flicker timer and change CSet if flashing
 void __Ghost_UpdateFlashing(ffc this, npc ghost)
@@ -721,7 +724,7 @@ void __Ghost_UpdateFlashing(ffc this, npc ghost)
     {
         if((__Ghost_FlashCounter>0 && GH_ENEMIES_FLICKER==0) || // Got hit?
            (ghost->MiscFlags&1000000b)!=0) // "Is Flashing" flag set?
-            this->CSet=__ghzhData[__GH_FLASH_CSET];
+            this->CSet=__ghzhData[__GHI_FLASH_CSET];
         else if(endFlash)
             this->CSet=Ghost_CSet;
     }

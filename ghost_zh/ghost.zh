@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.2
+// Version 2.7.0
 
 // See ghost.txt for documentation.
 
@@ -19,6 +19,8 @@ const int GH_LARGE_SHADOW_TILE = 27392; // Top-left corner
 const int GH_LARGE_SHADOW_CSET = 7;
 const int GH_LARGE_SHADOW_FRAMES = 4;
 const int GH_LARGE_SHADOW_ANIM_SPEED = 8;
+const int GH_LARGE_SHADOW_MIN_WIDTH = 3; // Enemies must be at least this wide
+const int GH_LARGE_SHADOW_MIN_HEIGHT = 3; // and this high to use large shadows
 
 // AutoGhost settings
 const int AUTOGHOST_MIN_FFC = 1; // Min: 1, Max: 32
@@ -33,6 +35,7 @@ const float GH_TERMINAL_VELOCITY = 3.2;
 const int GH_SPAWN_SPRITE = 22; // Min: 0, Max: 255, Default: 22
 const int GH_FAKE_Z = 0; // 0 = No, 1 = Yes
 const int GH_ENEMIES_FLICKER = 0; // 0 = No, 1 = Yes
+const int GH_PREFER_GHOST_ZH_SHADOWS = 0; // 0 = No, 1 = Yes
 
 // Top-left corner of a 4x4 block of blank tiles
 const int GH_BLANK_TILE = 65456; // Min: 0, Max: 65456
@@ -51,15 +54,16 @@ const int GH_INVISIBLE_COMBO = 1; // Min: 1, Max: 65279
 const int AUTOGHOST_READ_NAME = -1;
 
 // When reading a script from the enemy name, this character marks the
-// beginning of the script name
+// beginning of the script name.
+// Default: 64 ( @ )
 const int AUTOGHOST_DELIMITER = 64;
 
 // Misc. attribute 11 can be set to this instead of GH_INVISIBLE_COMBO.
 // Must be a negative number.
 const int __GH_INVISIBLE_ALT = -1;
 
-// This will use the invisible combo, but also set npc->Extend to 3, hiding
-// the initial spawn puff. Must be a negative number.
+// This will use the invisible combo, but also set npc->Extend to 3 or 4,
+// hiding the initial spawn puff. Must be a negative number.
 const int __GH_INVISIBLE_EXTEND = -2;
 
 // If enabled, the FFC will be invisible, and Screen->DrawCombo will be used
@@ -86,7 +90,7 @@ const int __GH_DEFAULT_IMPRECISION = 2;
 
 // npc->Misc[] index
 // Set this so it doesn't conflict with other scripts. Legal values are 0-15.
-const int __GHI_GHZH_DATA = 15;
+const int __GHI_NPC_DATA = 15;
 
 // eweapon->Misc[] indices
 // These must be unique numbers between 0 and 15.
@@ -115,14 +119,16 @@ const int __EWI_DUMMY_SPRITE   = 5;
 
 import "ghost_zh/common.zh"
 import "ghost_zh/deprecated.zh"
+import "ghost_zh/drawing.zh"
 import "ghost_zh/eweapon.zh"
-import "ghost_zh/eweapon_death.zh"
-import "ghost_zh/eweapon_movement.zh"
+import "ghost_zh/eweaponDeath.zh"
+import "ghost_zh/eweaponMovement.zh"
 import "ghost_zh/flags.zh"
 import "ghost_zh/global.zh"
 import "ghost_zh/init.zh"
 import "ghost_zh/modification.zh"
 import "ghost_zh/movement.zh"
 import "ghost_zh/other.zh"
-import "ghost_zh/scripts.zh"
 import "ghost_zh/update.zh"
+
+import "ghost_zh/scripts.z"

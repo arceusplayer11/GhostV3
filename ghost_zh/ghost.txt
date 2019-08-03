@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.6.2
+Version 2.7.0
 
 
 This file is documentation for script writers. If you just want to set up
@@ -38,6 +38,10 @@ For scripted enemies to be susceptible to clocks, StartClock and UpdateClock
 must be called in the global script, and the included item script
 GhostZHClockScript must be set as any clock items' pickup script, with D0 set
 to match the clock's duration.
+
+To prevent conflicts with ghost.zh, scripts should avoid using
+npc->Misc[__GHI_NPC_DATA] and eweapon->Misc[__EWI_FLAGS]. Both indices
+are set to 15 by default, but they can be changed.
 
 Functions, variables, and constants whose names start with __ are for internal
 use and may be changed or removed in future versions without warning.
@@ -111,15 +115,26 @@ int Ghost_HP
 | GLOBAL |
 +--------+
 
-These are functions that should be called in the active global script.
+These are functions that should be called in the active global script. You can
+either use the first three functions or th
+
+void StartGhostZH()
+void UpdateGhostZH1()
+void UpdateGhostZH2()
+ * Call StartGhostZH() before the main loop, UpdateGhostZH1() in the main loop
+ * before Waitdraw(), and UpdateGhostZH2() in the main loop after Waitdraw().
+ * These three functions are all you need in the active global script;
+ * they call the functions listed below.
 
 void InitializeGhostZHData()
  * Initializes any counters and data used internally.
  * Call before the main loop of the global script.
 
-void UpdateGhostZHData()
+void UpdateGhostZHData1()
+void UpdateGhostZHData2()
  * Updates counters and internal data.
- * Call in the main loop before Waitdraw().
+ * Call UpdateGhostZHData1() in the main loop before Waitdraw() and
+ * UpdateGhostZHData2() after Waitdraw().
 
 void UpdateEWeapons()
  * Runs UpdateEWeapon() on all eweapons onscreen.
@@ -341,6 +356,19 @@ bool Ghost_Waitframes2(ffc this, npc ghost, bool clearOnDeath, bool quitOnDeath,
 void Ghost_WaitframesLight(ffc this, npc ghost, int numFrames)
  * These simply call the corresponding Ghost_Waitframe function numFrames times.
 
+void Ghost_Waitframe(ffc this, npc ghost)
+void Ghost_Waitframe2(ffc this, npc ghost)
+void Ghost_Waitframes(ffc this, npc ghost, int numFrames)
+void Ghost_Waitframes2(ffc this, npc ghost, int numFrames)
+ * Simpler variants of the Waitframe functions. These are equivalent to calling
+ * the regular functions with clearOnDeath and quitOnDeath both true. The
+ * script will quit if the enemy dies, so there is no return value from these.
+
+bool Ghost_Waitframe(ffc this, npc ghost, int deathAnimation, bool quitOnDeath)
+bool Ghost_Waitframe2(ffc this, npc ghost, int deathAnimation, bool quitOnDeath)
+ * These will call Ghost_DeathAnimation with the specified animation if the
+ * enemy dies.
+
 void Ghost_CheckHit(ffc this, npc ghost)
  * This will cause the enemy to flash and be knocked back when it is damaged.
  * Used internally by Ghost_Waitframe and Ghost_Waitframe2; if you use one of
@@ -433,6 +461,20 @@ int Ghost_VariableWalk8(int counter, int step, int rate, int homing, int hunger,
  * if GHF_SET_DIRECTION is not used. It will also set Ghost_Dir to -1 if the
  * enemy is trapped.
 
+float Ghost_FloaterWalk(float counter, int normalStep,
+                        int accelTime, float accelAmount, int accelSteps,
+                        int rate, int homing, int hunger,
+                        int turnCheckTime, int restTime)
+ * This is the movement function used by Peahats, Keese, and Ghinis. It works
+ * like Ghost_VariableWalk8(), plus the enemy will periodically stop moving.
+ * When the enemy is moving at full speed, there is a 1/768 chance each frame
+ * that it will stop.
+ * When the enemy starts or stops moving, its speed will change in discrete
+ * increments of accelAmount. accelSteps is the number of times this will
+ * happen, and accelTime is the time in frames between each step. This is not
+ * necessarily a smooth transition; that depends on the numbers.
+ * restTime is how long the enemy stays stopped. Peahats use 80; Ghinis and
+ * Keese use 120.
 
 +--------------+
 | MODIFICATION |
@@ -565,6 +607,7 @@ void Ghost_DeathAnimation(ffc this, npc ghost, int type)
  * Possible type arguments:
  * 1: A number of explosions appear randomly around the enemy
  * 2: The same as 1, plus the enemy flashes
+ * Any other argument will simply cause the enemy to disappear.
 
 void Ghost_SetPosition(ffc this, npc ghost)
  * Positions the NPC and FFC according to the position variables and
@@ -626,6 +669,12 @@ eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step,
  * EWF_ROTATE
  *    The weapon's sprite will be rotated and flipped according to the
  *    weapon's direction.
+ *
+ * EWF_ROTATE_360
+ *    The weapon will be drawn using Screen->DrawTile(), allowing the sprite
+ *    to rotate in whichever direction the weapon is moving. The base sprite
+ *    set in Quest > Graphics > Sprites > Weapons/Misc should be pointing
+ *    to the right.
  *
  * EWF_SHADOW
  *    The weapon will cast a shadow if its Z position is greater than 0.

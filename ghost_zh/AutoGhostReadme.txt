@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.6.2
+Version 2.7.0
 
 General setup:
 
@@ -43,10 +43,18 @@ GH_LARGE_SHADOW_TILE
 GH_LARGE_SHADOW_CSET
 GH_LARGE_SHADOW_FRAMES
 GH_LARGE_SHADOW_ANIM_SPEED
-   Enemies 3x3 tiles and larger will have 2x2 tile shadows using these
-   settings. Unless GH_FAKE_Z is in use, this only applies to the few scripts
-   that always fake Z movement. If GH_LARGE_SHADOW_TILE is 0, large shadows
-   will not be used.
+   Large enemies may have 2x2 tile shadows using these settings. This only
+   applies when built-in shadows are not used. This is the case only if
+   GH_PREFER_GHOST_ZH_SHADOWS or GH_FAKE_Z are used or if a specific enemy
+   uses fake Z movement. If GH_LARGE_SHADOW_TILE is 0, large shadows will not
+   be used.
+
+GH_LARGE_SHADOW_MIN_WIDTH
+GH_LARGE_SHADOW_MIN_HEIGHT
+   An enemy must be at least this large in tiles to have a large shadow.
+
+GH_PREFER_GHOST_ZH_SHADOWS
+   ghost.zh's shadows will be used instead of built-in ones whenever possible.
 
 AUTOGHOST_MIN_FFC
 AUTOGHOST_MAX_FFC
