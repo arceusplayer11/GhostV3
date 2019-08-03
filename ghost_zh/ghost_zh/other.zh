@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.2
+// Version 2.8.0
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
@@ -48,7 +48,7 @@ int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
                 tileRatings[i]=-1;
         }
         // Pits
-        else if(IsPit(i))
+        else if(__IsPit(i))
         {
             if(!pitsOK)
                 tileRatings[i]=-1;
@@ -297,6 +297,7 @@ void Ghost_SpawnAnimationPuff(ffc this, npc ghost)
             graphic->DeadState=graphic->NumFrames*graphic->ASpeed;
         }
     }
+
     
     for(int i=graphic->NumFrames*graphic->ASpeed; i>0; i--)
     {
@@ -368,10 +369,12 @@ bool Ghost_WasFrozen()
 
 void Ghost_DeathAnimation(ffc this, npc ghost, int type)
 {
-    if(type==1)
+    if(type==GHD_EXPLODE)
         __Ghost_Explode(this, ghost, false);
-    else if(type==2)
+    else if(type==GHD_EXPLODE_FLASH)
         __Ghost_Explode(this, ghost, true);
+    else if(type==GHD_SHRINK)
+        __Ghost_ShrinkAway(this, ghost);
     else
     {
         if(ghost->isValid())
@@ -394,7 +397,7 @@ void Ghost_MarkAsInUse(npc ghost)
 
 bool Ghost_IsInUse(npc ghost)
 {
-    return ghost->Misc[__GHI_NPC_DATA]!=0;
+    return (ghost->Misc[__GHI_NPC_DATA]&0x10000)!=0;
 }
 
 float Ghost_GetAttribute(npc ghost, int index, float default, float min, float max)
@@ -471,31 +474,11 @@ void ResumeGhostZHScripts()
 void __Ghost_Explode(ffc this, npc ghost, bool flash)
 {
     lweapon explosion;
-    npc deathSFXNPC;
     int baseX=Ghost_X+ghost->DrawXOffset;
     int baseY=(Ghost_Y+ghost->DrawYOffset)-(Ghost_Z+ghost->DrawZOffset);
     
-    // The enemy's death sound should play at the start of the animation, but the enemy has to stay
-    // alive until the end. There isn't a good way to do that, so here's a stupid way, instead.
-    // Make another of the same enemy, hide it, and kill it. After the animation finishes,
-    // kill the real one silently.
-    
-    deathSFXNPC=Screen->CreateNPC(ghost->ID);
-    deathSFXNPC->X=ghost->X; // For panning
-    deathSFXNPC->Y=176;
-    deathSFXNPC->ItemSet=0;
-    deathSFXNPC->HP=0;
-    deathSFXNPC->Misc[__GHI_NPC_DATA]=0x10000;
-    
-    this->CSet=Ghost_CSet;
-    this->Flags[FFCF_OVERLAY]=false;
-    this->Vx=0;
-    this->Vy=0;
-    this->Ax=0;
-    this->Ay=0;
-    ghost->HP=1;
-    ghost->CollDetection=false;
-    ghost->SFX=0;
+    __DeathAnimStart(this, ghost);
+    __DeathAnimSFX(ghost->ID, ghost->X);
     
     if(flash)
         __Ghost_FlashCounter=10000;
@@ -519,14 +502,107 @@ void __Ghost_Explode(ffc this, npc ghost, bool flash)
         }
     }
     
+    __DeathAnimEnd(this, ghost);
+}
+
+void __Ghost_ShrinkAway(ffc this, npc ghost)
+{
+    lweapon explosion;
+    int baseX=Ghost_X+ghost->DrawXOffset;
+    int baseY=(Ghost_Y+ghost->DrawYOffset)-(Ghost_Z+ghost->DrawZOffset);
+    int baseWidth=Ghost_TileWidth*16;
+    int baseHeight=Ghost_TileHeight*16;
+    int tile=ghost->Tile; // Only needed for invisible combo enemies
+    int layer;
+    int opacity;
+    
+    if(this->Flags[FFCF_OVERLAY])
+        layer=4;
+    else if((Screen->Flags[SF_VIEW]&10000b)!=0) // Layer 2 is background
+        layer=1;
+    else
+        layer=2;
+    
+    if((ghost->MiscFlags&100000000b)!=0 || this->Flags[FFCF_TRANS])
+        opacity=OP_TRANS;
+    else
+        opacity=OP_OPAQUE;
+    
+    __DeathAnimStart(this, ghost);
+    ghost->DrawXOffset=1024;
+    __Ghost_FlashCounter=0;
+    
+    for(int i=0; i<120; i++)
+    {
+        float scale=Cos(i-30)/Cos(30);
+        float xSize=baseWidth*scale;
+        float ySize=baseHeight*scale;
+        
+        if(i==30)
+            __DeathAnimSFX(ghost->ID, ghost->X);
+        
+        if(Ghost_Data==GH_INVISIBLE_COMBO)
+        {
+            Screen->DrawTile(layer,
+              baseX-(xSize-baseWidth)/2,
+              baseY-(ySize-baseHeight)/2,
+              tile, Ghost_TileWidth, Ghost_TileHeight, Ghost_CSet,
+              xSize, ySize, 0, 0, 0, 0, true, opacity);
+        }
+        else
+        {
+            Screen->DrawCombo(layer,
+              baseX-(xSize-baseWidth)/2,
+              baseY-(ySize-baseHeight)/2,
+              Ghost_Data, Ghost_TileWidth, Ghost_TileHeight, Ghost_CSet,
+              xSize, ySize, 0, 0, 0, 0, 0, true, opacity);
+        }
+        
+        Ghost_WaitframeLight(this, ghost);
+    }
+    
+    __DeathAnimEnd(this, ghost);
+}
+
+void __DeathAnimStart(ffc this, npc ghost)
+{
+    this->CSet=Ghost_CSet;
+    this->Vx=0;
+    this->Vy=0;
+    this->Ax=0;
+    this->Ay=0;
+    ghost->HP=1;
+    ghost->CollDetection=false;
+    ghost->SFX=0;
+}
+
+void __DeathAnimEnd(ffc this, npc ghost)
+{
     if(ghost->isValid())
     {
-        ghost->HP=-1000;
-        ghost->DrawXOffset=1000;
+        ghost->HP=HP_SILENT;
+        ghost->DrawXOffset=1024;
+        ghost->X+=(Ghost_TileWidth-1)*8;
+        ghost->Y+=(Ghost_TileHeight-1)*8;
     }
-    this->Data=0;
+    
+    __GhCleanUp(this);
     Ghost_Data=0;
     Ghost_ClearCombos();
+}
+
+// The enemy has to stay alive until the end of the animation, but the death
+// sound generally has to play sooner. There isn't a good way to do that, so
+// here's a stupid way, instead. Make another of the same enemy, hide it, and
+// kill it. After the animation finishes, the real one will be killed silently.
+void __DeathAnimSFX(int id, int x)
+{
+    npc deathSFXNPC=Screen->CreateNPC(id);
+    deathSFXNPC->X=x; // For panning
+    deathSFXNPC->Y=176;
+    deathSFXNPC->ItemSet=0;
+    deathSFXNPC->HP=0;
+    deathSFXNPC->Misc[__GHI_NPC_DATA]=0x10000;
 }
 
 // Used in Ghost_WaitframeLight() to determine whether the enemy needs drawn
@@ -544,6 +620,24 @@ bool __Ghost_IsFlickering(npc ghost)
     return false;
 }
 
+// Reset most of the FFC's data to default. Stuff that's not likely to
+// cause problems if the FFC is reused isn't included.
+void __GhCleanUp(ffc this)
+{
+    this->Data=0;
+    this->Vx=0;
+    this->Vy=0;
+    this->Ax=0;
+    this->Ay=0;
+    this->TileWidth=1;
+    this->TileHeight=1;
+    this->EffectWidth=16;  // Some of these are unlikely to have been used,
+    this->EffectHeight=16; // but sure, let's clear them out.
+    this->Link=0;
+    for(int i=0; i<11; i++)
+        this->Flags[i]=false;
+}
+
 void SetEnemyProperty(npc enemy, int property, float newValue)
 {
     if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
@@ -551,23 +645,21 @@ void SetEnemyProperty(npc enemy, int property, float newValue)
         float array=enemy->Misc[__GHI_NPC_DATA]&0xFFFF;
         array[property]=newValue;
     }
-    else
-    {
-        if(property==ENPROP_X)
-            enemy->X=newValue;
-        else if(property==ENPROP_Y)
-            enemy->Y=newValue;
-        else if(property==ENPROP_Z)
-            enemy->Z=newValue;
-        else if(property==ENPROP_JUMP)
-            enemy->Jump=newValue;
-        else if(property==ENPROP_DIR)
-            enemy->Dir=newValue;
-        else if(property==ENPROP_HP)
-            enemy->HP=newValue;
-        else //ENPROP_CSET
-            enemy->CSet=newValue;
-    }
+    
+    if(property==ENPROP_X)
+        enemy->X=newValue;
+    else if(property==ENPROP_Y)
+        enemy->Y=newValue;
+    else if(property==ENPROP_Z)
+        enemy->Z=newValue;
+    else if(property==ENPROP_JUMP)
+        enemy->Jump=newValue;
+    else if(property==ENPROP_DIR)
+        enemy->Dir=newValue;
+    else if(property==ENPROP_HP)
+        enemy->HP=newValue;
+    else //ENPROP_CSET
+        enemy->CSet=newValue;
 }
 
 float GetEnemyProperty(npc enemy, int property)

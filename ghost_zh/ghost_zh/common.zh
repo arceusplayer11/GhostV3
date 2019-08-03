@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.2
+// Version 2.8.0
 
 // Used for DrawGhostFFCs()
 const int __GHI_DRAW_COMBO      = 0;
@@ -39,6 +39,12 @@ const int ENPROP_JUMP = 3;
 const int ENPROP_DIR = 11;
 const int ENPROP_HP = 20;
 const int ENPROP_CSET = 10;
+
+// Death animations
+const int GHD_EXPLODE = 1;
+const int GHD_EXPLODE_FLASH = 2;
+const int GHD_SHRINK = 3;
+
 
 // Global variables
 

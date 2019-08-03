@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.2
+// Version 2.8.0
 
 
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
@@ -219,8 +219,8 @@ bool Ghost_CanMove(int dir, float step, int imprecision, bool inAir)
     return __Ghost_CanMoveSingle(dir, step, imprecision, inAir);
 }
 
-// Used by __Ghost_NewDir8(). Uses the full step on both axes
-// if the direction is diagonal.
+// Used by __Ghost_NewDir4() and __Ghost_NewDir8(). Uses the full step
+// on both axes if the direction is diagonal.
 bool __Ghost_CanMoveNES(int dir, float step, int imprecision)
 {
     if(step==0)
@@ -464,7 +464,7 @@ bool Ghost_CanMovePixel(int x, int y, bool inAir)
     if(IsWater(combo))
         return Ghost_FlagIsSet(GHF_IGNORE_WATER);
     
-    if(IsPit(combo))
+    if(__IsPit(combo))
         return Ghost_FlagIsSet(GHF_IGNORE_PITS);
     
     // Ignore solidity: always OK
@@ -529,6 +529,7 @@ int Ghost_ConstantWalk4(int counter, int step, int rate, int homing, int hunger)
         }
         
         // Half a tile off vertically
+        else if(Ghost_Y%16==8)
         {
             // Fix direction
             bool canMoveUp=__Ghost_CanMoveNES(DIR_UP, 1, 0);
@@ -979,7 +980,7 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
                 else
                     newDir=DIR_DOWN;
                 
-                if(__Ghost_CanMoveNES(newDir, 1, 0))
+                if(__Ghost_CanMoveNES(newDir, 16, 0))
                 {
                     Ghost_Dir=newDir;
                     return;
@@ -991,7 +992,7 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
             else
                 newDir=DIR_RIGHT;
             
-            if(__Ghost_CanMoveNES(newDir, 1, 0))
+            if(__Ghost_CanMoveNES(newDir, 16, 0))
             {
                 Ghost_Dir=newDir;
                 return;
@@ -1003,7 +1004,7 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
     if(Rand(256)<homing)
     {
         newDir=__Ghost_LinedUp(8, false);
-        if(newDir>=0 && __Ghost_CanMoveNES(newDir, 1, 0))
+        if(newDir>=0 && __Ghost_CanMoveNES(newDir, 16, 0))
         {
             Ghost_Dir=newDir;
             return;
@@ -1017,7 +1018,7 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
     
     for(int i=0; i<4; i++)
     {
-        if(__Ghost_CanMoveNES(i, 1, 0))
+        if(__Ghost_CanMoveNES(i, 16, 0))
         {
             combos[i]=true;
             numDirs++;
@@ -1029,6 +1030,13 @@ void __Ghost_NewDir4(int rate, int homing, int hunger)
     {
         Ghost_Dir=-1;
         return;
+    }
+    
+    if(Rand(16)>=rate)
+    {
+        // Doesn't want to turn; keep going the same direction if possible
+        if(combos[Ghost_Dir])
+            return;
     }
     
     // Pick a direction at random from the ones available
@@ -1054,7 +1062,7 @@ void __Ghost_NewDir8(int rate, int homing, int hunger)
     int newDir=-1;
 
     // If the enemy can keep moving, it can turn voluntarily
-    if(__Ghost_CanMoveNES(Ghost_Dir, 1, 0))
+    if(__Ghost_CanMoveNES(Ghost_Dir, 8, 0))
     {
         if(Rand(4)<hunger)
         {
@@ -1089,7 +1097,7 @@ void __Ghost_NewDir8(int rate, int homing, int hunger)
                     }
                 }
 
-                if(__Ghost_CanMoveNES(newDir, 1, 0))
+                if(__Ghost_CanMoveNES(newDir, 8, 0))
                 {
                     Ghost_Dir=newDir;
                     Ghost_X<<=0;
@@ -1103,7 +1111,7 @@ void __Ghost_NewDir8(int rate, int homing, int hunger)
         if(Rand(256)<homing)
         {
             newDir=__Ghost_LinedUp(8, true);
-            if(newDir>=0 && __Ghost_CanMoveNES(newDir, 1, 0))
+            if(newDir>=0 && __Ghost_CanMoveNES(newDir, 8, 0))
             {
                 Ghost_Dir=newDir;
                 Ghost_X<<=0;
@@ -1126,7 +1134,7 @@ void __Ghost_NewDir8(int rate, int homing, int hunger)
 
     for(int i=0; i<8; i++)
     {
-        if(__Ghost_CanMoveNES(i, 1, 0))
+        if(__Ghost_CanMoveNES(i, 8, 0))
         {
             numDirs++;
             dirs[i]=true;

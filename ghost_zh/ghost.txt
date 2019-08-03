@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.7.2
+Version 2.8.0
 
 
 This file is documentation for script writers. If you just want to set up
@@ -105,7 +105,9 @@ int Ghost_CSet
 
 int Ghost_TileWidth
 int Ghost_TileHeight
- * The width and height of the enemy in tiles. These must be between 1 and 4.
+ * The width and height of the enemy in tiles, which must be between 1 and 4.
+ * These should be considered read-only; to set the enemy's size, use
+ * Ghost_SetSize().
 
 int Ghost_HP
  * The enemy's current HP.
@@ -366,8 +368,8 @@ void Ghost_Waitframes2(ffc this, npc ghost, int numFrames)
 
 bool Ghost_Waitframe(ffc this, npc ghost, int deathAnimation, bool quitOnDeath)
 bool Ghost_Waitframe2(ffc this, npc ghost, int deathAnimation, bool quitOnDeath)
- * These will call Ghost_DeathAnimation with the specified animation if the
- * enemy dies.
+ * These will call Ghost_DeathAnimation() with the specified animation if the
+ * enemy dies. See Ghost_DeathAnimation() for deathAnimation arguments.
 
 void Ghost_CheckHit(ffc this, npc ghost)
  * This will cause the enemy to flash and be knocked back when it is damaged.
@@ -389,21 +391,20 @@ bool Ghost_CheckFreeze(ffc this, npc ghost)
 
 void Ghost_Move(int dir, float step, int imprecision)
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
-
-
-
-
 void Ghost_MoveAtAngle(float angle, float step, int imprecision)
 void Ghost_MoveTowardLink(float step, int imprecision)
- * Makes the enemy move. Ghost_CanMove() will be checked automatically. The
- * imprecision argument makes the function ignore a couple of pixels at the
- * edges so the enemy doesn't get stuck on corners. If the GHF_SETDIRECTION
- * flag is set, the npc's direction will be changed accordingly unless
- * Ghost_ForceDir was called beforehand. 
+ * Makes the enemy move. Ghost_CanMove() will be checked automatically.
+ * If the GHF_SETDIRECTION flag is set, the npc's direction will be changed
+ * accordingly unless Ghost_ForceDir was called beforehand. 
+ * The step arguments are given in pixels.
+ * Ghost_MoveAtAngle's angle argument is in degrees.
+ * The imprecision argument makes the function ignore a couple of pixels at the
+ * edges of the enemy's hitbox so that it doesn't get stuck on corners.
 
 bool Ghost_CanMove(int dir, float step, int imprecision)
 bool Ghost_CanMove(int dir, float step, int imprecision, bool inAir)
  * Determines whether the enemy can move in the given direction and distance.
+ * step is given in pixels.
  * On sideview screens, a direction of DIR_UP will always return false unless
  * GHF_NO_FALL is set.
  * inAir determines whether non-flying enemies check for "No Ground Enemies" or
@@ -484,15 +485,20 @@ float Ghost_FloaterWalk(float counter, int normalStep,
 | MODIFICATION |
 +--------------+
 
+void Ghost_SetSize(ffc this, npc ghost, int tileWidth, int tileHeight)
+ * Sets the tile size of the enemy. The new width and height are given
+ * in tiles and must be between 1 and 4. If -1 is given for either dimension,
+ * it will not be changed. If you called Ghost_SetHitOffsets() previously,
+ * it will be undone; the enemy's size and position will be set to match
+ * the FFC's.
+
 void Ghost_Transform(ffc this, npc ghost, int combo, int cset, int tileWidth,
                      int tileHeight)
- * Change the FFC to a new combo and CSet and resize the FFC and npc. The new
- * width and height are given in tiles and must be between 1 and 4. The FFC's
+ * Change the FFC to a new combo and CSet and resize the FFC and npc. The FFC's
  * and npc's positions will be adjusted so that they're centered on the same
  * spot. For all four numeric arguments, pass in -1 if you don't want to change
  * the existing value. If you called Ghost_SetHitOffsets() previously, it will
- * be undone; the enemy's size and position will be set to match the FFC's.
- * Attached FFCs will not be affected.
+ * be undone. Attached FFCs will not be affected.
 
 void Ghost_SetHitOffsets(npc ghost, float top, float bottom, float left,
                          float right)
@@ -608,10 +614,18 @@ bool Ghost_WasFrozen()
 void Ghost_DeathAnimation(ffc this, npc ghost, int type)
  * Displays a death animation based on type, then clears the enemy. This does
  * not call Quit().
- * Possible type arguments:
- * 1: A number of explosions appear randomly around the enemy
- * 2: The same as 1, plus the enemy flashes
- * Any other argument will simply cause the enemy to disappear.
+ * The type argument should be one of these:
+ * GHD_EXPLODE
+ *    A series of explosions appear randomly around the enemy.
+ * 
+ * GHD_EXPLODE_FLASH
+ *    The same, plus the enemy flashes.
+ *
+ * GHD_SHRINK
+ *    The enemy grows slightly and then shrinks away to nothing. This does not
+ *    work with enemies that use additional combos.
+ * 
+ * Any other value will simply cause the enemy to disappear.
 
 void Ghost_SetPosition(ffc this, npc ghost)
  * Positions the NPC and FFC according to the position variables and
@@ -647,7 +661,8 @@ bool ClockIsActive()
 void SuspendGhostZHScripts()
  * Suspends the execution of all ghost.zh scripts. Until scripts are resumed,
  * Ghost_Waitframe functions will not return and UpdateEWeapon() will not
- * do anything.
+ * do anything. This also stops AutoGhost() from running, so any new enemies
+ * will not have scripts launched until ResumeGhostZHScripts() is called.
 
 void ResumeGhostZHScripts()
  * Resumes execution of ghost.zh scripts.
@@ -688,11 +703,17 @@ eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step,
  * 
  * EWF_NO_COLLISION
  *    The weapon's collision detection will be disabled.
+ * 
+ * EWF_FAKE_Z
+ *    The weapon's hitbox will always be on the ground.
+ *    Note: This does not actually keep the weapon on the ground; it only
+ *    simulates this by setting the weapon's hit and draw offsets.
 
 eweapon FireAimedEWeapon(int weaponID, int x, int y, float angle, int step,
                          int damage, int sprite, int sound, int flags)
- * Fire a projectile aimed at Link. The angle argument is an offset, so,
- * for instance, an angle of 0.2 will aim slightly away from Link.
+ * Fire a projectile aimed at Link. The angle argument is given in radians.
+ * angle is an offset, so, for instance, an angle of 0.2 will always aim
+ * slightly away from Link.
 
 eweapon FireNonAngularEWeapon(int weaponID, int x, int y, int direction,
                               int step, int damage, int sprite, int sound,
@@ -888,11 +909,11 @@ void SetEWeaponDeathEffect(eweapon wpn, eweapon prototype, int numShots, int
  * 
  * EWD_EVEN
  *    Weapons are evenly spaced
- *    angle: First weapon's offset from 0 
+ *    angle: First weapon's offset from 0 in radians
  * 
  * EWD_AIMED
  *    Weapons are aimed at Link
- *    angle: Angle range of spawned weapons
+ *    angle: Angle range of spawned weapons in radians
  * 
  * EWD_RANDOM
  *    Weapons are fired at random angles
@@ -904,13 +925,14 @@ void UpdateEWeapon(eweapon wpn)
  * them. Normally, this will be run by UpdateEWeapons() in the global script.
 
 void SetEWeaponDir(eweapon wpn)
- * Set the direction of an angled eweapon so that it interacts correctly with
- * shields. This should not be used on unblockable weapons.
+ * Set the direction of an angled eweapon so that it interacts correctly
+ * with shields. This is normally handled automatically, but you may need
+ * to use it if you script a weapon's movement yourself.
 
 void SetEWeaponRotation(eweapon wpn)
 void SetEWeaponRotation(eweapon wpn, int direction)
- * Rotate the weapon's sprite. If the direction argument is not given, this is
- * done according to the weapon's direction.
+ * Rotate the weapon's sprite. If the direction argument is not given,
+ * this is done according to the weapon's direction.
 
 void KillEWeapon(eweapon wpn)
  * Kill the eweapon, stopping scripted movement and activating any

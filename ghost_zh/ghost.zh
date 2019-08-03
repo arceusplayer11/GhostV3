@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.2
+// Version 2.8.0
 
 // See ghost.txt for documentation.
 
@@ -19,7 +19,7 @@ const int GH_LARGE_SHADOW_TILE = 27392; // Top-left corner
 const int GH_LARGE_SHADOW_CSET = 7;
 const int GH_LARGE_SHADOW_FRAMES = 4;
 const int GH_LARGE_SHADOW_ANIM_SPEED = 8;
-const int GH_LARGE_SHADOW_MIN_WIDTH = 3; // Enemies must be at least this wide
+const int GH_LARGE_SHADOW_MIN_WIDTH = 3;  // Enemies must be at least this wide
 const int GH_LARGE_SHADOW_MIN_HEIGHT = 3; // and this high to use large shadows
 
 // AutoGhost settings
@@ -34,6 +34,7 @@ const float GH_GRAVITY = 0.16;
 const float GH_TERMINAL_VELOCITY = 3.2;
 const int GH_SPAWN_SPRITE = 22; // Min: 0, Max: 255, Default: 22
 const int GH_FAKE_Z = 0; // 0 = No, 1 = Yes
+const int __GH_FAKE_EWEAPON_Z = 0; // 0 = No, 1 = Yes
 const int GH_ENEMIES_FLICKER = 0; // 0 = No, 1 = Yes
 const int GH_PREFER_GHOST_ZH_SHADOWS = 0; // 0 = No, 1 = Yes
 
@@ -42,6 +43,10 @@ const int GH_BLANK_TILE = 65456; // Min: 0, Max: 65456
 
 // Invisible combo with no properties set
 const int GH_INVISIBLE_COMBO = 1; // Min: 1, Max: 65279
+
+// Always read script name and combo from the enemy's name,
+// freeing up attributes 11 and 12
+const int __GH_ALWAYS_USE_NAME = 0;
 
 // End standard settings -------------------------------------------------------
 
@@ -114,21 +119,35 @@ const int __EWI_DUMMY_SOUND    = 2;
 const int __EWI_DUMMY_STEP     = 4;
 const int __EWI_DUMMY_SPRITE   = 5;
 
+// Returns true if the given combo should be considered a pit.
+bool __IsPit(int combo)
+{
+    return IsPit(combo); // std.zh implementation by default
+}
+
+// Returns true if enemies are visible on screens with the
+// "All Enemies Are Invisible" flag enabled
+bool __HaveAmulet()
+{
+    return Link->Item[I_AMULET1] || Link->Item[I_AMULET2];
+}
+
 // End advanced settings -------------------------------------------------------
 
 
-import "ghost_zh/common.zh"
-import "ghost_zh/deprecated.zh"
-import "ghost_zh/drawing.zh"
-import "ghost_zh/eweapon.zh"
-import "ghost_zh/eweaponDeath.zh"
-import "ghost_zh/eweaponMovement.zh"
-import "ghost_zh/flags.zh"
-import "ghost_zh/global.zh"
-import "ghost_zh/init.zh"
-import "ghost_zh/modification.zh"
-import "ghost_zh/movement.zh"
-import "ghost_zh/other.zh"
-import "ghost_zh/update.zh"
+import "ghost_zh/2.8/common.zh"
+import "ghost_zh/2.8/deprecated.zh"
+import "ghost_zh/2.8/drawing.zh"
+import "ghost_zh/2.8/eweapon.zh"
+import "ghost_zh/2.8/eweaponDeath.zh"
+import "ghost_zh/2.8/eweaponMovement.zh"
+import "ghost_zh/2.8/flags.zh"
+import "ghost_zh/2.8/global.zh"
+import "ghost_zh/2.8/init.zh"
+import "ghost_zh/2.8/modification.zh"
+import "ghost_zh/2.8/movement.zh"
+import "ghost_zh/2.8/other.zh"
+import "ghost_zh/2.8/update.zh"
 
-import "ghost_zh/scripts.z"
+import "ghost_zh/2.8/scripts.z"
+

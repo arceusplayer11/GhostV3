@@ -1,3 +1,30 @@
+2.8.0 (2015-10-06)
+* Moved files into a numbered subdirectory so multiple versions can coexist.
+* Added an option to always read the script's name from the enemy's name,
+    freeing misc. attribute 12 for other uses.
+* Added Ghost_SetSize().
+* Added __IsPit() to allow customization of what constitutes a "pit."
+* Added a new death animation in which the enemy shrinks to nothing.
+* Added constants to use as arguments to Ghost_DeathAnimation() and
+    Waitframe functions.
+* SetEnemyProperty() now directly affects the npc's data as well as the
+    stored global variable.
+* The "All Enemies Are Invisible" screen flag now works, although it makes
+    enemies completely invisible.
+* The "Can Only Be Seen By Lens Of Truth" flag now works as long as
+    __GH_USE_DRAWCOMBO is disabled.
+* Fixed spawning enemies not being hidden correctly.
+* Fixed an issue with knockback in Ghost_ConstantWalk4().
+* Fixed __Ghost_NewDir4() ignoring random rate.
+* Fixed walkability detection in walking functions when hitbox size is not
+    a multiple of 16.
+* The FFC is now more thoroughly cleaned up when an enemy dies.
+* EWF_ROTATE_360 now works with large weapons.
+* Weapons with EWF_ROTATE_360 are no longer drawn when Link is dead.
+* Added EWF_FAKE_Z and a setting to make all weapons use fake Z values.
+* Fixed dummy weapons being instantly deleted in some cases.
+
+
 2.7.2 (2014-08-20)
 * AutoGhost() will no longer grab changers.
 * AutoGhost() now sets the FFC's size.

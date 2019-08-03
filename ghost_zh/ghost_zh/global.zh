@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.2
+// Version 2.8.0
 
 void StartGhostZH()
 {
@@ -151,138 +151,207 @@ void AutoGhost()
     npc enemy;
     int ffcID=0;
     ffc f;
-
+    
     // Search enemies for one that should be autoghosted
     for(int i=Screen->NumNPCs(); i>0; i--)
     {
         enemy=Screen->LoadNPC(i);
-
+        
         // ID out of range??
         if(enemy->ID<AUTOGHOST_MIN_ENEMY_ID || enemy->ID>AUTOGHOST_MAX_ENEMY_ID)
             continue;
-
-        // Already in use?
-        if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
+        
+        if(__GH_ALWAYS_USE_NAME==0)
+        {
+            // Already in use?
+            if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
+                continue;
+            
+            // No combo or script set?
+            if(enemy->Attributes[10]==0 || enemy->Attributes[11]==0)
+                continue;
+        }
+        else // Read from name
+        {
+            // Already checked this enemy?
+            if(enemy->Misc[__GHI_NPC_DATA]!=0)
+                continue;
+        }
+        
+        // May have found one; get the setup data
+        int scriptNum;
+        int combo;
+        if(__GH_ALWAYS_USE_NAME==0)
+        {
+            combo=enemy->Attributes[10];
+            scriptNum=enemy->Attributes[11];
+            if(scriptNum==AUTOGHOST_READ_NAME)
+            {
+                int data[2];
+                __AutoGhostParseName(enemy, data);
+                scriptNum=data[0];
+            }
+        }
+        else
+        {
+            int data[2];
+            __AutoGhostParseName(enemy, data);
+            scriptNum=data[0];
+            combo=data[1];
+            enemy->Misc[__GHI_NPC_DATA]=1; // Just to make sure it's nonzero
+            if(scriptNum<=0)
+                continue;
+        }
+        
+        // Invalid script?
+        if(scriptNum<=0 || scriptNum>511)
+        {
+            __AutoGhostKill(enemy);
             continue;
-
-        // No combo or script set?
-        if(enemy->Attributes[10]==0 || enemy->Attributes[11]==0)
-            continue;
-
+        }
+        
         // Found an enemy that needs ghosted; now find an FFC
         ffcID=FindUnusedFFC(ffcID);
-
+        
         // No suitable FFC? Kill the enemy, then
         if(ffcID==0)
         {
-            // It won't die immediately, so mark it as used so it isn't
-            // checked again
-            enemy->Misc[__GHI_NPC_DATA]=0x10000;
-            enemy->X=256;
-            enemy->Y=176;
-            enemy->ItemSet=0;
-            enemy->HP=-1000;
+            __AutoGhostKill(enemy);
+            continue;
         }
-        // Found an FFC; set it up
-        else
+        
+        // Everything's okay; set up the enemy
+        f=Screen->LoadFFC(ffcID);
+        f->Data=GH_INVISIBLE_COMBO;
+        f->CSet=enemy->CSet;
+        f->TileWidth=1;
+        f->TileHeight=1;
+        f->X=enemy->X;
+        f->Y=enemy->Y-enemy->Z;
+        f->Vx=0;
+        f->Vy=0;
+        f->Ax=0;
+        f->Ay=0;
+        f->Script=scriptNum;
+        f->InitD[0]=enemy->ID;
+        
+        // Setting this in advance hides the spawn animation, so it's not
+        // visible for a single frame before the script starts (assuming
+        // this is after Waitdraw())
+        if(combo!=GH_INVISIBLE_COMBO && combo!=__GH_INVISIBLE_ALT)
         {
-            int scriptNum;
-            
-            f=Screen->LoadFFC(ffcID);
-            f->Data=GH_INVISIBLE_COMBO;
-            f->CSet=enemy->CSet;
-            f->TileWidth=1;
-            f->TileHeight=1;
-            f->X=enemy->X;
-            f->Y=enemy->Y-enemy->Z;
-            f->Vx=0;
-            f->Vy=0;
-            f->Ax=0;
-            f->Ay=0;
-
-            // Setting this in advance hides the spawn animation, so it's not
-            // visible for a single frame before the script starts (assuming
-            // this is after Waitdraw())
-            if(enemy->Attributes[10]!=GH_INVISIBLE_COMBO &&
-               enemy->Attributes[10]!=__GH_INVISIBLE_ALT)
-                enemy->Extend=3;
-            
-            if(enemy->Attributes[11]>0)
-                scriptNum=enemy->Attributes[11];
-            else if(enemy->Attributes[11]==AUTOGHOST_READ_NAME)
-                scriptNum=__AutoGhostReadScript(enemy);
-            
-            if(scriptNum>0 && scriptNum<=511)
-            {
-                f->Script=scriptNum;
-                f->InitD[0]=enemy->ID;
-            }
-            else // Invalid script? Kill the enemy
-            {
-                enemy->Misc[__GHI_NPC_DATA]=0x10000;
-                enemy->X=256;
-                enemy->Y=176;
-                enemy->ItemSet=0;
-                enemy->HP=-1000;
-            }
+            enemy->Extend=3;
+            enemy->DrawXOffset=1024;
         }
+        
+        if(combo<=0)
+            enemy->Misc[__GHI_NPC_DATA]=GH_INVISIBLE_COMBO;
+        else
+            enemy->Misc[__GHI_NPC_DATA]=combo;
     }
 }
 
-
-// Reads the enemy's name to get the script name; returns the number of the
-// script or -1 if there's a problem
-int __AutoGhostReadScript(npc enemy)
+// Reads a script name and combo number from the enemy's name. The script
+// number and combo are stored in output[0] and output[1], respectively.
+void __AutoGhostParseName(npc enemy, int output)
 {
     int npcName[64];
-    int scriptName[64];
-    int i;
-    int j;
-    int scriptNum;
+    int buffer[64];
+    
+    output[1]=GH_INVISIBLE_COMBO; // Default value
     
     enemy->GetName(npcName);
     
-    // Find the script name delimiter
-    i=0;
-    while(npcName[i]!=AUTOGHOST_DELIMITER && npcName[i]!=0)
-        i++;
-    
-    // Didn't find it?
-    if(npcName[i]==0)
+    for(int i=0; i<63; i++)
     {
-        int error1[]="ghost.zh: AutoGhost setup failed - script not found.\n";
-        int error2[80]="  Enemy name: %s\n";
-        int error3[55]="  Script name should start after this character: %c\n";
-        printf(error1);
-        printf(error2, npcName);
-        printf(error3, AUTOGHOST_DELIMITER);
-        return -1;
+        if(npcName[i]==AUTOGHOST_DELIMITER)
+        {
+            // Found something
+            int character=npcName[i+1];
+            if(__IsScriptNameChar(character, true))
+            {
+                // Script name
+                int j=0;
+                for(i=i+1; __IsScriptNameChar(npcName[i], false); i++)
+                {
+                    buffer[j]=npcName[i];
+                    j++;
+                }
+                buffer[j]=NULL;
+                output[0]=Game->GetFFCScript(buffer);
+                i--;
+                
+                // No such script?
+                if(output[0]<=0)
+                {
+                    int error1[]="ghost.zh: AutoGhost setup failed - script does not exist.\n";
+                    int error2[80]="  Script name: %s\n";
+                    printf(error1);
+                    printf(error2, buffer);
+                    return;
+                }
+            }
+            else if((character>='0' && character<='9') || character=='-')
+            {
+                // Combo number
+                int j=0;
+                if(character=='-')
+                {
+                    buffer[0]='-';
+                    j=1;
+                    i++;
+                }
+                for(i=i+1; npcName[i]>='0' && npcName[i]<='9'; i++)
+                {
+                    buffer[j]=npcName[i];
+                    j++;
+                }
+                buffer[j]=NULL;
+                output[1]=atoi(buffer);
+                i--;
+            }
+        }
     }
     
-    // Copy characters until a space or the end of the string
-    i++;
-    j=0;
-    while(npcName[i]!=0 && npcName[i]!=32)
+    // Expected a script name and didn't find it?
+    if(__GH_ALWAYS_USE_NAME==0 && output[0]<=0)
     {
-        scriptName[j]=npcName[i];
-        i++;
-        j++;
+        // Didn't find it?
+        if(output[0]<=0)
+        {
+            int error1[]="ghost.zh: AutoGhost setup failed - script not found.\n";
+            int error2[80]="  Enemy name: %s\n";
+            int error3[55]="  Script name should start after this character: %c\n";
+            printf(error1);
+            printf(error2, npcName);
+            printf(error3, AUTOGHOST_DELIMITER);
+        }
     }
-    
-    scriptName[j+1]=0;
-    scriptNum=Game->GetFFCScript(scriptName);
-    
-    // Script doesn't exist?
-    if(scriptNum==-1)
-    {
-        int error1[]="ghost.zh: AutoGhost setup failed - script not found.\n";
-        int error2[80]="  Enemy name: %s\n";
-        int error3[80]="  Script name: %s\n";
-        printf(error1);
-        printf(error2, npcName);
-        printf(error3, scriptName);
-    }
-    
-    return scriptNum;
 }
 
+// Used to silently kill an enemy when it couldn't be set up.
+void __AutoGhostKill(npc enemy)
+{
+    enemy->Misc[__GHI_NPC_DATA]=0x10000;
+    enemy->X=1024;
+    enemy->Y=1024;
+    enemy->HP=HP_SILENT;
+    enemy->ItemSet=0;
+}
+
+bool __IsScriptNameChar(int character, bool first)
+{
+    // No short circuiting; faster to split it up
+    if(character>='a' && character<='z')
+        return true;
+    if(character>='A' && character<='Z')
+        return true;
+    if(character=='_')
+        return true;
+    if(!first)
+    {
+        if(character>='0' && character<='9')
+            return true;
+    }
+    return false;
+}

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.2
+// Version 2.8.0
 
 
 void Ghost_Init(ffc this, npc ghost)
@@ -55,7 +55,7 @@ npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos)
             // Wrong ID or already in use
             if(ghost->ID!=enemyID)
                 continue;
-            if(ghost->Misc[__GHI_NPC_DATA]!=0)
+            if((ghost->Misc[__GHI_NPC_DATA]&0x10000)!=0)
                 continue;
 
             __Ghost_InitInternal(this, ghost, useEnemyPos, combo, this->CSet);
@@ -89,10 +89,11 @@ npc Ghost_InitAutoGhost(ffc this, int enemyID)
         // Wrong ID or already in use
         if(ghost->ID!=enemyID)
             continue;
-        if(ghost->Misc[__GHI_NPC_DATA]!=0)
+        if((ghost->Misc[__GHI_NPC_DATA]&0x10000)!=0)
             continue;
         
-        __Ghost_InitInternal(this, ghost, true, ghost->Attributes[10], ghost->CSet);
+        __Ghost_InitInternal(this, ghost, true,
+          ghost->Misc[__GHI_NPC_DATA]&0xFFFF, ghost->CSet);
         
         if((ghost->MiscFlags&100000000b)!=0) // That's "Is Transparent"
             this->Flags[FFCF_TRANS]=true;
@@ -168,6 +169,13 @@ void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int 
         ghost->HitWidth=16*Ghost_TileWidth;
         ghost->HitHeight=16*Ghost_TileHeight;
     }
+    
+    ghost->DrawXOffset=0;
+    
+    if((ghost->MiscFlags&100000b)!=0)
+        this->Flags[FFCF_LENSVIS]=true;
+    else
+        this->Flags[FFCF_LENSVIS]=false;
     
     Ghost_HP=ghost->HP;
     

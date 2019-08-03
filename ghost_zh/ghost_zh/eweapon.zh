@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.2
+// Version 2.8.0
 
 // Arguments to SetEWeaponMovement()
 const int EWM_SINE_WAVE         = 1;
@@ -45,20 +45,21 @@ const int EWD_RANDOM = 2;
 const int EWD_AIMED  = 3;
 
 // EWeapon flags
-const int EWF_UNBLOCKABLE    = 0000000001b;
-const int EWF_ROTATE         = 0000000010b;
-const int EWF_ROTATE_360     = 0000000100b;
-const int EWF_SHADOW         = 0000001000b;
-const int EWF_FLICKER        = 0000010000b;
-const int EWF_NO_COLLISION   = 0000100000b;
+const int EWF_UNBLOCKABLE          = 00000000001b;
+const int EWF_ROTATE               = 00000000010b;
+const int EWF_ROTATE_360           = 00000000100b;
+const int EWF_SHADOW               = 00000001000b;
+const int EWF_FLICKER              = 00000010000b;
+const int EWF_NO_COLLISION         = 00000100000b;
+const int EWF_FAKE_Z               = 00001000000b;
 
 // Internal EWeapon flags
-const int __EWFI_DEAD              = 0001000000b;
-const int __EWFI_DUMMY             = 0010000000b;
-const int __EWFI_IS_GHZH_EWPN      = 0100000000b;
-const int __EWFI_DUMMY_CHECK       = 0110000000b;
-const int __EWFI_DEATH_EFFECT_DONE = 1000000000b;
-const int __EWFI_INTERNAL          = 1111000000b;
+const int __EWFI_DEAD              = 00010000000b;
+const int __EWFI_DUMMY             = 00100000000b;
+const int __EWFI_IS_GHZH_EWPN      = 01000000000b;
+const int __EWFI_DUMMY_CHECK       = 01100000000b;
+const int __EWFI_DEATH_EFFECT_DONE = 10000000000b;
+const int __EWFI_INTERNAL          = 11110000000b;
 
 
 
@@ -85,6 +86,9 @@ eweapon FireEWeapon(int weaponID, int x, int y, float angle, int step, int damag
     wpn->Misc[__EWI_FLAGS]=flags|__EWFI_IS_GHZH_EWPN;
     
     SetEWeaponDir(wpn); // After flags so unblockability is detected
+    
+    if((flags&EWF_NO_COLLISION)!=0)
+        wpn->CollDetection=false;
     
     if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
         SetEWeaponRotation(wpn);
@@ -177,7 +181,6 @@ eweapon FireBigNonAngularEWeapon(int weaponID, int x, int y, int dir, int step, 
     return wpn;
 }
 
-
 // Create a dummy eweapon to use as a prototype
 eweapon CreateDummyEWeapon(int weaponID, int step, int damage, int sprite, int sound, int flags)
 {
@@ -189,7 +192,7 @@ eweapon CreateDummyEWeapon(int weaponID, int step, int damage, int sprite, int s
     wpn->Misc[__EWI_DUMMY_STEP]=step;
     wpn->Misc[__EWI_DUMMY_SOUND]=sound;
     wpn->Misc[__EWI_DUMMY_SPRITE]=sprite;
-
+    
     // Give the weapon a unique ID number so it can be found later
     for(int i=Screen->NumEWeapons(); i>0; i--)
     {
@@ -199,12 +202,16 @@ eweapon CreateDummyEWeapon(int weaponID, int step, int damage, int sprite, int s
         minID=Min(minID, checkWpn->Misc[__EWI_ID]);
     }
     wpn->Misc[__EWI_ID]=minID-1;
-
+    
     wpn->Misc[__EWI_FLAGS]=flags|__EWFI_IS_GHZH_EWPN|__EWFI_DUMMY;
-
+    
     wpn->CollDetection=false;
     wpn->DrawXOffset=32768;
-
+    
+    // Move it to make sure it's not deleted
+    wpn->X=32;
+    wpn->Y=32;
+    
     return wpn;
 }
 
@@ -451,6 +458,10 @@ void UpdateEWeapon(eweapon wpn)
     {
         wpn->DrawXOffset=1000;
         
+        // Don't draw if Link is dead
+        if(Link->HP<=0)
+            return;
+        
         // Flickering? Nothing to do here.
         if((wpn->Misc[__EWI_FLAGS]&EWF_FLICKER)!=0 &&
            (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
@@ -509,8 +520,9 @@ void UpdateEWeapon(eweapon wpn)
         
         // Currently, these are always drawn on layer 4.
         // That should probably be changed...
-        Screen->DrawTile(4, endX, endY-wpn->Z, wpn->Tile, 1, 1, wpn->CSet,
-                         -1, -1, endX, endY-wpn->Z, angle, flip, true, OP_OPAQUE);
+        Screen->DrawTile(4, endX, endY-wpn->Z, wpn->Tile,
+          wpn->TileWidth, wpn->TileHeight, wpn->CSet, -1, -1,
+          endX, endY-wpn->Z, angle, flip, true, OP_OPAQUE);
     }
     else // EWF_ROTATE_360 isn't set
     {
@@ -526,7 +538,16 @@ void UpdateEWeapon(eweapon wpn)
         if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
             SetEWeaponRotation(wpn);
     }
-
+    
+    if((wpn->Misc[__EWI_FLAGS]&EWF_FAKE_Z)!=0 || __GH_FAKE_EWEAPON_Z!=0)
+    {
+        // For some reason, DrawZOffset is also HitZOffset,
+        // so Y offsets also have to be used.
+        wpn->DrawZOffset=-wpn->Z;
+        wpn->HitYOffset=-wpn->Z;
+        wpn->DrawYOffset=-wpn->Z;
+    }
+    
     // End flags
 }
 
@@ -702,7 +723,7 @@ void DrawEWeaponShadow(eweapon wpn)
         return;
     
     int x=CenterX(wpn)-8+wpn->DrawXOffset;
-    int y=wpn->Y+(wpn->TileHeight-1)*16+wpn->DrawYOffset;
+    int y=wpn->Y+(wpn->TileHeight-1)*16+wpn->DrawYOffset-wpn->DrawZOffset;
 
     if(GH_SHADOW_TRANSLUCENT>0)
         Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GHI_SHADOW_FRAME],

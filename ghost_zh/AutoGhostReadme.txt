@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.7.2
+Version 2.8.0
 
 General setup:
 
@@ -17,7 +17,7 @@ speed and number of frames set; 3 frames at a speed of 5 will best match the
 built-in enemies.
 
 You'll have to set some constants in ghost.zh. Open it in a text editor. Use
-a basic one like Notepad; more advanced word processors sometimes modify
+a basic one, like Notepad; more advanced word processors sometimes modify
 punctuation marks, which can make scripts unusable. The constants look
 similar to this:
 
@@ -52,24 +52,26 @@ GH_LARGE_SHADOW_ANIM_SPEED
 GH_LARGE_SHADOW_MIN_WIDTH
 GH_LARGE_SHADOW_MIN_HEIGHT
    An enemy must be at least this large in tiles to have a large shadow.
+   These are tile sizes; set them between 1 and 4.
 
 GH_PREFER_GHOST_ZH_SHADOWS
    ghost.zh's shadows will be used instead of built-in ones whenever possible.
+   Set the number to 1 (yes) or 0 (no).
 
 AUTOGHOST_MIN_FFC
 AUTOGHOST_MAX_FFC
    Every scripted enemy uses at least one FFC. Set these to limit the range of
-   FFCs they will use automatically. Use this if you want to reserve some FFCs
+   FFCs they will use automatically. Use these if you want to reserve some FFCs
    for other purposes. Making this range too small can result in some scripts
    not working, so it's best not to restrict it more than necessary.
+   Both must be between 1 and 32.
    
 AUTOGHOST_MIN_ENEMY_ID
 AUTOGHOST_MAX_ENEMY_ID
-   AutoGhost enemies are identified by misc. attributes 11 and 12 being set.
-   Other scripts may also use these settings; when multiple scripts use the
-   same numbers for different purposes, they're likely to behave incorrectly.
-   You can restrict the range of enemy IDs that will be used for AutoGhost
-   enemies to avoid this.
+   These allow you to limit the range of enemy IDs that can be set up
+   automatically be AutoGhost(). Any enemy whose ID is below the minimum or
+   above the maximum will be ignored. This is useful when other scripts use
+   misc. attributes 11 and 12 for other purposes.
 
 GH_DRAW_OVER_THRESHOLD
    Some scripts set the FFC's "Draw Over" flag automatically as the enemy moves
@@ -92,6 +94,9 @@ GH_FAKE_Z
    If enabled, enemies won't move through the Z axis. Similar to unchecking the
    quest rule "Enemies Jump/Fly Through Z-Axis." Set this to 1 (yes) or 0 (no).
 
+__GH_FAKE_EWEAPON_Z
+  The same, but for weapons. Set this to 1 (yes) or 0 (no).
+
 GH_ENEMIES_FLICKER
    If enabled, enemies will flicker instead of flashing. Similar to checking
    the quest rule "Enemies Flicker When Hit." Set this to 1 (yes) or 0 (no).
@@ -103,6 +108,11 @@ GH_BLANK_TILE
 GH_INVISIBLE_COMBO
    The number of a combo with a blank tile and no type or flag set. The tile
    should also be the top-left of a 4x4 block of blank tiles.
+
+__GH_ALWAYS_USE_NAME
+   If this is set to 0, the enemy's script and combo will be taken from misc.
+   attributes 11 and 12. If it's set to 1, they'll be read from the name,
+   freeing up those attributes for other scripts to use.
 
 
 If you're making multiple quests at once that use different settings, you
@@ -139,38 +149,63 @@ Some scripts may require that you import additional files, but don't include
 any file more than once. Compile and load the FFC script into a slot.
 
 Exactly what needs done varies from one enemy to the next, but a few things are
-common. Most scripted enemies need at least one combo set up, but a few use the
-invisible one. Every enemy needs its type (usually 'other'), HP, damage, tile,
-CSet, and misc. attributes 11 and 12 set.
+common. Many scripted enemies need at least one combo set up, but some use the
+invisible one. Every enemy needs its type (usually "Other"), HP, damage, tile,
+and CSet set. The enemy must also have a script and combo set. There are a few
+different ways of doing this, described below.
 
+Many enemies require more than one combo. In these cases, assume that all combos
+must be consecutive in the list and the enemy's combo set to the first one
+unless the instructions say otherwise. Also, some scripts require that multiple
+enemies be set up. Unless instructed otherwise, you only need to place the
+primary enemy on the screen.
+
+Some enemies use the invisible combo (GH_INVISIBLE_COMBO). In these cases, you
+can set the combo to -1. A few enemies also specify -2, another special value.
+
+
+Setting the script and combo:
+
+If __GH_ALWAYS_USE_NAME is 0:
 Misc. attributes 11 and 12 are used to identify the enemy as scripted and set
 up an FFC to run the script. Attribute 11 indicates which combo the enemy
 should use, and attribute 12 determines what script it runs. If either of these
 is 0, the enemy will not be recognized as scripted and will not function.
+If attribute 12 is set to -1, the script name will be read from the enemy's
+name as described below.
 
-Many enemies require more than one combo. In these cases, assume that all combos
-must be consecutive in the list and attribute 11 set to the first one unless the
-instructions say otherwise. Also, some scripts require that multiple enemies be
-set up. Unless instructed otherwise, you only need to place the primary enemy on
-the screen.
+If __GH_ALWAYS_USE_NAME is 1:
+Misc. attributes 11 and 12 are not used. The script and combo will be always be
+read from the enemy's name. The combo can be omitted, in which case it will
+default to GH_INVISIBLE_COMBO.
 
-Some enemies use the invisible combo (GH_INVISIBLE_COMBO). In these cases, you
-can set misc. attribute 11 to -1. A few enemies may also specify -2, another
-special value.
+When reading a script from the enemy's name, whether because misc. attribute 12
+is -1 or __GH_ALWAYS_USE_NAME is enabled, the script name must go in the
+enemy's name immediately following the character @. The script name must appear
+exactly as shown after it is compiled, including capitalization.
 
-Misc. attribute 12 can be set to the number of the script slot, or it can be set
-to -1, indicating that the script name should be read from the enemy's name. If
-you use -1, the script name must go in the enemy's name immediately following
-the character @. The script name must appear exactly as shown after it is
-compiled, including capitalization. It must be at the end of the enemy name or
-followed by a space; any other character will cause it to be misread.
-
-For example, using the Goriya_LttP script, these names will work:
-  Goriya (LttP)   @Goriya_LttP
-  Goriya @Goriya_LttP (L1)
+For example, using the Armos_LttP script, these names will work:
+  Armos (LttP)   @Armos_LttP
+  Armos (L1, @Armos_LttP)
   
 These names will not work:
-  Goriya (LttP)   @goriya_lttp
-  Goriya (LttP)   @ Goriya_LttP
-  Goriya (L1, @Goriya_LttP)
+  Armos  @armos_lttp
+  - Incorrect capitalization
+  Armos @ Armos_LttP
+  - Space after @
+
+When using __GH_ALWAYS_USE_NAME, the combo number is read in the same way.
+The order does not matter. Spaces or other characters between the two
+are not required, but they're allowed as long as they wouldn't be mistaken
+for part of the name or number.
+
+Using the Goriya_LttP script with combo 12800, these names will work:
+  Goriya (LttP)   @Goriya_LttP @12800
+  Goriya (LttP)   @12800@Goriya_LttP
+
+These will not work:
+  Goriya (LttP)   @Goriya_LttP_@12800
+  - _ looks like part of the script name
+  Goriya (LttP)   @ 12800 @ Goriya_LttP
+  - Space after @ is not allowed
 

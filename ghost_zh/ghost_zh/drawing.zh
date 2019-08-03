@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.7.2
+// Version 2.8.0
 
 int __ghzhDrawData[1000];
 
@@ -43,6 +43,12 @@ int __GetDrawingArray(npc ghost)
 
 void DrawGhostFFCs()
 {
+    if((Screen->EFlags[SEF_LIST1]&100b)!=0) // All Enemies Are Invisible
+    {
+        if(!__HaveAmulet())
+            return;
+    }
+    
     int array;
     int baseIndex;
     npc ghost;
@@ -55,7 +61,7 @@ void DrawGhostFFCs()
     
     if(__GH_USE_DRAWCOMBO!=0)
     {
-        if((Screen->Flags[SF_VIEW]&10000b)!=0)
+        if((Screen->Flags[SF_VIEW]&10000b)!=0) // Layer 2 is background
             normalLayer=1;
         else
             normalLayer=2;
