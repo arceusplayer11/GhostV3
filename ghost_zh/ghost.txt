@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.6.0
+Version 2.6.1
 
 
 This file is documentation for script writers. If you just want to set up
@@ -294,7 +294,8 @@ void Ghost_UnsetFlag(int flag)
  *    The enemy will ignore all enemy blocking flags and combos.
  *
  * GHF_STATIC_SHADOW
- *    The enemy's shadow will not animate.
+ *    The enemy's shadow will not animate. This only applies if Z movement is
+ *    faked due to either by GH_FAKE_Z or GHF_FAKE_Z.
 
 void Ghost_ClearFlags()
  * Unsets all flags.
@@ -504,10 +505,8 @@ void Ghost_StopKnockback()
 
 void SetEnemyProperty(npc enemy, int property, float newValue)
 float GetEnemyProperty(npc enemy, int property)
- * These functions allow some of the properties of ghost.zh scripts to be read
- * and set from other scripts. The enemy passed in does not need to be
- * a scripted enemy; regular enemies will be detected and handled accordingly.
- * property must be one of the following:
+ * These funcions allow some of the properties of ghost.zh scripts to be read
+ * and set from other scripts. property must be one of the following:
  * ENPROP_X
  * ENPROP_Y
  * ENPROP_Z
@@ -703,7 +702,7 @@ void SetEWeaponMovement(eweapon wpn, int type, float arg, float arg2)
  * 
  * EWM_RANDOM_REAIM: Stop frequently and aim in a random direction
  *    arg: Number of re-aims
- *    arg2: 
+ *    arg2: Time between re-aims
  * 
  * EWM_VEER
  *    Accelerate in a given direction.
@@ -711,8 +710,7 @@ void SetEWeaponMovement(eweapon wpn, int type, float arg, float arg2)
  *    arg2: Rate of acceleration
  * 
  * EWM_DRIFT
- *    Drift in the given direction at a constant speed. Like EWM_VEER, you can
- *    add a direction to the type argument or use EWM_DRIFT_*.
+ *    Drift in the given direction at a constant speed.
  *    arg: Drift direction
  *    arg2: Drift speed
  * 

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.0
+// Version 2.6.1
 
 
 void Ghost_MoveXY(float xStep, float yStep, int imprecision)
@@ -49,8 +49,8 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
         edgeDiff=__Ghost_XOffsets>>8;
         edge=Ghost_X+edgeDiff;
         
-        startHT=(edge/8)<<0;
-        endHT=((edge+xStep)/8)<<0;
+        startHT=Floor(edge/8);
+        endHT=Floor((edge+xStep)/8);
         
         // If the edge ends up on the same half-tile line it's already on,
         // there's no need to check walkability
@@ -68,8 +68,8 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
         edgeDiff=16*Ghost_TileWidth-(__Ghost_XOffsets&0xFF)-1;
         edge=Ghost_X+edgeDiff;
         
-        startHT=(edge/8)<<0;
-        endHT=((edge+xStep)/8)<<0;
+        startHT=Floor(edge/8);
+        endHT=Floor((edge+xStep)/8);
         
         if(startHT==endHT)
             edge+=xStep;
@@ -86,8 +86,8 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
         edgeDiff=__Ghost_YOffsets>>8;
         edge=Ghost_Y+edgeDiff;
         
-        startHT=(edge/8)<<0;
-        endHT=((edge+yStep)/8)<<0;
+        startHT=Floor(edge/8);
+        endHT=Floor((edge+yStep)/8);
         
         // If the edge ends up on the same half-tile line it's already on,
         // there's no need to check walkability
@@ -105,8 +105,8 @@ void Ghost_MoveXY(float xStep, float yStep, int imprecision)
         edgeDiff=16*Ghost_TileHeight-(__Ghost_YOffsets&0xFF)-1;
         edge=Ghost_Y+edgeDiff;
         
-        startHT=(edge/8)<<0;
-        endHT=((edge+yStep)/8)<<0;
+        startHT=Floor(edge/8);
+        endHT=Floor((edge+yStep)/8);
         
         if(startHT==endHT)
             edge+=yStep;
@@ -284,6 +284,8 @@ bool __Ghost_CanMoveSingle(int dir, float step, int imprecision, bool inAir)
     {
         // Most enemies can't move upward on sideview screens
         if(IsSideview() && !Ghost_FlagIsSet(GHF_NO_FALL))
+
+
             return false;
         
         edgeSize=16*Ghost_TileWidth-(__Ghost_XOffsets>>8)-(__Ghost_XOffsets&0xFF);

@@ -1,15 +1,15 @@
 ghost.zh
-Version 2.6.0
+Version 2.6.1
 
 General setup:
 
 Extract ghost.zh and the ghost_zh directory from the zip file. On Windows and
 Linux, these should go in the same directory as ZC itself. On Mac, right-click
-ZQuest and select "Show Package Contents." The files should go in the
-Contents/Resources. To make sure you've got the right directory, look for
+ZQuest and select "Show Package Contents." The files should go in
+Contents/Resources. To be sure you've got the right directory, look for
 std.zh and sring.zh.
 
-First, you'll need to set aside a block of 4x4 tiles to leave blank. Set up
+First, you'll need to set aside a 4x4 block of tiles to leave blank. Set up
 a combo that uses the top-left tile of that block and has its type and flag
 both set to "(None)." You should also modify the "MISC: Spawn" sprite in
 Quest > Graphics > Sprites > Weapons/Misc. It needs to have the animation
@@ -43,8 +43,10 @@ GH_LARGE_SHADOW_TILE
 GH_LARGE_SHADOW_CSET
 GH_LARGE_SHADOW_FRAMES
 GH_LARGE_SHADOW_ANIM_SPEED
-   Enemies 3x3 tiles and larger will have 2x2 tile shadows using these settings.
-   If GH_LARGE_SHADOW_TILE is 0, large shadows will not be used.
+   Enemies 3x3 tiles and larger will have 2x2 tile shadows using these
+   settings. Unless GH_FAKE_Z is in use, this only applies to the few scripts
+   that always fake Z movement. If GH_LARGE_SHADOW_TILE is 0, large shadows
+   will not be used.
 
 AUTOGHOST_MIN_FFC
 AUTOGHOST_MAX_FFC

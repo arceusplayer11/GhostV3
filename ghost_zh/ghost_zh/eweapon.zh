@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.0
+// Version 2.6.1
 
 // Arguments to SetEWeaponMovement()
 const int EWM_SINE_WAVE         = 1;
@@ -550,7 +550,7 @@ void DrawEWeaponShadow(eweapon wpn)
 // Get the standard sprite for this weapon type
 int GetDefaultEWeaponSprite(int weaponID)
 {
-    if(weaponID==EW_FIREBALL || weaponID==EW_FIREBALL)
+    if(weaponID==EW_FIREBALL || weaponID==EW_FIREBALL2)
         return 17;
     else if(weaponID==EW_ROCK)
         return 18;
