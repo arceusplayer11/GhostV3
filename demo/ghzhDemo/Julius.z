@@ -110,16 +110,16 @@ ffc script Julius
             if(attackTimer<=0)
             {
                 attackTimer=Rand(60, 150);
-                attackSelector=Rand(6);
+                attackSelector=Rand(20);
                 
                 if(Ghost_HP>10)
                 {
-                    // Heal: 1/6 chance
-                    // Super kick: 2/6 chance
-                    // Lightning: 3/6 chance
+                    // Heal: 1/20 chance
+                    // Super kick: 7/20 chance
+                    // Lightning: 12/20 chance
                     if(attackSelector==0)
                         Heal(this, ghost, maxHP);
-                    else if(attackSelector<=2)
+                    else if(attackSelector<=7)
                         SuperKick(this, ghost);
                     else
                         ShootLightning(this, ghost);
@@ -127,12 +127,12 @@ ffc script Julius
                 // Different odds if HP is at 10 or lower
                 else
                 {
-                    // Heal: 3/6 chance
-                    // Super kick: 1/6 chance
-                    // Lightning: 2/6 chance
-                    if(attackSelector<=2)
+                    // Heal: 8/20 chance
+                    // Super kick: 4/20 chance
+                    // Lightning: 8/20 chance
+                    if(attackSelector<=7)
                         Heal(this, ghost, maxHP);
-                    else if(attackSelector==3)
+                    else if(attackSelector<=11)
                         SuperKick(this, ghost);
                     else
                         ShootLightning(this, ghost);
@@ -360,9 +360,9 @@ ffc script Julius
         // Still alive; are fireballs enabled?
         else if(this->Misc[JUL_IDX_FIREBALLS_ENABLED]>0)
         {
-            // The lower his HP, the faster they come, up to two per second
+            // The lower his HP, the faster they come, up to one per 3/4 second
             this->Misc[JUL_IDX_FIREBALL_TIMER]++;
-            if(this->Misc[JUL_IDX_FIREBALL_TIMER]>=Max(Ghost_HP*2, 30))
+            if(this->Misc[JUL_IDX_FIREBALL_TIMER]>=Max(Ghost_HP*3, 45))
             {
                 this->Misc[JUL_IDX_FIREBALL_TIMER]=0;
                 eweapon fireball=FireEWeapon(EW_SCRIPT1, Rand(48, 160), Rand(32, 128), 0, 0, 0, 90, JUL_SFX_FIREBALL, EWF_SHADOW);

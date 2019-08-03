@@ -97,9 +97,17 @@ ffc script Iflyte
         Ghost_StoreDefenses(ghost, oldDefenses);
         Ghost_SetAllDefenses(ghost, NPCDT_BLOCK);
         
-        // Change into a ball
-        Ghost_Transform(this, ghost, IFL_ROLL_COMBO, -1, 2, -1);
-        Ghost_ClearCombos();
+        // Transformation sequence
+        Ghost_Vx=0;
+        for(int i=0; i<32; i++)
+        {
+            int frame=i%4;
+            if(frame==0)
+                ChangeToNormal(this, ghost);
+            else if(frame==2)
+                ChangeToBall(this, ghost);
+            IflWaitframe(this, ghost);
+        }
         
         ghost->Damage+=2;
         
@@ -141,12 +149,33 @@ ffc script Iflyte
         Ghost_SetDefenses(ghost, oldDefenses);
         ghost->Damage-=2;
         
+        // Transformation sequence
+        Ghost_Vx=0;
+        Ghost_Vy=0;
+        for(int i=0; i<32; i++)
+        {
+            int frame=i%4;
+            if(frame==0)
+                ChangeToBall(this, ghost);
+            else if(frame==2)
+                ChangeToNormal(this, ghost);
+            IflWaitframe(this, ghost);
+        }
+    }
+    
+    
+    void ChangeToBall(ffc this, npc ghost)
+    {
+        Ghost_Transform(this, ghost, IFL_ROLL_COMBO, -1, 2, -1);
+        Ghost_ClearCombos();
+    }
+    
+    
+    void ChangeToNormal(ffc this, npc ghost)
+    {
         Ghost_Transform(this, ghost, IFL_WALK_COMBO, -1, 3, -1);
         Ghost_AddCombo(IFL_HAND1_COMBO, -16, 16);
         Ghost_AddCombo(IFL_HAND2_COMBO, 48, 16);
-        
-        Ghost_Vx=0;
-        Ghost_Vy=0;
     }
     
     

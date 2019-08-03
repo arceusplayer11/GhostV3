@@ -1,3 +1,7 @@
+2.8.4 (2019-07-15)
+* Fixed possible invalid array access in SetEnemyProperty() and
+    GetEnemyProperty().
+
 2.8.3 (2019-03-19)
 * Renamed a couple of variables to fix conflicts in ZC 2.53.
 * Now packaged with HTML documentation instead of text files.

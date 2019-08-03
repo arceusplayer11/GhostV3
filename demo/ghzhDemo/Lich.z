@@ -25,7 +25,7 @@ ffc script Lich
         Ghost_SetHitOffsets(ghost, 0, 0, 0, 16); // The right column is just the hand
         Ghost_SpawnAnimationPuff(this, ghost);
         
-        // Skull bomb splits into five smaller skulls on impact;
+        // Skull bomb splits into four smaller skulls on impact;
         // this is the prototype for those skulls
         eweapon prototype=CreateDummyEWeapon(EW_SCRIPT1, 150, 0, LICH_STALFOS_SPAWNER_SPRITE,
                                              LICH_SKULL_BOMB_SFX, EWF_SHADOW|EWF_NO_COLLISION);
@@ -38,8 +38,8 @@ ffc script Lich
         
         while(true)
         {
-            // If there are fewer than three Stalfos, create some more
-            if(Screen->NumNPCs()<4)
+            // If there are fewer than two Stalfos, create some more
+            if(Screen->NumNPCs()<3)
                 CreateStalfos(this, ghost, prototype); 
             // Otherwise, pick an attack pattern at random
             else if(Rand(2)==0)
@@ -130,11 +130,11 @@ ffc script Lich
         Ghost_Data=LICH_ATTACK_COMBO;
         
         // Projectiles are thrown at a random height and angle, and they split into
-        // five parts when they land
+        // four parts when they land
         wpn=FireEWeapon(EW_SCRIPT1, Ghost_X+24, Ghost_Y+16, Rand(-45, 45)/100, 100, 2,
                         LICH_SKULL_BOMB_SPRITE, 0, EWF_SHADOW|EWF_NO_COLLISION);
         SetEWeaponMovement(wpn, EWM_THROW, Rand(25, 50)/10, EWMF_DIE);
-        SetEWeaponDeathEffect(wpn, prototype, 5, EWD_RANDOM, 0);
+        SetEWeaponDeathEffect(wpn, prototype, 4, EWD_RANDOM, 0);
         
         LichWaitframe(this, ghost, 10);
         
