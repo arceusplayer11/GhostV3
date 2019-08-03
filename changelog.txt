@@ -1,3 +1,13 @@
+2.8.1 (2016-09-16)
+* Fixed a bug in positioning enemies after knockback in Ghost_HaltingWalk4()
+    and Ghost_ConstantWalk4().
+* Fixed an error in validating spawn locations in FindSpawnPoint().
+* Fixed some weird behavior in weapons with EWD_AIM_AT_LINK spinning while
+    waiting to aim.
+* EWM_THROW with an argument of -1 (land at Link's position) is now much more
+    accurate at long distances.
+* Added ghostZHChangelog.txt.
+
 2.8.0 (2015-10-06)
 * Moved files into a numbered subdirectory so multiple versions can coexist.
 * Added an option to always read the script's name from the enemy's name,
