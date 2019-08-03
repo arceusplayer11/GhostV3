@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.1
+// Version 2.8.4
 
 
 void Ghost_Init(ffc this, npc ghost)
@@ -34,7 +34,7 @@ npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos)
     }
 
     // Didn't find the enemy, so quit
-    this->Data=0;
+    __GhCleanUp(this);
     Quit();
 }
 
@@ -65,7 +65,7 @@ npc Ghost_InitWait2(ffc this, int enemyID, bool useEnemyPos)
     }
 
     // Didn't find the enemy, so quit
-    this->Data=0;
+    __GhCleanUp(this);
     Quit();
 }
 
@@ -108,7 +108,7 @@ npc Ghost_InitAutoGhost(ffc this, int enemyID)
     printf(error2, Game->GetCurDMap(), Game->GetCurDMapScreen());
     printf(error3, this->Script, enemyID);
     
-    this->Data=0;
+    __GhCleanUp(this);
     Quit();
 }
 

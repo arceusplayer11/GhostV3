@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.1
+// Version 2.8.2
 
 // See ghost.txt for documentation.
 
@@ -92,6 +92,11 @@ const int __GH_KNOCKBACK_STEP = 4;
 // The imprecision setting used when a movement function is called internally
 // (except for walking functions).
 const int __GH_DEFAULT_IMPRECISION = 2;
+
+// Whether to set ffc->Link=0 when cleaning up an FFC. In 2.50.3 RC1 and before,
+// this does not work due to a bug. Set this to 1 only if you're using a newer
+// ZC version than 2.50.3 RC1.
+const int __GH_CLEAR_FFC_LINK = 0;
 
 // npc->Misc[] index
 // Set this so it doesn't conflict with other scripts. Legal values are 0-15.

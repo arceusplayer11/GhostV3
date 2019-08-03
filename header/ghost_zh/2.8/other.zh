@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.1
+// Version 2.8.4
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
@@ -385,7 +385,7 @@ void Ghost_DeathAnimation(ffc this, npc ghost, int type)
             ghost->Y=Ghost_Y+8*(Ghost_TileHeight-1);
             ghost->Z=Ghost_Z;
         }
-        this->Data=0;
+        __GhCleanUp(this);
         Ghost_Data=0;
     }
 }
@@ -400,7 +400,7 @@ bool Ghost_IsInUse(npc ghost)
     return (ghost->Misc[__GHI_NPC_DATA]&0x10000)!=0;
 }
 
-float Ghost_GetAttribute(npc ghost, int index, float default, float min, float max)
+float Ghost_GetAttribute(npc ghost, int index, float defaultVal, float min, float max)
 {
     if(index<0 || index>11)
         return 0;
@@ -408,7 +408,7 @@ float Ghost_GetAttribute(npc ghost, int index, float default, float min, float m
     float attr=ghost->Attributes[index];
     
     if(attr==0)
-        return default;
+        return defaultVal;
     if(attr<min)
         return min;
     if(attr>max)
@@ -416,7 +416,7 @@ float Ghost_GetAttribute(npc ghost, int index, float default, float min, float m
     return attr;
 }
 
-float Ghost_GetAttribute(npc ghost, int index, float default)
+float Ghost_GetAttribute(npc ghost, int index, float defaultVal)
 {
     if(index<0 || index>11)
         return 0;
@@ -424,7 +424,7 @@ float Ghost_GetAttribute(npc ghost, int index, float default)
     float attr=ghost->Attributes[index];
     
     if(attr==0)
-        return default;
+        return defaultVal;
     return attr;
 }
 
@@ -633,7 +633,9 @@ void __GhCleanUp(ffc this)
     this->TileHeight=1;
     this->EffectWidth=16;  // Some of these are unlikely to have been used,
     this->EffectHeight=16; // but sure, let's clear them out.
-    this->Link=0;
+    this->Delay=0;
+    if(__GH_CLEAR_FFC_LINK!=0)
+        this->Link=0;
     for(int i=0; i<11; i++)
         this->Flags[i]=false;
 }
@@ -643,7 +645,8 @@ void SetEnemyProperty(npc enemy, int property, float newValue)
     if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
     {
         float array=enemy->Misc[__GHI_NPC_DATA]&0xFFFF;
-        array[property]=newValue;
+        if(array>0)
+            array[property]=newValue;
     }
     
     if(property==ENPROP_X)
@@ -664,11 +667,10 @@ void SetEnemyProperty(npc enemy, int property, float newValue)
 
 float GetEnemyProperty(npc enemy, int property)
 {
-    if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
-    {
-        float array=enemy->Misc[__GHI_NPC_DATA]&0xFFFF;
+    float array=enemy->Misc[__GHI_NPC_DATA]&0xFFFF;
+    
+    if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0 && array>0)
         return array[property];
-    }
     else
     {
         if(property==ENPROP_X)
@@ -687,4 +689,3 @@ float GetEnemyProperty(npc enemy, int property)
             return enemy->CSet;
     }
 }
-    

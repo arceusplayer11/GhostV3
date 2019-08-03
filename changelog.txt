@@ -1,3 +1,9 @@
+2.8.2 (2017-09-10)
+* Added an option to determine whether ffc->Link is reset in __GhCleanUp().
+* Include ffc->Delay in __GhCleanUp().
+* Call __GhCleanUp() when Ghost_DeathAnimation() is called with no animation
+    and when initialization fails.
+
 2.8.1 (2016-09-16)
 * Fixed a bug in positioning enemies after knockback in Ghost_HaltingWalk4()
     and Ghost_ConstantWalk4().
