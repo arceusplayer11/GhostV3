@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.4
+// Version 2.8.5
 
 // See ghost_zh_docs/index.html for documentation.
 
@@ -140,19 +140,19 @@ bool __HaveAmulet()
 // End advanced settings -------------------------------------------------------
 
 
-import "ghost_zh/2.8/common.zh"
-import "ghost_zh/2.8/deprecated.zh"
-import "ghost_zh/2.8/drawing.zh"
-import "ghost_zh/2.8/eweapon.zh"
-import "ghost_zh/2.8/eweaponDeath.zh"
-import "ghost_zh/2.8/eweaponMovement.zh"
-import "ghost_zh/2.8/flags.zh"
-import "ghost_zh/2.8/global.zh"
-import "ghost_zh/2.8/init.zh"
-import "ghost_zh/2.8/modification.zh"
-import "ghost_zh/2.8/movement.zh"
-import "ghost_zh/2.8/other.zh"
-import "ghost_zh/2.8/update.zh"
+#include "ghost_zh/2.8/ghost2_common.zh"
+#include "ghost_zh/2.8/ghost2_deprecated.zh"
+#include "ghost_zh/2.8/ghost2_drawing.zh"
+#include "ghost_zh/2.8/ghost2_eweapon.zh"
+#include "ghost_zh/2.8/ghost2_eweaponDeath.zh"
+#include "ghost_zh/2.8/ghost2_eweaponMovement.zh"
+#include "ghost_zh/2.8/ghost2_flags.zh"
+#include "ghost_zh/2.8/ghost2_global.zh"
+#include "ghost_zh/2.8/ghost2_init.zh"
+#include "ghost_zh/2.8/ghost2_modification.zh"
+#include "ghost_zh/2.8/ghost2_movement.zh"
+#include "ghost_zh/2.8/ghost2_other.zh"
+#include "ghost_zh/2.8/ghost2_update.zh"
 
-import "ghost_zh/2.8/scripts.z"
+#include "ghost_zh/2.8/ghost2_scripts.zs"
 

@@ -1,4 +1,4 @@
-site_name: ghost.zh 2.8.4
+site_name: ghost.zh 2.8.5
 pages:
     - About: index.md
     - AutoGhost setup: autoGhost.md
