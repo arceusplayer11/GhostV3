@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.4
+// Version 2.8.5
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)

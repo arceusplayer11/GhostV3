@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.6.2
+// Version 2.8.5
 
 // All the EWeapon movement update functions are in this file.
 
@@ -90,8 +90,11 @@ void __UpdateEWMHomingReaim(eweapon wpn)
                 SetEWeaponRotation(wpn);
         }
         // Spin in place while waiting
+        if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0)
+            wpn->Angle+=0.3;
         else if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
         {
+            wpn->Angle+=0.2;
             // Pick the direction based on the timer
             int dir=-wpn->Misc[__EWI_WORK]&110b;
             
@@ -151,13 +154,15 @@ void __UpdateEWMRandomReaim(eweapon wpn)
         if(wpn->Misc[__EWI_WORK]==0) // Start up again
         {
             wpn->Misc[__EWI_WORK]=45;
-            wpn->Angle=Rand(31416)/5000;
+            wpn->Angle=Rand(62832)*0.0001;
             wpn->Step=wpn->Misc[__EWI_WORK_2];
             SetEWeaponDir(wpn);
             if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
                 SetEWeaponRotation(wpn);
         }
         // Spin in place while waiting
+        if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0)
+            wpn->Angle+=0.3;
         else if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
         {
             // Pick the direction based on the timer
@@ -328,7 +333,7 @@ void __UpdateEWMFall(eweapon wpn)
 
 void __UpdateEWMDrift(eweapon wpn)
 {
-    int dir=wpn->Misc[__EWI_MOVEMENT]-EWM_DRIFT;
+    int dir=wpn->Misc[__EWI_MOVEMENT_ARG];
     
     // Override regular movement
     wpn->Misc[__EWI_XPOS]+=(wpn->Step/100)*RadianCos(wpn->Angle);
