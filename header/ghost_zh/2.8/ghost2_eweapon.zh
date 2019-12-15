@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.5
+// Version 2.8.6
 
 // Arguments to SetEWeaponMovement()
 const int EWM_SINE_WAVE         = 1;

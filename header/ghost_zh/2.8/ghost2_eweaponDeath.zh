@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.5
+// Version 2.8.6
 
 // All the EWeapon death effect functions are in this file.
 
@@ -103,7 +103,7 @@ void __DoEWeaponDeathAimAtLink(eweapon wpn)
     }
     
     // Spin while waiting
-    if(wpn->Angular)
+    else if(wpn->Angular)
     {
         wpn->Angle+=0.3;
         SetEWeaponDir(wpn);
