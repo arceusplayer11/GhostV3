@@ -2,6 +2,8 @@ ghost.zh
 Version 2.8.7
 
 2.8.7 (2020-09-JAN)
+* Moved YuuRand addendums into 2.8/ghost_yuurand.zh and simplified
+*	the process of upgrading. 
 * Validate arrays in YuuRand functions that take them by reference.
 * Don't use 'array' as an identifier. Use 'aptr'.
 * Add YuuRannd Compatibility
