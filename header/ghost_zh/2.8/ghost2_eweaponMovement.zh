@@ -91,9 +91,14 @@ void __UpdateEWMHomingP2(eweapon wpn)
 
 //@Russ
 //__UpdateEWMHomingP2(eweapon wpn,(wpn, G, G_PLAYER_TWO_X, G_PLAYER_TWO_Y)
-//todo: array validity checks
 void __UpdateEWMHomingP2(eweapon wpn, int ptr, int indx_x, int indx_y)
 {
+    if(!(ptr>0)) 
+    {
+	    int ____err_no_array[]="Invalid array pointer passed to __UpdateEWMHomingP2";
+	    TraceS(____err_no_array);
+	    return; //todo: 2.55, use IsValidArray
+    }
     // Wrap angle to 0..2*PI
     float currentAngle=wpn->Angle%6.2832;
 
@@ -244,9 +249,14 @@ void __UpdateEWMHomingReaimP2(eweapon wpn)
 
 //@Russ
 //__UpdateEWMHomingReaimP2(eweapon wpn,(wpn, G, G_PLAYER_TWO_X, G_PLAYER_TWO_Y)
-//todo: array validity checks
 void __UpdateEWMHomingReaimP2(eweapon wpn, int ptr, int indx_x, int indx_y)
 {
+    if(!(ptr>0)) 
+    {
+	    int ____err_no_array[]="Invalid array pointer passed to __UpdateEWMHomingReaimP2";
+	    TraceS(____err_no_array);
+	    return; //todo: 2.55, use IsValidArray
+    }
     // Set time before re-aiming
     if(wpn->Misc[__EWI_WORK]==0)
         wpn->Misc[__EWI_WORK]=wpn->Misc[__EWI_MOVEMENT_ARG_2];
