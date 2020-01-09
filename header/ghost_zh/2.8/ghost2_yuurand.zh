@@ -157,7 +157,7 @@ void Ghost_CheckHit(ffc this, npc ghost, int ptr, int indx_x, int indx_y)
     if(!(ptr>0)) 
     {
 	    int ____err_no_array[]="Invalid array pointer passed to Ghost_CheckHit";
-	    TraceS(____err_no_array);
+	    TraceS(____err_no_array); TraceNL();
 	    return; //todo: 2.55, use IsValidArray
     }
     // Just got hit
@@ -345,7 +345,7 @@ void __DoEWeaponDeathAimAtP2(eweapon wpn, int ptr, int indx_x, int indx_y)
     if(!(ptr>0)) 
     {
 	    int ____err_no_array[]="Invalid array pointer passed to __DoEWeaponDeathAimAtP2";
-	    TraceS(____err_no_array);
+	    TraceS(____err_no_array); TraceNL();
 	    return; //todo: 2.55, use IsValidArray
     }
     wpn->Step=0;
@@ -421,7 +421,7 @@ void __UpdateEWMHomingP2(eweapon wpn, int ptr, int indx_x, int indx_y)
     if(!(ptr>0)) 
     {
 	    int ____err_no_array[]="Invalid array pointer passed to __UpdateEWMHomingP2";
-	    TraceS(____err_no_array);
+	    TraceS(____err_no_array); TraceNL();
 	    return; //todo: 2.55, use IsValidArray
     }
     // Wrap angle to 0..2*PI
@@ -522,7 +522,7 @@ void __UpdateEWMHomingReaimP2(eweapon wpn, int ptr, int indx_x, int indx_y)
     if(!(ptr>0)) 
     {
 	    int ____err_no_array[]="Invalid array pointer passed to __UpdateEWMHomingReaimP2";
-	    TraceS(____err_no_array);
+	    TraceS(____err_no_array); TrceNL();
 	    return; //todo: 2.55, use IsValidArray
     }
     // Set time before re-aiming
