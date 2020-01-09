@@ -1,12 +1,7 @@
 //Yuurand Functions
 
 void Ghost_CheckHitYR(ffc this, npc ghost)
-    if(!(ptr>0)) 
-    {
-	    int ____err_no_array[]="Invalid array pointer passed to Ghost_CheckHit";
-	    TraceS(____err_no_array);
-	    return; //todo: 2.55, use IsValidArray
-    }
+{
     // Just got hit
     if(ghost->HP<Ghost_HP)
     {
