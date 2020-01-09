@@ -136,23 +136,23 @@ void __DoEWeaponDeathAimAtP2(eweapon wpn)
     }
     // Spin while waiting
     wpn->Angle+=0.3;
-    return;
-    if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0 ||
-       (wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
-        wpn->Angle+=0.3;
-    else if(false)
-    {
-        // Pick a direction based on the counter
-        int dir=wpn->Misc[__EWI_ON_DEATH_ARG]&110b;
-        if(dir==110b)
-            SetEWeaponRotation(wpn, DIR_UP);
-        else if(dir==100b)
-            SetEWeaponRotation(wpn, DIR_RIGHT);
-        else if(dir==010b)
-            SetEWeaponRotation(wpn, DIR_DOWN);
-        else
-            SetEWeaponRotation(wpn, DIR_LEFT);
-    }
+    //return;
+    //if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0 ||
+    //   (wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
+    //    wpn->Angle+=0.3;
+    //else if(false)
+    //{
+    //    // Pick a direction based on the counter
+    //    int dir=wpn->Misc[__EWI_ON_DEATH_ARG]&110b;
+    //    if(dir==110b)
+    //        SetEWeaponRotation(wpn, DIR_UP);
+    //    else if(dir==100b)
+    //        SetEWeaponRotation(wpn, DIR_RIGHT);
+    //    else if(dir==010b)
+    //        SetEWeaponRotation(wpn, DIR_DOWN);
+    //    else
+    //        SetEWeaponRotation(wpn, DIR_LEFT);
+    //}
 }
 
 //@Russ
@@ -176,23 +176,23 @@ void __DoEWeaponDeathAimAtP2(eweapon wpn, int ptr, int indx_x, int indx_y)
     }
     // Spin while waiting
     wpn->Angle+=0.3;
-    return;
-    if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0 ||
-       (wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
-        wpn->Angle+=0.3;
-    else if(false)
-    {
+    //return;
+    //if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0 ||
+    //   (wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
+    //    wpn->Angle+=0.3;
+    //else if(false)
+    //{
         // Pick a direction based on the counter
-        int dir=wpn->Misc[__EWI_ON_DEATH_ARG]&110b;
-        if(dir==110b)
-            SetEWeaponRotation(wpn, DIR_UP);
-        else if(dir==100b)
-            SetEWeaponRotation(wpn, DIR_RIGHT);
-        else if(dir==010b)
-            SetEWeaponRotation(wpn, DIR_DOWN);
-        else
-            SetEWeaponRotation(wpn, DIR_LEFT);
-    }
+    //    int dir=wpn->Misc[__EWI_ON_DEATH_ARG]&110b;
+    //    if(dir==110b)
+    //        SetEWeaponRotation(wpn, DIR_UP);
+    //    else if(dir==100b)
+    //        SetEWeaponRotation(wpn, DIR_RIGHT);
+    //    else if(dir==010b)
+    //        SetEWeaponRotation(wpn, DIR_DOWN);
+    //    else
+    //        SetEWeaponRotation(wpn, DIR_LEFT);
+    //}
 }
 
 // Some of these could probably be combined...
