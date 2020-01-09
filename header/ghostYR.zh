@@ -6,7 +6,7 @@
 // Standard settings -----------------------------------------------------------
 
 // Small (1x1) shadow settings
-const int GH_SHADOW_TILE = 27400;
+const int GH_SHADOW_TILE = 26680;
 const int GH_SHADOW_CSET = 7;
 const int GH_SHADOW_FRAMES = 4;
 const int GH_SHADOW_ANIM_SPEED = 8;
@@ -140,19 +140,19 @@ bool __HaveAmulet()
 // End advanced settings -------------------------------------------------------
 
 
-#include "ghost_zh/2.8/ghost2_common.zh"
-#include "ghost_zh/2.8/ghost2_deprecated.zh"
-#include "ghost_zh/2.8/ghost2_drawing.zh"
-#include "ghost_zh/2.8/ghost2_eweapon.zh"
-#include "ghost_zh/2.8/ghost2_eweaponDeath.zh"
-#include "ghost_zh/2.8/ghost2_eweaponMovement.zh"
-#include "ghost_zh/2.8/ghost2_flags.zh"
-#include "ghost_zh/2.8/ghost2_global.zh"
-#include "ghost_zh/2.8/ghost2_init.zh"
-#include "ghost_zh/2.8/ghost2_modification.zh"
-#include "ghost_zh/2.8/ghost2_movement.zh"
-#include "ghost_zh/2.8/ghost2_other.zh"
-#include "ghost_zh/2.8/ghost2_update.zh"
+import "ghost_zh/2.8/ghost2_common.zh"
+import "ghost_zh/2.8/ghost2_deprecated.zh"
+import "ghost_zh/2.8/ghost2_drawing.zh"
+import "ghost_zh/2.8/ghost2_eweapon.zh"
+import "ghost_zh/2.8/ghost2_eweaponDeath.zh"
+import "ghost_zh/2.8/ghost2_eweaponMovement.zh"
+import "ghost_zh/2.8/ghost2_flags.zh"
+import "ghost_zh/2.8/ghost2_global.zh"
+import "ghost_zh/2.8/ghost2_init.zh"
+import "ghost_zh/2.8/ghost2_modification.zh"
+import "ghost_zh/2.8/ghost2_movement.zh"
+import "ghost_zh/2.8/ghost2_other.zh"
+import "ghost_zh/2.8/ghost2_update.zh"
 
-#include "ghost_zh/2.8/ghost2_scripts.zs"
+import "ghost_zh/2.8/ghost2_scripts.zs"
 

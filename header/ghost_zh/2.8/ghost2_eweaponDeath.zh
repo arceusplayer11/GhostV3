@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.6
+// Version 2.8.7
 
 // All the EWeapon death effect functions are in this file.
 
@@ -109,6 +109,73 @@ void __DoEWeaponDeathAimAtLink(eweapon wpn)
         SetEWeaponDir(wpn);
     }
     else
+    {
+        // Pick a direction based on the counter
+        int dir=wpn->Misc[__EWI_ON_DEATH_ARG]&110b;
+        if(dir==110b)
+            SetEWeaponRotation(wpn, DIR_UP);
+        else if(dir==100b)
+            SetEWeaponRotation(wpn, DIR_RIGHT);
+        else if(dir==010b)
+            SetEWeaponRotation(wpn, DIR_DOWN);
+        else
+            SetEWeaponRotation(wpn, DIR_LEFT);
+    }
+}
+
+void __DoEWeaponDeathAimAtP2(eweapon wpn)
+{
+    wpn->Step=0;
+    wpn->Misc[__EWI_ON_DEATH_ARG]-=1;
+    if(wpn->Misc[__EWI_ON_DEATH_ARG]<=0)
+    {
+        wpn->Angle=RadianAngle(wpn->X, wpn->Y, Link->X, Link->Y);
+        SetEWeaponDir(wpn);
+        wpn->Step=300;
+        wpn->Misc[__EWI_ON_DEATH]=0;
+    }
+    // Spin while waiting
+    wpn->Angle+=0.3;
+    return;
+    if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0 ||
+       (wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
+        wpn->Angle+=0.3;
+    else if(false)
+    {
+        // Pick a direction based on the counter
+        int dir=wpn->Misc[__EWI_ON_DEATH_ARG]&110b;
+        if(dir==110b)
+            SetEWeaponRotation(wpn, DIR_UP);
+        else if(dir==100b)
+            SetEWeaponRotation(wpn, DIR_RIGHT);
+        else if(dir==010b)
+            SetEWeaponRotation(wpn, DIR_DOWN);
+        else
+            SetEWeaponRotation(wpn, DIR_LEFT);
+    }
+}
+
+//@Russ
+//__DoEWeaponDeathAimAtP2(wp, G, G_PLAYER_TWO_X, G_PLAYER_TWO_Y
+//todo: array validity checks
+void __DoEWeaponDeathAimAtP2(eweapon wpn, int ptr, int indx_x, int indx_y)
+{
+    wpn->Step=0;
+    wpn->Misc[__EWI_ON_DEATH_ARG]-=1;
+    if(wpn->Misc[__EWI_ON_DEATH_ARG]<=0)
+    {
+        wpn->Angle=RadianAngle(wpn->X, wpn->Y, ptr[indx_x], ptr[indx_y]);
+        SetEWeaponDir(wpn);
+        wpn->Step=300;
+        wpn->Misc[__EWI_ON_DEATH]=0;
+    }
+    // Spin while waiting
+    wpn->Angle+=0.3;
+    return;
+    if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0 ||
+       (wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
+        wpn->Angle+=0.3;
+    else if(false)
     {
         // Pick a direction based on the counter
         int dir=wpn->Misc[__EWI_ON_DEATH_ARG]&110b;

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.6
+// Version 2.8.7
 
 // Used for DrawGhostFFCs()
 const int __GHI_DRAW_COMBO      = 0;
