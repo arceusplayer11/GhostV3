@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.7
+// Version 2.8.8
 
 
 void Ghost_Transform(ffc this, npc ghost, int combo, int cset, int tileWidth, int tileHeight)
