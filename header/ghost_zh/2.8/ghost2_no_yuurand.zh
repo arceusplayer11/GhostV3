@@ -1,0 +1,2 @@
+//Dummy functions for YuuRand Wrapper
+void __UpdateEWMHomingP2(wpn) { return; }

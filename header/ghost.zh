@@ -153,6 +153,9 @@ bool __HaveAmulet()
 #include "ghost_zh/2.8/ghost2_movement.zh"
 #include "ghost_zh/2.8/ghost2_other.zh"
 #include "ghost_zh/2.8/ghost2_update.zh"
+#include "ghost_zh/2.8/ghost2_no_yuurand.zh"
 
 #include "ghost_zh/2.8/ghost2_scripts.zs"
+
+
 
