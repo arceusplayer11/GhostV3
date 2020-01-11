@@ -16,9 +16,6 @@ Version 2.8.8
 *	Added GhostYR.zh with YuuRand Constants to use instead of Ghost.zh stock file. 
 *	Added YuuRand_Readme.txt
 
-Changes in 2.7.0 and earlier were not tracked at the time. The logs for
-those versions may be incomplete.
-
 2.8.6 (2019-15-DEC)
 * Fixed eweapon death effect EWD_AIM_AT_LINK slightly missing Link.
 
@@ -103,6 +100,9 @@ those versions may be incomplete.
     specify a death animation
 * The global script functions have been consolidated into three. This should
     eliminate the need to update the global script for future updates.
+    
+Changes in 2.7.0 and earlier were not tracked at the time. The logs for
+those versions may be incomplete.
 
 2.6.0 (2013-02-27)
 * Added GetEnemyProperty() and SetEnemyProperty().
