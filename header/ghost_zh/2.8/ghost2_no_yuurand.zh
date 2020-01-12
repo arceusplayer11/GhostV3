@@ -1,2 +1,3 @@
 //Dummy functions for YuuRand Wrapper
-void __UpdateEWMHomingP2(wpn) { return; }
+void __UpdateEWMHomingP2(eweapon wpn) { return; }
+void __UpdateEWMHomingReaimP2(eweapon wpn) { return; }
