@@ -1,0 +1,43 @@
+// ghost.zh
+// Version 2.8.8
+// Use this for 2.53.0, or earlier versions of ZQuest.
+
+// See ghost_zh_docs/index.html for documentation.
+
+//All User Settings
+import "ghost.cfg"
+
+// Returns true if the given combo should be considered a pit.
+bool __IsPit(int combo)
+{
+    return IsPit(combo); // std.zh implementation by default
+}
+
+// Returns true if enemies are visible on screens with the
+// "All Enemies Are Invisible" flag enabled
+bool __HaveAmulet()
+{
+    return Link->Item[I_AMULET1] || Link->Item[I_AMULET2];
+}
+
+// End advanced settings -------------------------------------------------------
+
+
+import "ghost_zh/2.8/ghost2_common.zh"
+import "ghost_zh/2.8/ghost2_deprecated.zh"
+import "ghost_zh/2.8/ghost2_drawing.zh"
+import "ghost_zh/2.8/ghost2_eweapon.zh"
+import "ghost_zh/2.8/ghost2_eweaponDeath.zh"
+import "ghost_zh/2.8/ghost2_eweaponMovement.zh"
+import "ghost_zh/2.8/ghost2_flags.zh"
+import "ghost_zh/2.8/ghost2_global.zh"
+import "ghost_zh/2.8/ghost2_init.zh"
+import "ghost_zh/2.8/ghost2_modification.zh"
+import "ghost_zh/2.8/ghost2_movement.zh"
+import "ghost_zh/2.8/ghost2_other.zh"
+import "ghost_zh/2.8/ghost2_update.zh"
+
+import "ghost_zh/2.8/ghost2_scripts.zs"
+
+
+
