@@ -1,9 +1,11 @@
 ghost.zh
 Version 2.8.8
 
-2.8.8 (2020-11-JAN)
+2.8.8 (2020-12-JAN)
+* Removed dummy functions and added new YuuRand specific functions to ghost2_yuurand.zh
+*	to use for UpdateEWeapon, and for UpdateGhostZH1. 
 * Split off configs into ghost.cfg so that the includes are their
-* own file, adding ghost.cfg.
+* 	own file, adding ghost.cfg.
 * Added non-YR dummy file to avoid a compiler error, adding ghost2_no_yuurand.zh.
 
 2.8.7 (2020-09-JAN)

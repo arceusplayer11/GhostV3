@@ -404,14 +404,7 @@ void UpdateEWeapon(eweapon wpn)
                     __UpdateEWMDrift(wpn);
                     selfPropelled=false;
                 }
-		else if(wpn->Misc[__EWI_MOVEMENT]==EWM_HOMING_P2)
-		{
-                    __UpdateEWMHomingP2(wpn);
-		}
-                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_HOMING_REAIM_P2)
-		{
-                    __UpdateEWMHomingReaimP2(wpn);
-		}
+		
                 else //EWM_DRIFT_WAIT
                 {
                     startX=wpn->Misc[__EWI_XPOS];
