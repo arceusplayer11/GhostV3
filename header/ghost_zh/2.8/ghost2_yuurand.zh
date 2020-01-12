@@ -1,6 +1,54 @@
 //Yuurand Functions
 
-void Ghost_CheckHitYR(ffc this, npc ghost)
+void UpdateGhostZH1_YR()
+{
+    UpdateEWeapons_YR();
+    CleanUpGhostFFCs(); // Only needed if __GH_USE_DRAWCOMBO is 0
+    UpdateGhostZHData1();
+}
+
+// Calls UpdateEWeapon() on every eweapon on the screen
+void UpdateEWeapons_YR()
+{
+    eweapon wpn;
+    
+    // Only update behavior if Link isn't holding up an item.
+    if(!(Link->Action==LA_HOLD1LAND || Link->Action==LA_HOLD2LAND ||
+         Link->Action==LA_HOLD1WATER || Link->Action==LA_HOLD2WATER))
+   {
+        for(int i=Screen->NumEWeapons(); i>0; i--)
+        {
+            wpn=Screen->LoadEWeapon(i);
+            
+            // If this is a dummy, or if it's not a ghost.zh weapon, don't do anything
+            if((wpn->Misc[__EWI_FLAGS]&__EWFI_IS_GHZH_EWPN)==0 ||
+               (wpn->Misc[__EWI_FLAGS]&__EWFI_DUMMY)!=0)
+                continue;
+
+        
+            UpdateEWeapon_YR(wpn);
+        }
+   }
+   
+   // If he is, just update appearance-related flags.
+   else
+   {
+        for(int i=Screen->NumEWeapons(); i>0; i--)
+        {
+            wpn=Screen->LoadEWeapon(i);
+            
+            // If this is a dummy, or if it's not a ghost.zh weapon, don't do anything
+            if((wpn->Misc[__EWI_FLAGS]&__EWFI_IS_GHZH_EWPN)==0 ||
+               (wpn->Misc[__EWI_FLAGS]&__EWFI_DUMMY)!=0)
+                continue;
+
+        
+            __UpdateEWeaponVisualFlags(wpn);
+        }
+   }
+}
+
+void Ghost_CheckHit_YR(ffc this, npc ghost)
 {
     // Just got hit
     if(ghost->HP<Ghost_HP)
@@ -150,6 +198,252 @@ void Ghost_CheckHitYR(ffc this, npc ghost)
 
 
 
+
+
+// Update a weapon's movement, lifespan, and death effects
+void UpdateEWeapon_YR(eweapon wpn)
+{
+    if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
+        return;
+    
+    // Needed for EWF_ROTATE_360
+    int startX=wpn->X;
+    int startY=wpn->Y;
+    bool selfPropelled=true;
+
+    // Is the weapon still active?
+    if((wpn->Misc[__EWI_FLAGS]&__EWFI_DEAD)==0)
+    {
+        // Start movement updates
+        if(wpn->Misc[__EWI_MOVEMENT]!=0)
+        {
+            // Split in half to reduce checks
+            if(wpn->Misc[__EWI_MOVEMENT]<=EWM_RANDOM_REAIM)
+            {
+                if(wpn->Misc[__EWI_MOVEMENT]==EWM_SINE_WAVE)
+                    __UpdateEWMSineWave(wpn);
+                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_HOMING)
+                    __UpdateEWMHoming(wpn);
+                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_HOMING_REAIM)
+                    __UpdateEWMHomingReaim(wpn);
+                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_RANDOM)
+                    __UpdateEWMRandom(wpn);
+                else // EWM_RANDOM_REAIM
+                    __UpdateEWMRandomReaim(wpn);
+            }
+            else // wpn->Misc[__EWI_MOVEMENT]>EWM_RANDOM_REAIM
+            {
+                if(wpn->Misc[__EWI_MOVEMENT]==EWM_VEER)
+                {
+                    startX=wpn->Misc[__EWI_XPOS];
+                    startY=wpn->Misc[__EWI_YPOS];
+                    __UpdateEWMVeer(wpn);
+                    selfPropelled=false;
+                }
+                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_THROW)
+                    __UpdateEWMThrow(wpn);
+                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_FALL)
+                    __UpdateEWMFall(wpn);
+                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_DRIFT)
+                {
+                    startX=wpn->Misc[__EWI_XPOS];
+                    startY=wpn->Misc[__EWI_YPOS];
+                    __UpdateEWMDrift(wpn);
+                    selfPropelled=false;
+                }
+		else if(wpn->Misc[__EWI_MOVEMENT]==EWM_HOMING_P2)
+		{
+                    __UpdateEWMHomingP2(wpn);
+		}
+                else if(wpn->Misc[__EWI_MOVEMENT]==EWM_HOMING_REAIM_P2)
+		{
+                    __UpdateEWMHomingReaimP2(wpn);
+		}
+                else //EWM_DRIFT_WAIT
+                {
+                    startX=wpn->Misc[__EWI_XPOS];
+                    startY=wpn->Misc[__EWI_YPOS];
+                    __UpdateEWMDriftWait(wpn);
+                    selfPropelled=false;
+                }
+            }
+        } // End movement updates
+        
+        
+        // Start lifespan updates
+        if(wpn->Misc[__EWI_LIFESPAN]!=0)
+        {
+            if(wpn->Misc[__EWI_LIFESPAN]==EWL_TIMER)
+            {
+                wpn->Misc[__EWI_LIFESPAN_ARG]-=1;
+                if(wpn->Misc[__EWI_LIFESPAN_ARG]<=0)
+                    KillEWeapon(wpn);
+            }
+            else if(wpn->Misc[__EWI_LIFESPAN]==EWL_NEAR_LINK)
+            {
+                if(Distance(wpn->X, wpn->Y, Link->X, Link->Y)<wpn->Misc[__EWI_LIFESPAN_ARG])
+                    KillEWeapon(wpn);
+            }
+            else if(wpn->Misc[__EWI_LIFESPAN]==EWL_SLOW_TO_HALT)
+            {
+                wpn->Step=Max(0, wpn->Step-wpn->Misc[__EWI_LIFESPAN_ARG]);
+                if(wpn->Step<=0)
+                    KillEWeapon(wpn);
+            }
+        } // End lifespan updates
+    }
+
+    // Start death effects
+    else if(wpn->Misc[__EWI_ON_DEATH]!=0 && (wpn->Misc[__EWI_FLAGS]&__EWFI_DEATH_EFFECT_DONE)==0)
+    {
+        if(wpn->Misc[__EWI_ON_DEATH]<0)
+            __DoEWeaponDeathPrototype(wpn);
+
+        // Split in half to reduce checks
+        else if(wpn->Misc[__EWI_ON_DEATH]<8)
+        {
+            if(wpn->Misc[__EWI_ON_DEATH]==EWD_VANISH)
+                wpn->DeadState=0;
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_AIM_AT_LINK)
+                __DoEWeaponDeathAimAtLink(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_EXPLODE)
+                __DoEWeaponDeathExplode(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_SBOMB_EXPLODE)
+                __DoEWeaponDeathSBombExplode(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_4_FIREBALLS_HV)
+                __DoEWeaponDeath4FireballsHV(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_4_FIREBALLS_DIAG)
+                __DoEWeaponDeath4FireballsDiag(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_4_FIREBALLS_RANDOM)
+                __DoEWeaponDeath4FireballsRand(wpn);
+        }
+        else // wpn->Misc[__EWI_ON_DEATH]>=8
+        {
+            if(wpn->Misc[__EWI_ON_DEATH]==EWD_8_FIREBALLS)
+                __DoEWeaponDeath8Fireballs(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_4_FIRES_HV)
+                __DoEWeaponDeath4FiresHV(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_4_FIRES_DIAG)
+                __DoEWeaponDeath4FiresDiag(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_4_FIRES_RANDOM)
+                __DoEWeaponDeath4FiresRand(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_8_FIRES)
+                __DoEWeaponDeath8Fires(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_SPAWN_NPC)
+                __DoEWeaponDeathSpawnNPC(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_FIRE)
+                __DoEWeaponDeathSingleFire(wpn);
+            else if(wpn->Misc[__EWI_ON_DEATH]==EWD_RUN_SCRIPT)
+                __DoEWeaponDeathRunScript(wpn);
+        }
+    } // End death effects
+    
+    // Start flags
+
+    if((wpn->Misc[__EWI_FLAGS]&EWF_SHADOW)!=0)
+    {
+        if(wpn->Z>0)
+            DrawEWeaponShadow(wpn);
+    }
+    
+    if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE_360)!=0)
+    {
+        wpn->DrawXOffset=1000;
+        
+        // Don't draw if Link is dead
+        if(Link->HP<=0)
+            return;
+        
+        // Flickering? Nothing to do here.
+        if((wpn->Misc[__EWI_FLAGS]&EWF_FLICKER)!=0 &&
+           (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+            return;
+        
+        float endX;
+        float endY;
+        float angle;
+        
+        // Get the angle first
+        if(wpn->Angular)
+            angle=RadtoDeg(wpn->Angle);
+        else
+        {
+            int dir=__NormalizeDir(wpn->Dir);
+            
+            if(dir==DIR_UP)
+                angle=-90;
+            else if(dir==DIR_RIGHTUP)
+                angle=-45;
+            else if(dir==DIR_RIGHT)
+                angle=0;
+            else if(dir==DIR_RIGHTDOWN)
+                angle=45;
+            else if(dir==DIR_DOWN)
+                angle=90;
+            else if(dir==DIR_LEFTDOWN)
+                angle=135;
+            else if(dir==DIR_LEFT)
+                angle=180;
+            else // DIR_LEFTUP
+                angle=-135;
+        }
+        
+        if(selfPropelled)
+        {
+            endX=wpn->X+wpn->Step/100*Cos(angle);
+            endY=wpn->Y+wpn->Step/100*Sin(angle);
+        }
+        else
+        {
+            endX=wpn->Misc[__EWI_XPOS];
+            endY=wpn->Misc[__EWI_YPOS];
+        }
+        
+        // If the weapon's moving, use that angle instead of
+        // wpn->Angle or wpn->Dir
+        if(!(startX==endX && startY==endY))
+            angle=Angle(startX, startY, endX, endY);
+        
+        int flip;
+        if(angle>=0 && angle<180)
+            flip=0;
+        else
+            flip=2;
+        
+        // Currently, these are always drawn on layer 4.
+        // That should probably be changed...
+        Screen->DrawTile(4, endX, endY-wpn->Z, wpn->Tile,
+          wpn->TileWidth, wpn->TileHeight, wpn->CSet, -1, -1,
+          endX, endY-wpn->Z, angle, flip, true, OP_OPAQUE);
+    }
+    else // EWF_ROTATE_360 isn't set
+    {
+        if((wpn->Misc[__EWI_FLAGS]&EWF_FLICKER)!=0)
+        {
+            // Weapons can't be made invisible; use DrawXOffset instead
+            if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+                wpn->DrawXOffset=1000;
+            else
+                wpn->DrawXOffset=0;
+        }
+        
+        if((wpn->Misc[__EWI_FLAGS]&EWF_ROTATE)!=0)
+            SetEWeaponRotation(wpn);
+    }
+    
+    if((wpn->Misc[__EWI_FLAGS]&EWF_FAKE_Z)!=0 || __GH_FAKE_EWEAPON_Z!=0)
+    {
+        // For some reason, DrawZOffset is also HitZOffset,
+        // so Y offsets also have to be used.
+        wpn->DrawZOffset=-wpn->Z;
+        wpn->HitYOffset=-wpn->Z;
+        wpn->DrawYOffset=-wpn->Z;
+    }
+    
+    // End flags
+}
+
+
 //@Russ
 //Ghost_CheckHit(this, ghost, G,  G_PLAYER_TWO_X, G_PLAYER_TWO_Y)
 void Ghost_CheckHit(ffc this, npc ghost, int ptr, int indx_x, int indx_y)
@@ -157,7 +451,7 @@ void Ghost_CheckHit(ffc this, npc ghost, int ptr, int indx_x, int indx_y)
     if(!(ptr>0)) 
     {
 	    int ____err_no_array[]="Invalid array pointer passed to Ghost_CheckHit";
-	    TraceS(____err_no_array);
+	    TraceS(____err_no_array); TraceNL();
 	    return; //todo: 2.55, use IsValidArray
     }
     // Just got hit
@@ -345,7 +639,7 @@ void __DoEWeaponDeathAimAtP2(eweapon wpn, int ptr, int indx_x, int indx_y)
     if(!(ptr>0)) 
     {
 	    int ____err_no_array[]="Invalid array pointer passed to __DoEWeaponDeathAimAtP2";
-	    TraceS(____err_no_array);
+	    TraceS(____err_no_array); TraceNL();
 	    return; //todo: 2.55, use IsValidArray
     }
     wpn->Step=0;
@@ -421,7 +715,7 @@ void __UpdateEWMHomingP2(eweapon wpn, int ptr, int indx_x, int indx_y)
     if(!(ptr>0)) 
     {
 	    int ____err_no_array[]="Invalid array pointer passed to __UpdateEWMHomingP2";
-	    TraceS(____err_no_array);
+	    TraceS(____err_no_array); TraceNL();
 	    return; //todo: 2.55, use IsValidArray
     }
     // Wrap angle to 0..2*PI
@@ -522,7 +816,7 @@ void __UpdateEWMHomingReaimP2(eweapon wpn, int ptr, int indx_x, int indx_y)
     if(!(ptr>0)) 
     {
 	    int ____err_no_array[]="Invalid array pointer passed to __UpdateEWMHomingReaimP2";
-	    TraceS(____err_no_array);
+	    TraceS(____err_no_array); TraceNL();
 	    return; //todo: 2.55, use IsValidArray
     }
     // Set time before re-aiming

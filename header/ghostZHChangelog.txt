@@ -1,5 +1,12 @@
 ghost.zh
-Version 2.8.7
+Version 2.8.8
+
+2.8.8 (2020-12-JAN)
+* Removed dummy functions and added new YuuRand specific functions to ghost2_yuurand.zh
+*	to use for UpdateEWeapon, and for UpdateGhostZH1. 
+* Split off configs into ghost.cfg so that the includes are their
+* 	own file, adding ghost.cfg.
+* Added non-YR dummy file to avoid a compiler error, adding ghost2_no_yuurand.zh.
 
 2.8.7 (2020-09-JAN)
 * Moved YuuRand addendums into 2.8/ghost_yuurand.zh and simplified
@@ -10,9 +17,6 @@ Version 2.8.7
 * 	Made the stock ghost.zh/.8/... files compatible with YuuRannd
 *	Added GhostYR.zh with YuuRand Constants to use instead of Ghost.zh stock file. 
 *	Added YuuRand_Readme.txt
-
-Changes in 2.7.0 and earlier were not tracked at the time. The logs for
-those versions may be incomplete.
 
 2.8.6 (2019-15-DEC)
 * Fixed eweapon death effect EWD_AIM_AT_LINK slightly missing Link.
@@ -98,6 +102,9 @@ those versions may be incomplete.
     specify a death animation
 * The global script functions have been consolidated into three. This should
     eliminate the need to update the global script for future updates.
+    
+Changes in 2.7.0 and earlier were not tracked at the time. The logs for
+those versions may be incomplete.
 
 2.6.0 (2013-02-27)
 * Added GetEnemyProperty() and SetEnemyProperty().
