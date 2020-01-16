@@ -1,5 +1,11 @@
 ghost.zh
-Version 2.8.8
+Version 2.8.9
+
+2.8.9 (2020-16-JAN)
+* Deleted ghost.cfg:
+* I added ghost.cfg to bypass a issue with the YR wrapper, but ultimately
+*	it was not needed, so the settings are once again in ghost.zh.
+
 
 2.8.8 (2020-12-JAN)
 * Removed dummy functions and added new YuuRand specific functions to ghost2_yuurand.zh
