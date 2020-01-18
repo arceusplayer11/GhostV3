@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.9
+// Version 2.8.10
 
 void StartGhostZH()
 {
@@ -145,7 +145,7 @@ void CleanUpGhostFFCs()
 void AutoGhost()
 {
     // Shouldn't run if scripts are suspended.
-    if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
+    if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND))
         return;
     
     npc enemy;
@@ -161,27 +161,39 @@ void AutoGhost()
         if(enemy->ID<AUTOGHOST_MIN_ENEMY_ID || enemy->ID>AUTOGHOST_MAX_ENEMY_ID)
             continue;
         
-        if(__GH_ALWAYS_USE_NAME==0)
+	if(__GH_ALWAYS_USE_NAME)// Read from name
+        {
+            // Already checked this enemy?
+            if(enemy->Misc[__GHI_NPC_DATA])
+                continue;
+        }
+        else
         {
             // Already in use?
-            if((enemy->Misc[__GHI_NPC_DATA]&0x10000)!=0)
+            if((enemy->Misc[__GHI_NPC_DATA]&0x10000))
                 continue;
             
             // No combo or script set?
-            if(enemy->Attributes[10]==0 || enemy->Attributes[11]==0)
-                continue;
-        }
-        else // Read from name
-        {
-            // Already checked this enemy?
-            if(enemy->Misc[__GHI_NPC_DATA]!=0)
+            if(!enemy->Attributes[10] || !enemy->Attributes[11])
                 continue;
         }
         
         // May have found one; get the setup data
         int scriptNum;
         int combo;
-        if(__GH_ALWAYS_USE_NAME==0)
+	if(__GH_ALWAYS_USE_NAME)
+        {
+            int data[2];
+            __AutoGhostParseName(enemy, data);
+            scriptNum=data[0];
+	    //if(scriptNum<=0) Wait, we check this universally below and we kill the enemy. Why do it here?
+            //    continue;
+            combo=data[1];
+            if(!enemy->Misc[__GHI_NPC_DATA]) enemy->Misc[__GHI_NPC_DATA]=1; // Just to make sure it's nonzero
+            //if(scriptNum<=0)
+                //continue; //moved this up higher to prevent setting up an enemy for which it could not get a script number. -Z
+        }
+        else
         {
             combo=enemy->Attributes[10];
             scriptNum=enemy->Attributes[11];
@@ -192,20 +204,12 @@ void AutoGhost()
                 scriptNum=data[0];
             }
         }
-        else
-        {
-            int data[2];
-            __AutoGhostParseName(enemy, data);
-            scriptNum=data[0];
-            combo=data[1];
-            enemy->Misc[__GHI_NPC_DATA]=1; // Just to make sure it's nonzero
-            if(scriptNum<=0)
-                continue;
-        }
+       
         
         // Invalid script?
         if(scriptNum<=0 || scriptNum>511)
         {
+	    enemy->Misc[__GHI_NPC_DATA] = 0;
             __AutoGhostKill(enemy);
             continue;
         }
@@ -214,7 +218,7 @@ void AutoGhost()
         ffcID=FindUnusedFFC(ffcID);
         
         // No suitable FFC? Kill the enemy, then
-        if(ffcID==0)
+        if(!ffcID)
         {
             __AutoGhostKill(enemy);
             continue;
@@ -253,7 +257,7 @@ void AutoGhost()
 
 // Reads a script name and combo number from the enemy's name. The script
 // number and combo are stored in output[0] and output[1], respectively.
-void __AutoGhostParseName(npc enemy, int output)
+int __AutoGhostParseName(npc enemy, int output)
 {
     int npcName[64];
     int buffer[64];
@@ -311,6 +315,7 @@ void __AutoGhostParseName(npc enemy, int output)
                 i--;
             }
         }
+	return 1;
     }
     
     // Expected a script name and didn't find it?
@@ -325,6 +330,7 @@ void __AutoGhostParseName(npc enemy, int output)
             printf(error1);
             printf(error2, npcName);
             printf(error3, AUTOGHOST_DELIMITER);
+	    return 0;
         }
     }
 }
