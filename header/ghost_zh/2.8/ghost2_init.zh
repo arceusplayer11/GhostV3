@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.9
+// Version 2.8.10
 
 
 void Ghost_Init(ffc this, npc ghost)
@@ -10,20 +10,48 @@ void Ghost_Init(ffc this, npc ghost)
 
 npc Ghost_InitCreate(ffc this, int enemyID)
 {
-    npc ghost=Screen->CreateNPC(enemyID);
+    npc ghost;
+    if(enemyID < 1 || enemyID > 255 )
+    {
+	int errnonpc[]="Could not create npc ID %d\n";
+	printf(errnonpc, enemyID);
+	__GhCleanUp(this);
+	return ghost;
+	//Quit();    
+    }
+    ghost = Screen->CreateNPC(Clamp(enemyID);
     __Ghost_InitInternal(this, ghost, false, this->Data, this->CSet);
+    //if(!ghost->isValid)
+    //{
+	//int errnonpc[]="Could not create npc ID %d\n";
+	//printf(errnonpc, enemyID);
+	//__GhCleanUp(this);
+	//return ghost;
+	//	//Quit();
+	    
+    //}
     return ghost;
 }
 
 npc Ghost_InitCreateAt(ffc this, int enemyID, int x, int y)
 {
     npc ghost;
-    ghost =Screen->CreateNPC(enemyID);
+    if(enemyID < 1 || enemyID > 255 )
+    {
+	int errnonpc[]="Could not create npc ID %d\n";
+	printf(errnonpc, enemyID);
+	__GhCleanUp(this);
+	return ghost;
+	//Quit();    
+    }
+    ghost = Screen->CreateNPC(enemyID);
     if(!(ghost->isValid())) 
     {
-	    int errnonpc[]="Could not create npc ID %d\n";
-	    printf(errnonpc, enemyID);
-	    return ghost;
+	int errnonpc[]="Could not create npc ID %d\n";
+	printf(errnonpc, enemyID);
+	__GhCleanUp(this);
+	return ghost;
+	//Quit();
     }
     __Ghost_InitInternal(this, ghost, false, this->Data, this->CSet);
     ghost->X = x;
