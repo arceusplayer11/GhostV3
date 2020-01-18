@@ -1,7 +1,12 @@
 ghost.zh
 Version 2.8.9
 
-2.8.9 (2020-16-JAN)
+2.8.9 
+	(2020-18-JAN
+* Optimised Ghost_InitAutoGhost().
+* Fixed bad logging caused by some kind of ZASM quirk in 2.53+.
+* Apparently ZASM doesn't want to return before the traces?!
+	(2020-16-JAN)
 * Deleted ghost.cfg:
 * I added ghost.cfg to bypass a issue with the YR wrapper, but ultimately
 *	it was not needed, so the settings are once again in ghost.zh.
