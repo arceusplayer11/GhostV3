@@ -15,6 +15,22 @@ npc Ghost_InitCreate(ffc this, int enemyID)
     return ghost;
 }
 
+npc Ghost_InitCreateAt(ffc this, int enemyID, int x, int y)
+{
+    npc ghost;
+    ghost =Screen->CreateNPC(enemyID);
+    if(!(ghost->isValid())) 
+    {
+	    int errnonpc[]="Could not create npc ID %d\n";
+	    printf(errnonpc, enemyID);
+	    return ghost;
+    }
+    __Ghost_InitInternal(this, ghost, false, this->Data, this->CSet);
+    ghost->X = x;
+    ghost->Y = y;
+    return ghost;
+}
+
 
 npc Ghost_InitWait(ffc this, int enemyIndex, bool useEnemyPos)
 {
