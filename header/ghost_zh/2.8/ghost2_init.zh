@@ -123,7 +123,7 @@ npc Ghost_InitSpawn(ffc this, int enemyID)
 
 npc Ghost_InitAutoGhost(ffc this, int enemyID)
 {
-    npc ghost; bool found;
+    npc ghost; bool found = true;
     
     // Find the right enemy
     for(int i=Screen->NumNPCs(); i>0; --i)
@@ -133,12 +133,13 @@ npc Ghost_InitAutoGhost(ffc this, int enemyID)
         // Wrong ID or already in use
         if(ghost->ID!=enemyID)
 	{
+	    found = false;
             continue;
 	}
-	else found = true;
         //if((ghost->Misc[__GHI_NPC_DATA]&0x10000)!=0)
         if((ghost->Misc[__GHI_NPC_DATA]&0x10000))
 	{
+	    found = false;
             continue;
 	}
         //int log1[]="Reached __Ghost_InitInternal call\n";
