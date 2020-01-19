@@ -292,7 +292,7 @@ int __AutoGhostParseName(npc enemy, int output)
                     int error2[80]="  Script name: %s\n";
                     printf(error1);
                     printf(error2, buffer);
-                    return;
+                    return 0;
                 }
             }
             else if((character>='0' && character<='9') || character=='-')

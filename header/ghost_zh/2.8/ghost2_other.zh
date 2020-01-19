@@ -233,9 +233,9 @@ int FindUnusedFFC()
         if((f->Data==0 || f->Data==GH_INVISIBLE_COMBO) )
 	{
 	
-           if (!f->Script))
+           if (!(f->Script))
 	   {
-		if(!f->Flags[FFCF_CHANGER]))
+		if(!(f->Flags[FFCF_CHANGER]))
 		{
 			return i;
 		}
@@ -251,16 +251,16 @@ int FindUnusedFFC(int startingFrom)
 {
     ffc f;
     
-    for(int i=Max(startingFrom+1, AUTOGHOST_MIN_FFC); i<=(Min(AUTOGHOST_MAX_FFC,32); ++i)
+    for(int i=Max(startingFrom+1, AUTOGHOST_MIN_FFC); i<=(Min(AUTOGHOST_MAX_FFC,32)); ++i)
     {
         f=Screen->LoadFFC(i);
         
         if((f->Data==0 || f->Data==GH_INVISIBLE_COMBO) )
 	{
 	
-           if (!f->Script))
+           if (!(f->Script))
 	   {
-		if(!f->Flags[FFCF_CHANGER]))
+		if(!(f->Flags[FFCF_CHANGER]))
 		{
 			return i;
 		}

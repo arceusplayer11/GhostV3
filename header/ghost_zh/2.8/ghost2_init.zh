@@ -19,7 +19,7 @@ npc Ghost_InitCreate(ffc this, int enemyID)
 	return ghost;
 	//Quit();    
     }
-    ghost = Screen->CreateNPC(Clamp(enemyID);
+    ghost = Screen->CreateNPC(enemyID);
     __Ghost_InitInternal(this, ghost, false, this->Data, this->CSet);
     //if(!ghost->isValid)
     //{
