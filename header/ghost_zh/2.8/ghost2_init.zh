@@ -11,7 +11,7 @@ void Ghost_Init(ffc this, npc ghost)
 npc Ghost_InitCreate(ffc this, int enemyID)
 {
     npc ghost;
-    if(enemyID < 1 || enemyID > 255 )
+    if(enemyID < AUTOGHOST_MIN_ENEMY_ID || enemyID > AUTOGHOST_MAX_ENEMY_ID )
     {
 	int errnonpc[]="Could not create npc ID %d\n";
 	printf(errnonpc, enemyID);
@@ -36,7 +36,7 @@ npc Ghost_InitCreate(ffc this, int enemyID)
 npc Ghost_InitCreateAt(ffc this, int enemyID, int x, int y)
 {
     npc ghost;
-    if(enemyID < 1 || enemyID > 255 )
+    if(enemyID < AUTOGHOST_MIN_ENEMY_ID || enemyID > AUTOGHOST_MAX_ENEMY_ID )
     {
 	int errnonpc[]="Could not create npc ID %d\n";
 	printf(errnonpc, enemyID);
