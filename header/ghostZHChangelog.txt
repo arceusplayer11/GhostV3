@@ -1,8 +1,28 @@
 ghost.zh
-Version 2.8.9
+Version 2.8.11
+
+2.8.11 
+	(2020-23-JAN)
+* Fixed __GhCleanUp() to reset the ffc positions to 0,0.
+
+2.8.10 (2020-18/19-JAN)
+* Fixed sanity check in ghost_create functions to use consts.
+* Fix a logic bug in Ghost_InitAutoGhost
+* Add sanity checks to Ghost_InitCreate, Ghost_InitCreateAt to legal ranges.
+* Added Ghost_InitCreateAt(ffc this, int enemyID, int x, int y)
+* Don't continue in Autoghost() until after we are ready to kill
+*	invalid enemies, deallocating them.
+* Optimised some function calls.
+* Changed void __AutoGhostParseName() to int __AutoGhostParseName
+* 	return 1 on success; or 0.
+* FindUnusedFFC is optimised now and has an extra sanity check.
+* Fixed bad logging caused by some kind of ZASM quirk in 2.53+. 
+*	Apparently ZASM doesn't want to return before the traces?!
+* Optimised Ghost_InitAutoGhost()
+
 
 2.8.9 
-	(2020-18-JAN
+	(2020-18-JAN)
 * Optimised Ghost_InitAutoGhost().
 * Fixed bad logging caused by some kind of ZASM quirk in 2.53+.
 * Apparently ZASM doesn't want to return before the traces?!

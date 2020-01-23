@@ -652,6 +652,8 @@ bool __Ghost_IsFlickering(npc ghost)
 void __GhCleanUp(ffc this)
 {
     this->Data=0;
+    this->X = 0;
+    this->Y = 0;
     this->Vx=0;
     this->Vy=0;
     this->Ax=0;
