@@ -3,13 +3,33 @@ Version 2.8.12
 
 2.8.12
 	(2020-27-JAN)
+* Fixed some bugs when using EWM_FALL and EWM_THROW in sideview. 
+*	-ywkls provided the base fixes.
+* Added the following config values:
+*	__GH_WEAPONS_HIT_PLATFORMS
+*		If set to 1, weapons in sideview will die when 
+*		they hit a solid sideview platform.
+*		
+*	__GH_FIX_EWM_FALL
+*		If set to 1, this will patch bugs where falling 
+*		weapons can be inappropriately destroyed because 
+*		of their position.
+*
+*	__GH_FIX_EWM_THROW
+*		If set to 1, this will patch bugs where thrown 
+*		weapons can be inappropriately destroyed because 
+*		of their position.
+*
+* These configs default on:
+* 	Set any of these to 0 if this causes bugs in legacy quests/scripts.
+*
 * Patched the compatibility file for 2.50.x and 2.53.0
 * Updated the demo quest anddemo npcs to use include, the new '.zs'
 *	extension, and to show ghost enemies behind layers.
 *	The demo quest main script is now in the demo path, instead
 *	of the buffer.
 * Try to fix bugs caused by changes in 2.8.10.
-* Added __GH_ETHEREAL, defaulted to 1 to user settings.
+* Added a config, __GH_ETHEREAL, defaulted to 1 to user settings.
 *	This forces ffcs used to control ghost npcs to Ethereal.
 
 2.8.11 
