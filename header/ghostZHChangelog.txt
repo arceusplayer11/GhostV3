@@ -3,6 +3,7 @@ Version 2.8.12
 
 2.8.12
 	(2020-27-JAN)
+* Patched the compatibility file for 2.50.x and 2.53.0
 * Updated the demo quest anddemo npcs to use include, the new '.zs'
 *	extension, and to show ghost enemies behind layers.
 *	The demo quest main script is now in the demo path, instead

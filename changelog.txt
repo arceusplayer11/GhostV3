@@ -1,3 +1,68 @@
+ghost.zh
+Version 2.8.12
+
+2.8.12
+	(2020-27-JAN)
+* Patched the compatibility file for 2.50.x and 2.53.0
+* Updated the demo quest anddemo npcs to use include, the new '.zs'
+*	extension, and to show ghost enemies behind layers.
+*	The demo quest main script is now in the demo path, instead
+*	of the buffer.
+* Try to fix bugs caused by changes in 2.8.10.
+* Added __GH_ETHEREAL, defaulted to 1 to user settings.
+*	This forces ffcs used to control ghost npcs to Ethereal.
+
+2.8.11 
+	(2020-23-JAN)
+* Fixed __GhCleanUp() to reset the ffc positions to 0,0.
+
+2.8.10 (2020-18/19-JAN)
+* Fixed sanity check in ghost_create functions to use consts.
+* Fix a logic bug in Ghost_InitAutoGhost
+* Add sanity checks to Ghost_InitCreate, Ghost_InitCreateAt to legal ranges.
+* Added Ghost_InitCreateAt(ffc this, int enemyID, int x, int y)
+* Don't continue in Autoghost() until after we are ready to kill
+*	invalid enemies, deallocating them.
+* Optimised some function calls.
+* Changed void __AutoGhostParseName() to int __AutoGhostParseName
+* 	return 1 on success; or 0.
+* FindUnusedFFC is optimised now and has an extra sanity check.
+* Fixed bad logging caused by some kind of ZASM quirk in 2.53+. 
+*	Apparently ZASM doesn't want to return before the traces?!
+* Optimised Ghost_InitAutoGhost()
+
+
+2.8.9 
+	(2020-18-JAN)
+* Optimised Ghost_InitAutoGhost().
+* Fixed bad logging caused by some kind of ZASM quirk in 2.53+.
+* Apparently ZASM doesn't want to return before the traces?!
+	(2020-16-JAN)
+* Deleted ghost.cfg:
+* I added ghost.cfg to bypass a issue with the YR wrapper, but ultimately
+*	it was not needed, so the settings are once again in ghost.zh.
+
+
+2.8.8 (2020-12-JAN)
+* Removed dummy functions and added new YuuRand specific functions to ghost2_yuurand.zh
+*	to use for UpdateEWeapon, and for UpdateGhostZH1. 
+* Split off configs into ghost.cfg so that the includes are their
+* 	own file, adding ghost.cfg.
+* Added non-YR dummy file to avoid a compiler error, adding ghost2_no_yuurand.zh.
+
+2.8.7 (2020-09-JAN)
+* Moved YuuRand addendums into 2.8/ghost_yuurand.zh and simplified
+*	the process of upgrading. 
+* Validate arrays in YuuRand functions that take them by reference.
+* Don't use 'array' as an identifier. Use 'aptr'.
+* Add YuuRannd Compatibility
+* 	Made the stock ghost.zh/.8/... files compatible with YuuRannd
+*	Added GhostYR.zh with YuuRand Constants to use instead of Ghost.zh stock file. 
+*	Added YuuRand_Readme.txt
+
+2.8.6 (2019-15-DEC)
+* Fixed eweapon death effect EWD_AIM_AT_LINK slightly missing Link.
+
 2.8.5 (2019-12-12)
 * Renamed files to comply with HEADER_GUARD option in 2.53.1 
 	and 2.55.x.
@@ -52,7 +117,6 @@
 * Added EWF_FAKE_Z and a setting to make all weapons use fake Z values.
 * Fixed dummy weapons being instantly deleted in some cases.
 
-
 2.7.2 (2014-08-20)
 * AutoGhost() will no longer grab changers.
 * AutoGhost() now sets the FFC's size.
@@ -80,6 +144,9 @@
     specify a death animation
 * The global script functions have been consolidated into three. This should
     eliminate the need to update the global script for future updates.
+    
+Changes in 2.7.0 and earlier were not tracked at the time. The logs for
+those versions may be incomplete.
 
 2.6.0 (2013-02-27)
 * Added GetEnemyProperty() and SetEnemyProperty().
@@ -93,6 +160,11 @@
     (Only applies if GH_FAKE_Z or GHF_FAKE_Z is used)
 * Added GHF_STATIC_SHADOW for enemies whose shadows should never animate.
     (Only applies if GH_FAKE_Z or GHF_FAKE_Z is used)
+
+2.5.1 (2012-12-21)
+* AutoGhost scripts can now be read from the enemy's name. Set misc.
+    attribute 12 to -1 and put the script name in the enemy's name after @.
+* Added constants to control flashing and knockback.
 
 2.5.0 (2012-12-09)
 * Split ghost.zh into multiple files.
@@ -149,4 +221,5 @@
     taken into account by Ghost_CanMove().
 
 2.0.0 (2011-08-03)
-* First version of modern ghost.zh. Completely overhauled since previous versions.
+* First version of modern ghost.zh. Completely overhauled.
+
