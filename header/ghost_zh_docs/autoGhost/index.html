@@ -8,7 +8,7 @@
   
   
   <link rel="shortcut icon" href="../img/favicon.ico">
-  <title>AutoGhost setup - ghost.zh 2.8.6</title>
+  <title>AutoGhost setup - ghost.zh 2.8.12</title>
   <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
 
   <link rel="stylesheet" href="../css/theme.css" type="text/css" />
@@ -35,7 +35,7 @@
     
     <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
       <div class="wy-side-nav-search">
-        <a href="../index.html" class="icon icon-home"> ghost.zh 2.8.6</a>
+        <a href="../index.html" class="icon icon-home"> ghost.zh 2.8.12</a>
         <div role="search">
   <form id ="rtd-search-form" class="wy-form" action="../search.html" method="get">
     <input type="text" name="q" placeholder="Search docs" />
@@ -106,7 +106,7 @@
       
       <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
         <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-        <a href="../index.html">ghost.zh 2.8.6</a>
+        <a href="../index.html">ghost.zh 2.8.12</a>
       </nav>
 
       
@@ -236,6 +236,40 @@ the quest rule <strong>Enemies Flicker When Hit</strong>. Set this to 1 (yes) or
 attributes 11 and 12. If it's set to 1, they'll be read from the name,
 freeing up those attributes for other scripts to use. See the section
 on setting up the script and combo below for more details.</dd>
+
+<dt>__GH_CLEAR_FFC_LINK</dt>
+<dd>If this is set to 1, the ffc->Link value will clear when ghost.zh cleans
+up the script. ZC 2.50.2 and earlier do noit support this as it is not legal
+to write ffc->Link = 0, however 2.53.0 and later support clearing linked ffcs.
+Set this to 0 to disable clearing it.</dd>
+
+<dt>__GH_ETHEREAL</dt>
+<dd>If this is set to 1, then autoghost enemies will set their controlling ffc
+to use the Ethereal flag. This ensures that the ffc does not override the properties
+of the normal screen comno, or any other ffc underneath it. Set this to 0 if you
+are using legacy scripts that are incompatible with this option.
+</dd>
+
+<dt>__GH_FIX_EWM_FALL</dt>
+<dd>This is a bugfix setting that prevents inappropriate removal of falling weapons
+on sideview screens. 
+Set this to 0 if you are using legacy scripts that are incompatible with this option.
+</dd>
+
+<dt>__GH_FIX_EWM_THROW</dt>
+<dd>This is a bugfix setting that prevents inappropriate removal of thrown weapons
+on sideview screens. 
+Set this to 0 if you are using legacy scripts that are incompatible with this option.
+</dd>
+
+<dt>__GH_WEAPONS_HIT_PLATFORMS</dt>
+<dd>If this is set to 1, then weapons thrown or falling on sideview screens, that are
+controlled by ghost.zh, will die when they strike solid combos (e.g. sideview platforms).
+Set this to 0 if you are using legacy scripts that are incompatible with this option.
+This relies on __GH_FIX_EWM_FALL and __GH_FIX_EWM_THROW.
+</dd>
+
+
 </dl>
 <p>If you're making multiple quests at once that use different settings, you
 should use a different copy of ghost.zh for each one. You only need to copy
@@ -243,14 +277,15 @@ ghost.zh itself, not the ghost_zh folder.</p>
 <h3 id="loading-the-scripts">Loading the scripts</h3>
 <p>In <strong>ZQuest, go to Quest &gt; Scripts &gt; Compile ZScript... &gt; Edit</strong>. These three lines
 need to appear once each. Enter any line that isn't already there.</p>
-<pre class="codehilite"><code>import &quot;std.zh&quot;
-import &quot;string.zh&quot;
-import &quot;ghost.zh&quot;</code></pre>
+<pre class="codehilite"><code>#include &quot;std.zh&quot;
+#include &quot;string.zh&quot;
+#include &quot;ghost.zh&quot;</code></pre>
 
 
-<p>This assumes that all these files are in the default location. If you put ghost.zh
-in a different folder, you'll have to specify that, for instance:</p>
-<pre class="codehilite"><code>import &quot;MyQuest\Scripts\ghost.zh&quot;</code></pre>
+<p>This assumes that all these files are in the default location. 
+Ghost.zh is normally in './headers' and its sub-files are in #./headers/ghost_zh/2.8'.
+If you put ghost.zh files in a other paths, you'll have to specify that, for instance:</p>
+<pre class="codehilite"><code>#include &quot;MyQuest\otherpath\ghost.zh&quot;</code></pre>
 
 
 <p>Close the window, save the changes, and click <strong>Compile</strong>. In the <strong>Global</strong> tab,
@@ -259,13 +294,13 @@ in the <strong>Item</strong> tab, load <code>GhostZHClockScript</code> into any 
 <p>If your quest uses clocks, set the clock's pickup script to <code>GhostZHClockScript</code>
 and set D0 to the same number as the clock's duration.</p>
 <h2 id="individual-enemies">Individual enemies</h2>
-<h3 id="importing-the-script">Importing the script</h3>
-<p>First, the script needs to be imported. In the script buffer, add another line
-to import the file. For instance:</p>
-<pre class="codehilite"><code>import &quot;GoriyaLttP.z&quot;</code></pre>
+<h3 id="including-the-script">#include the script</h3>
+<p>First, the script needs to be included. In the script buffer, add another line
+to include the file. For instance:</p>
+<pre class="codehilite"><code>#include &quot;GoriyaLttP.zs&quot;</code></pre>
 
 
-<p>Some scripts might require that you import additional files, but don't include
+<p>Some scripts might require that you include additional files, but don't include
 any file more than once. Compile and load the FFC script into a slot.</p>
 <p>Exactly what needs done varies from one enemy to the next, but a few things are
 common. Many scripted enemies need at least one combo set up, but some use the

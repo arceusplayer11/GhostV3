@@ -3,6 +3,8 @@ Version 2.8.12
 
 2.8.12
 	(2020-27-JAN)
+* Updated the Docs (txt, html, and md) with new configs, and 
+*	to the 2.53.1 spec for use of '#include'.
 * Fixed some bugs when using EWM_FALL and EWM_THROW in sideview. 
 *	-ywkls provided the base fixes.
 * Added the following config values:

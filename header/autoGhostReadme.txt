@@ -1,5 +1,5 @@
 ghost.zh
-Version 2.8.6
+Version 2.8.12
 
 General setup:
 
@@ -114,6 +114,33 @@ __GH_ALWAYS_USE_NAME
    attributes 11 and 12. If it's set to 1, they'll be read from the name,
    freeing up those attributes for other scripts to use.
 
+__GH_CLEAR_FFC_LINK
+   If this is set to 1, the ffc->Link value will clear when ghost.zh cleans
+   up the script. ZC 2.50.2 and earlier do noit support this as it is not legal
+   to write ffc->Link = 0, however 2.53.0 and later support clearing linked ffcs.
+   Set this to 0 to disable clearing it.
+
+__GH_ETHEREAL
+   If this is set to 1, then autoghost enemies will set their controlling ffc
+   to use the Ethereal flag. This ensures that the ffc does not override the properties
+   of the normal screen comno, or any other ffc underneath it. Set this to 0 if you
+   are using legacy scripts that are incompatible with this option.
+
+__GH_FIX_EWM_FALL
+   This is a bugfix setting that prevents inappropriate removal of falling weapons
+   on sideview screens. 
+   Set this to 0 if you are using legacy scripts that are incompatible with this option.
+   
+__GH_FIX_EWM_THROW
+   This is a bugfix setting that prevents inappropriate removal of thrown weapons
+   on sideview screens. 
+   Set this to 0 if you are using legacy scripts that are incompatible with this option.
+
+__GH_WEAPONS_HIT_PLATFORMS
+   If this is set to 1, then weapons thrown or falling on sideview screens, that are
+   controlled by ghost.zh, will die when they strike solid combos (e.g. sideview platforms).
+   Set this to 0 if you are using legacy scripts that are incompatible with this option.
+   This relies on __GH_FIX_EWM_FALL and __GH_FIX_EWM_THROW.
 
 If you're making multiple quests at once that use different settings, you
 should use a different copy of ghost.zh for each one. You only need to copy
@@ -121,13 +148,14 @@ ghost.zh itself, not the ghost_zh directory.
 
 In ZQuest, go to Quest > Scripts > Compile ZScript... > Edit and enter this:
 
-import "std.zh"
-import "string.zh"
-import "ghost.zh"
+#include "std.zh"
+#include "ghost.zh"
 
-This assumes that all these files are in ZC's directory. If any of them
-are in different directories, you'll have to specify that, for instance:
-import "MyQuest\Scripts\ghost.zh"
+This assumes that all these files are in the default location. 
+Ghost.zh is normally in './headers' and its sub-files are in #./headers/ghost_zh/2.8'.
+If you put ghost.zh files in a other paths, you'll have to specify that, for instance:
+
+#include "MyQuest\otherpath\ghost.zh"
 
 Close the window, save the changes, and click Compile. In the Global tab,
 load GhostZHActiveScript into the Active slot. In the Item tab, load
@@ -141,11 +169,11 @@ Set D0 to the same number as the clock's duration.
 Individual enemies:
 
 
-First, the script needs to be imported. In the script buffer, add another line
-to import the file, for instance:
-import "GoriyaLttP.z"
+First, the script needs to be included. In the script buffer, add another line
+to include the file, for instance:
+#include "GoriyaLttP.zs"
 
-Some scripts may require that you import additional files, but don't include
+Some scripts may require that you include additional files, but don't include
 any file more than once. Compile and load the FFC script into a slot.
 
 Exactly what needs done varies from one enemy to the next, but a few things are
