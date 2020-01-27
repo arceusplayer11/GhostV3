@@ -34,7 +34,7 @@ built-in enemies.
 ### Constants
 
 You'll have to set some constants in ghost.zh. Open it in a text editor. Use
-a basic one, like Notepad; more advanced word processors sometimes modify
+a simple code editor, like SciTE, or Notepad++; more advanced word processors sometimes modify
 punctuation marks, which can make scripts unusable.
 
 The constants look similar to this:
@@ -135,7 +135,7 @@ __GH_ALWAYS_USE_NAME
 
 __GH_CLEAR_FFC_LINK
 :    If this is set to 1, the ffc->Link value will clear when ghost.zh cleans
-     up the script. ZC 2.50.2 and earlier do noit support this as it is not legal
+     up the script. ZC 2.50.2 and earlier do not support this as it is not legal
      to write ffc->Link = 0, however 2.53.0 and later support clearing linked ffcs.
      Set this to 0 to disable clearing it.
 
@@ -144,7 +144,6 @@ __GH_ETHEREAL
      to use the Ethereal flag. This ensures that the ffc does not override the properties
      of the normal screen comno, or any other ffc underneath it. Set this to 0 if you
      are using legacy scripts that are incompatible with this option.
-
 
 __GH_FIX_EWM_FALL
 :    This is a bugfix setting that prevents inappropriate removal of falling weapons

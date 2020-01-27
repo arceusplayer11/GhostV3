@@ -116,7 +116,7 @@ __GH_ALWAYS_USE_NAME
 
 __GH_CLEAR_FFC_LINK
    If this is set to 1, the ffc->Link value will clear when ghost.zh cleans
-   up the script. ZC 2.50.2 and earlier do noit support this as it is not legal
+   up the script. ZC 2.50.2 and earlier do not support this as it is not legal
    to write ffc->Link = 0, however 2.53.0 and later support clearing linked ffcs.
    Set this to 0 to disable clearing it.
 

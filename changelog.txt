@@ -3,6 +3,10 @@ Version 2.8.12
 
 2.8.12
 	(2020-27-JAN)
+* Removed AutoGhost.txt: This file was deprecated by autoGhostReadme.txt.
+* Fixed some docs typos and searching for new additions.
+* 	Search keywords need two spaces on either side of them
+*	in search_index.json.
 * Updated the Docs (txt, html, and md) with new configs, and 
 *	to the 2.53.1 spec for use of '#include'.
 * Fixed some bugs when using EWM_FALL and EWM_THROW in sideview. 
