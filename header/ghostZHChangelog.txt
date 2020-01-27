@@ -3,6 +3,10 @@ Version 2.8.12
 
 2.8.12
 	(2020-27-JAN)
+* Updated the demo quest anddemo npcs to use include, the new '.zs'
+*	extension, and to show ghost enemies behind layers.
+*	The demo quest main script is now in the demo path, instead
+*	of the buffer.
 * Try to fix bugs caused by changes in 2.8.10.
 * Added __GH_ETHEREAL, defaulted to 1 to user settings.
 *	This forces ffcs used to control ghost npcs to Ethereal.

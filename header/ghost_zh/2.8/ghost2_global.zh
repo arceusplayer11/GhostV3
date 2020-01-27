@@ -158,9 +158,14 @@ void AutoGhost()
         enemy=Screen->LoadNPC(i);
         
         // ID out of range??
-        if(enemy->ID<AUTOGHOST_MIN_ENEMY_ID || enemy->ID>AUTOGHOST_MAX_ENEMY_ID)
-            continue;
-        
+        if(enemy->ID<AUTOGHOST_MIN_ENEMY_ID)
+	{
+		continue;
+	}
+	if(enemy->ID>AUTOGHOST_MAX_ENEMY_ID)
+	{
+		continue;
+	}
 	
         if(__GH_ALWAYS_USE_NAME) // Read from name
         {
