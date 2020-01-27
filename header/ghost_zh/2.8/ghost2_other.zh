@@ -230,7 +230,7 @@ int FindUnusedFFC()
     {
         f=Screen->LoadFFC(i);
         
-        if((f->Data==0 || f->Data==GH_INVISIBLE_COMBO) )
+        if((!(f->Data) || f->Data==GH_INVISIBLE_COMBO) )
 	{
 	
            if (!(f->Script))
@@ -255,7 +255,7 @@ int FindUnusedFFC(int startingFrom)
     {
         f=Screen->LoadFFC(i);
         
-        if((f->Data==0 || f->Data==GH_INVISIBLE_COMBO) )
+        if((!(f->Data) || f->Data==GH_INVISIBLE_COMBO) )
 	{
 	
            if (!(f->Script))

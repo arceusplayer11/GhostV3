@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.9
+// Version 2.8.12
 // Use this for 2.53.1, and later versions of ZQuest
 
 // See ghost_zh_docs/index.html for documentation.
@@ -99,6 +99,12 @@ const int __GH_DEFAULT_IMPRECISION = 2;
 // this does not work due to a bug. Set this to 1 only if you're using a newer
 // ZC version than 2.50.3 RC1.
 const int __GH_CLEAR_FFC_LINK = 0;
+
+// Set to 1 to make ghost ffcs Ethereal so that they cannot block
+// other combo types/flags on the screen.
+// Added in 2.8.12. The prior versions did not have this.
+// Set to 0 if it causes issues in older quests.
+const int __GH_ETHEREAL = 1;
 
 // npc->Misc[] index
 // Set this so it doesn't conflict with other scripts. Legal values are 0-15.

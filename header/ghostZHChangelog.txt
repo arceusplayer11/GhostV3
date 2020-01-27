@@ -1,5 +1,11 @@
 ghost.zh
-Version 2.8.11
+Version 2.8.12
+
+2.8.12
+	(2020-27-JAN)
+* Try to fix bugs caused by changes in 2.8.10.
+* Added __GH_ETHEREAL, defaulted to 1 to user settings.
+*	This forces ffcs used to control ghost npcs to Ethereal.
 
 2.8.11 
 	(2020-23-JAN)
