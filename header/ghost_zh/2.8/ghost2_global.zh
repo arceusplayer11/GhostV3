@@ -165,8 +165,8 @@ void AutoGhost()
         if(__GH_ALWAYS_USE_NAME) // Read from name
         {
             // Already checked this enemy?
-            //if(enemy->Misc[__GHI_NPC_DATA])
-            if(enemy->Misc[__GHI_NPC_DATA]&0x10000)
+            if(enemy->Misc[__GHI_NPC_DATA])
+            //if(enemy->Misc[__GHI_NPC_DATA]&0x10000)
                 continue;
         }
 	else
