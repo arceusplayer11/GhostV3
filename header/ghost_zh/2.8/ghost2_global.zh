@@ -246,7 +246,8 @@ void AutoGhost()
         f->InitD[0]=enemy->ID;
 	if (__GH_ETHEREAL)
 	{
-		f->Flags[FFCF_ETHEREAL] = true;
+		//if( combo <= 0 || combo == GH_INVISIBLE_COMBO ) //Only do this if not using combo draws
+		f->Flags[FFCF_ETHEREAL] = true; //move down to the lower if(combo<=0) check if this is bugged anddraws to higher layers.
 	}
         
         // Setting this in advance hides the spawn animation, so it's not
