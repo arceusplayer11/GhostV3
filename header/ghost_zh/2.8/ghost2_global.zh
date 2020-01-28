@@ -279,80 +279,80 @@ void AutoGhost()
 // number and combo are stored in output[0] and output[1], respectively.
 int __AutoGhostParseName(npc enemy, int output)
 {
-    int npcName[64];
-    int buffer[64];
+	int npcName[64];
+	int buffer[64];
     
-    output[1]=GH_INVISIBLE_COMBO; // Default value
+	output[1] = GH_INVISIBLE_COMBO; // Default value
     
-    enemy->GetName(npcName);
+	enemy->GetName(npcName);
     
-    for(int i=0; i<63; i++)
-    {
-        if(npcName[i]==AUTOGHOST_DELIMITER)
-        {
-            // Found something
-            int character=npcName[i+1];
-            if(__IsScriptNameChar(character, true))
-            {
-                // Script name
-                int j=0;
-                for(i=i+1; __IsScriptNameChar(npcName[i], false); i++)
-                {
-                    buffer[j]=npcName[i];
-                    j++;
-                }
-                buffer[j]=NULL;
-                output[0]=Game->GetFFCScript(buffer);
-                i--;
+	for ( int i = 0; i < 63; ++i )
+	{
+		if ( npcName[i] == AUTOGHOST_DELIMITER )
+		{
+			// Found something
+			int character = npcName[i+1];
+			if ( __IsScriptNameChar(character, true) )
+			{
+				// Script name
+				int j = 0;
+				for ( i = i + 1; (__IsScriptNameChar(npcName[i], false)); ++i )
+				{
+					buffer[j] = npcName[i];
+					++j;
+				}
+				buffer[j] = NULL;
+				output[0] = Game->GetFFCScript(buffer);
+				--i;
                 
-                // No such script?
-                if(output[0]<=0)
-                {
-                    int error1[]="ghost.zh: AutoGhost setup failed - script does not exist.\n";
-                    int error2[80]="  Script name: %s\n";
-                    printf(error1);
-                    printf(error2, buffer);
-                    return 0;
-                }
-            }
-            else if((character>='0' && character<='9') || character=='-')
-            {
-                // Combo number
-                int j=0;
-                if(character=='-')
-                {
-                    buffer[0]='-';
-                    j=1;
-                    i++;
-                }
-                for(i=i+1; npcName[i]>='0' && npcName[i]<='9'; i++)
-                {
-                    buffer[j]=npcName[i];
-                    j++;
-                }
-                buffer[j]=NULL;
-                output[1]=atoi(buffer);
-                i--;
-            }
-        }
-	return 1;
-    }
+				// No such script?
+				if ( output[0] <= 0 )
+				{
+					int error1[] = 		"ghost.zh: AutoGhost setup failed - script does not exist.\n";
+					int error2[80] = 	"  Script name: %s\n";
+					printf(error1);
+					printf(error2, buffer);
+					return 0;
+				}
+			}
+			else if ( ( character >= '0' && character <= '9' ) || character == '-' )
+			{
+				// Combo number
+				int j = 0;
+				if ( character == '-' )
+				{
+					buffer[0] = '-';
+					j = 1;
+					++i;
+				}
+				for ( i = i + 1; ( npcName[i] >= '0' && npcName[i] <= '9' ); ++i )
+				{
+					buffer[j] = npcName[i];
+					++j;
+				}
+				buffer[j] = NULL;
+				output[1] = atoi(buffer);
+				--i;
+			}
+		}
+		return 1;
+	}
     
-    // Expected a script name and didn't find it?
-    if(__GH_ALWAYS_USE_NAME==0 && output[0]<=0)
-    {
-        // Didn't find it?
-        if(output[0]<=0)
-        {
-            int error1[]="ghost.zh: AutoGhost setup failed - script not found.\n";
-            int error2[80]="  Enemy name: %s\n";
-            int error3[55]="  Script name should start after this character: %c\n";
-            printf(error1);
-            printf(error2, npcName);
-            printf(error3, AUTOGHOST_DELIMITER);
-	    return 0;
-        }
-    }
+	// Expected a script name and didn't find it?
+	if( !(__GH_ALWAYS_USE_NAME) )// == 0 && output[0] <= 0 ) //wtf; why would you check this array twice? You check it conditionally below, too. -Z
+	{
+		// Didn't find it?
+		if ( output[0] <=0 )
+		{
+			int error1[]=	"ghost.zh: AutoGhost setup failed - script not found.\n";
+			int error2[80]=	"  Enemy name: %s\n";
+			int error3[55]=	"  Script name should start after this character: %c\n";
+			printf(error1);
+			printf(error2, npcName);
+			printf(error3, AUTOGHOST_DELIMITER);
+			return 0;
+		}
+	}
 }
 
 // Used to silently kill an enemy when it couldn't be set up.
@@ -367,17 +367,33 @@ void __AutoGhostKill(npc enemy)
 
 bool __IsScriptNameChar(int character, bool first)
 {
-    // No short circuiting; faster to split it up
-    if(character>='a' && character<='z')
-        return true;
-    if(character>='A' && character<='Z')
-        return true;
-    if(character=='_')
-        return true;
-    if(!first)
-    {
-        if(character>='0' && character<='9')
-            return true;
-    }
-    return false;
+	if ( character >= 'a' )
+	{
+		if( character <= 'z')
+		{
+			return true;
+		}
+	}
+	if ( character >= 'A' )
+	{
+		if ( character <= 'Z' )
+		{
+			return true;
+		}
+	}
+	if( character == '_' )
+        {
+		return true;
+	}
+	if(!first)
+	{
+		if ( character >= '0' )
+		{
+			if ( character <= '9' )
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
