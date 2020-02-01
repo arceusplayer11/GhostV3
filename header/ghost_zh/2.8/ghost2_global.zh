@@ -224,7 +224,7 @@ void AutoGhost()
 		}
         
 		// Invalid script?
-		if ( scriptNum < = 0 ) //|| scriptNum>511)
+		if ( scriptNum <= 0 ) //|| scriptNum>511)
 		{
 		    __AutoGhostKill(enemy);
 		    continue;
