@@ -164,6 +164,7 @@ void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int 
         else
             ghost->Extend=4; // Disables built-in shadows
         ghost->OriginalTile=GH_BLANK_TILE;
+        ghost->Tile=GH_BLANK_TILE;
         ghost->TileWidth=Ghost_TileWidth;
         ghost->TileHeight=Ghost_TileHeight;
         ghost->HitWidth=16*Ghost_TileWidth;
