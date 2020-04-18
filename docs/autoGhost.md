@@ -161,7 +161,10 @@ __GH_WEAPONS_HIT_PLATFORMS
      Set this to 0 if you are using legacy scripts that are incompatible with this option.
      This relies on __GH_FIX_EWM_FALL and __GH_FIX_EWM_THROW.
 
-
+__GH_FIX_255_ANONE
+:    If you are using 2.53.1 or 2.55.0, set this to `1` to ensure that the ->Tile attribute is
+     updated along with ->OriginalTile for enemies that use the Animation Style 'None'.  
+     
 If you're making multiple quests at once that use different settings, you
 should use a different copy of ghost.zh for each one. You only need to copy
 ghost.zh itself, not the ghost_zh folder.
