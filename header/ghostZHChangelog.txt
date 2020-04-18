@@ -1,5 +1,19 @@
 ghost.zh
-Version 2.8.12
+Version 2.8.15
+
+2.8.15
+	( 2020-19-APRIL )
+* Added __GH_FIX_255_ANONE to fix issues where the tiles for enemies
+* 	using Animation Style 'None' in 2.55.0 (and possibly in 2.53.1)
+*	do not have visual bugs. 
+
+2.8.14
+	( 2020-23-MARCH )
+	* Added some YuuRand-specific fixes. 
+2.8.13
+	( 2020-28-JAN )
+* Further optimised AutoGHost, plus tabbing/spacing clean-up.
+* Optimised int __AutoGhostParseName() and __IsScriptNameChar()
 
 2.8.12
 	(2020-27-JAN)
