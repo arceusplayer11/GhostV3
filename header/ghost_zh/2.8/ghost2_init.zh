@@ -288,7 +288,7 @@ void __Ghost_InitInternal(ffc this, npc ghost, bool useEnemyPos, int combo, int 
         ghost->OriginalTile=GH_BLANK_TILE;
 	if ( __GH_FIX_255_ANONE )
 	{
-		ghost->OriginalTile=GH_BLANK_TILE;
+		ghost->Tile=GH_BLANK_TILE;
 	}
         ghost->TileWidth=Ghost_TileWidth;
         ghost->TileHeight=Ghost_TileHeight;
