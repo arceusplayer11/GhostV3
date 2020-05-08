@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.7
+// Version 2.8.15
 
 // See ghost_zh_docs/index.html for documentation.
 
@@ -40,6 +40,9 @@ const int GH_PREFER_GHOST_ZH_SHADOWS = 0; // 0 = No, 1 = Yes
 
 // Top-left corner of a 4x4 block of blank tiles
 const int GH_BLANK_TILE = 65456; // Min: 0, Max: 65456
+
+// For ZC Versions where Animation Style (None) does not set ->Tile, enable this. 
+const int GH_FIX_255_ANONE = 1;
 
 // Invisible combo with no properties set
 const int GH_INVISIBLE_COMBO = 1; // Min: 1, Max: 65279
@@ -152,8 +155,7 @@ import "ghost_zh/2.8/ghost2_init.zh"
 import "ghost_zh/2.8/ghost2_modification.zh"
 import "ghost_zh/2.8/ghost2_movement.zh"
 import "ghost_zh/2.8/ghost2_other.zh"
-import "ghost_zh/2.8/ghost2_update.zh"
+import "ghost_zh/2.8/ghost2_updateYR.zh"
 import "ghost_zh/2.8/ghost2_yuurand.zh"
 
 import "ghost_zh/2.8/ghost2_scripts.zs"
-

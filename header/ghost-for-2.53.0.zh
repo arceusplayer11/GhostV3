@@ -1,3 +1,10 @@
+// ghost.zh
+// Version 2.8.12
+// Use this for 2.53.1, and later versions of ZQuest
+
+// See ghost_zh_docs/index.html for documentation.
+
+//All User Settings
 // Standard settings -----------------------------------------------------------
 
 // Small (1x1) shadow settings
@@ -93,6 +100,27 @@ const int __GH_DEFAULT_IMPRECISION = 2;
 // ZC version than 2.50.3 RC1.
 const int __GH_CLEAR_FFC_LINK = 0;
 
+// Set to 1 to make ghost ffcs Ethereal so that they cannot block
+// other combo types/flags on the screen.
+// Added in 2.8.12. The prior versions did not have this.
+// Set to 0 if this causes bugs in legacy quests or scripts.
+const int __GH_ETHEREAL = 1;
+
+// If set to 1, weapons in sideview will die when they hit
+// a solid sideview platform.
+// Set to 0 if this causes bugs in legacy quests or scripts.
+const int __GH_WEAPONS_HIT_PLATFORMS = 1;
+
+// If set to 1, this will patch bugs where falling weapons can
+// be inappropriately destroyed because of their position.
+// Set to 0 if this causes bugs in legacy quests or scripts.
+const int __GH_FIX_EWM_FALL = 1;
+
+// If set to 1, this will patch bugs where thrown weapons can
+// be inappropriately destroyed because of their position.
+// Set to 0 if this causes bugs in legacy quests or scripts.
+const int __GH_FIX_EWM_THROW = 1;
+
 // npc->Misc[] index
 // Set this so it doesn't conflict with other scripts. Legal values are 0-15.
 const int __GHI_NPC_DATA = 15;
@@ -118,3 +146,62 @@ const int __EWI_ON_DEATH_ARG   = 14;
 const int __EWI_DUMMY_SOUND    = 2;
 const int __EWI_DUMMY_STEP     = 4;
 const int __EWI_DUMMY_SPRITE   = 5;
+
+// Returns true if the given combo should be considered a pit.
+bool __IsPit(int combo)
+{
+    return IsPit(combo); // std.zh implementation by default
+}
+
+// Returns true if enemies are visible on screens with the
+// "All Enemies Are Invisible" flag enabled
+bool __HaveAmulet()
+{
+    if ( Link->Item[I_AMULET1] )
+    {
+	return true;
+    }
+    if ( Link->Item[I_AMULET2] )
+    {
+	return true;
+    }
+    return false;
+}
+
+//Used to determine if a weapon hit a platform in sideview.
+bool ghost2__OnSidePlatform(int x, int y, int xOff, int yOff, int h, int w) 
+{
+	for(int i = 0; i <= (w-1); ++i)
+	{
+		if( Screen->isSolid( (x + xOff + i), (y + yOff) + h ) )
+		{
+			if( (Screen->Flags[SF_ROOMTYPE]&4) )
+			{
+				return true;
+			}
+		}
+           
+	}
+	return false;
+}
+
+// End advanced settings -------------------------------------------------------
+
+
+import "ghost_zh/2.8/ghost2_common.zh"
+import "ghost_zh/2.8/ghost2_deprecated.zh"
+import "ghost_zh/2.8/ghost2_drawing.zh"
+import "ghost_zh/2.8/ghost2_eweapon.zh"
+import "ghost_zh/2.8/ghost2_eweaponDeath.zh"
+import "ghost_zh/2.8/ghost2_eweaponMovement.zh"
+import "ghost_zh/2.8/ghost2_flags.zh"
+import "ghost_zh/2.8/ghost2_global.zh"
+import "ghost_zh/2.8/ghost2_init.zh"
+import "ghost_zh/2.8/ghost2_modification.zh"
+import "ghost_zh/2.8/ghost2_movement.zh"
+import "ghost_zh/2.8/ghost2_other.zh"
+import "ghost_zh/2.8/ghost2_update.zh"
+
+import "ghost_zh/2.8/ghost2_scripts.zs"
+
+

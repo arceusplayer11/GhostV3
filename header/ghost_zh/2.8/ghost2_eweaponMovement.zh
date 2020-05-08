@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.8
+// Version 2.8.15
 
 // All the EWeapon movement update functions are in this file.
 
@@ -223,112 +223,215 @@ void __UpdateEWMVeer(eweapon wpn)
 
 void __UpdateEWMThrow(eweapon wpn)
 {
-    // __EWI_WORK: Current jump
-    // __EWI_WORK_2: Current Z position
-    // __EWI_MOVEMENT_ARG: Initial jump
-    // __EWI_MOVEMENT_ARG_2: Flags
+	// __EWI_WORK: Current jump
+	// __EWI_WORK_2: Current Z position
+	// __EWI_MOVEMENT_ARG: Initial jump
+	// __EWI_MOVEMENT_ARG_2: Flags
     
-    wpn->Jump=0; // Override engine handling of Z movement
+	wpn->Jump=0; // Override engine handling of Z movement
     
-    // Just thrown
-    if(wpn->Misc[__EWI_WORK]==0 && wpn->Misc[__EWI_MOVEMENT_ARG]!=0)
-    {
-        wpn->Misc[__EWI_WORK]=wpn->Misc[__EWI_MOVEMENT_ARG];
-        wpn->Misc[__EWI_MOVEMENT_ARG]=0;
-    }
+	// Just thrown
+	if(wpn->Misc[__EWI_WORK]==0 && wpn->Misc[__EWI_MOVEMENT_ARG]!=0)
+	{
+		wpn->Misc[__EWI_WORK]=wpn->Misc[__EWI_MOVEMENT_ARG];
+		wpn->Misc[__EWI_MOVEMENT_ARG]=0;
+	}
     
-    // Fall
-    wpn->Misc[__EWI_WORK_2]=Max(wpn->Misc[__EWI_WORK_2]+wpn->Misc[__EWI_WORK], 0);
-    wpn->Z=wpn->Misc[__EWI_WORK_2];
+	// Fall
+	wpn->Misc[__EWI_WORK_2]=Max(wpn->Misc[__EWI_WORK_2]+wpn->Misc[__EWI_WORK], 0);
+	if(__GH_FIX_EWM_THROW)
+	{
+		if(!IsSideview())
+		{
+			wpn->Z=wpn->Misc[__EWI_WORK_2];
+		}
+		else
+		{
+			wpn->Y = 176-wpn->Misc[__EWI_WORK_2];
+		}
+	}
+	else
+	{
+		wpn->Y = 176-wpn->Misc[__EWI_WORK_2];
+	}
     
-    // Hit the ground
-    // Still in the air; adjust velocity
-    if(wpn->Misc[__EWI_WORK_2]>0) // Z>0
-        wpn->Misc[__EWI_WORK]=Max(wpn->Misc[__EWI_WORK]-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+	// Still in the air; adjust velocity
+	if(wpn->Misc[__EWI_WORK_2] > 0 )
+	{
+		if(__GH_WEAPONS_HIT_PLATFORMS)
+		{
+			if (!ghost2__OnSidePlatform(wpn->X, wpn->Y, 
+							wpn->HitXOffset,
+							wpn->HitYOffset, 
+							wpn->HitHeight,wpn->HitWidth)
+			)
+			{
+				wpn->Misc[__EWI_WORK]=Max(wpn->Misc[__EWI_WORK]-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+			}
+		}
+		else 
+		{
+			wpn->Misc[__EWI_WORK]=Max(wpn->Misc[__EWI_WORK]-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+		}
+	}
     
-    // Hit the ground
-    else
-    {
-        bool done=false;
+	// Hit the ground
+	else
+	{
+		bool done=false;
         
-        // Bounce
-        if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_BOUNCE)!=0)
-        {
-            // Falling fast enough?
-            if(wpn->Misc[__EWI_WORK]<-0.5) // Jump<=-0.5
-            {
-                wpn->Misc[__EWI_WORK]*=-0.5;
-                wpn->Step*=0.75;
-            }
-            // Not fast enough
-            else
-                done=true;
-        }
-        // Don't bounce
-        else
-            done=true;
-        
-        // Movement ended; stop or die?
-        if(done)
-        {
-            if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_DIE)!=0)
-            {
-                wpn->Z=0;
-                KillEWeapon(wpn);
-            }
-            else
-            {
-                wpn->Misc[__EWI_MOVEMENT]=0;
-                wpn->Step=0;
-            }
-        }
-    }
+		// Bounce
+		if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_BOUNCE))
+		{
+			// Falling fast enough?
+			if(wpn->Misc[__EWI_WORK]<-0.5) // Jump<=-0.5
+			{
+				wpn->Misc[__EWI_WORK]*=-0.5;
+				wpn->Step*=0.75;
+			}
+			// Not fast enough
+			else
+			{
+				done=true;
+			}
+		}
+		// Don't bounce
+		else
+		{
+			done=true;
+		}
+		// Movement ended; stop or die?
+		if(done)
+		{
+			if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_DIE))
+			{
+				wpn->Z=0;
+				KillEWeapon(wpn);
+			}
+			else
+			{
+				wpn->Misc[__EWI_MOVEMENT]=0;
+				wpn->Step=0;
+			}
+		}
+	}
 }
 
 void __UpdateEWMFall(eweapon wpn)
 {
-    wpn->Jump=0; // Override engine handling of Z movement
-    wpn->Misc[__EWI_WORK_2]-=wpn->Misc[__EWI_WORK];
-    wpn->Z=wpn->Misc[__EWI_WORK_2];
-    wpn->Misc[__EWI_WORK]=Min(wpn->Misc[__EWI_WORK]+GH_GRAVITY, GH_TERMINAL_VELOCITY);
-    
-    // Hit the ground?
-    if(wpn->Misc[__EWI_WORK_2]<=0)
-    {
-        bool done=false;
+	wpn->Jump=0; // Override engine handling of Z movement
+	wpn->Misc[__EWI_WORK_2]-=wpn->Misc[__EWI_WORK];
+	if(__GH_FIX_EWM_FALL)
+	{
+		if(!IsSideview())	
+		{
+			wpn->Z=wpn->Misc[__EWI_WORK_2];
+		}
+		else
+		{
+			wpn->HitYOffset= wpn->Misc[__EWI_WORK_2];
+			wpn->DrawYOffset=wpn->Misc[__EWI_WORK_2];
+		}
+		wpn->Misc[__EWI_WORK]=Min(wpn->Misc[__EWI_WORK]+GH_GRAVITY, GH_TERMINAL_VELOCITY);
+	}
+	else
+	{
+		wpn->Z=wpn->Misc[__EWI_WORK_2];
+		wpn->Misc[__EWI_WORK]=Min(wpn->Misc[__EWI_WORK]+GH_GRAVITY, GH_TERMINAL_VELOCITY);
+	}
+	
+	// Hit the ground?
+	if(__GH_WEAPONS_HIT_PLATFORMS)
+	{
+		if ( wpn->Misc[__EWI_WORK_2] <=0 )
+		{
+			if(!ghost2__OnSidePlatform(wpn->X, wpn->Y, 
+							wpn->HitXOffset,
+							wpn->HitYOffset, 
+							wpn->HitHeight,wpn->HitWidth)
+			)
+			{
+				bool done=false;
         
-        // Bounce
-        if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_BOUNCE)!=0)
-        {
-            // Falling fast enough?
-            if(wpn->Misc[__EWI_WORK]<-0.5) // Jump<=-0.5
-            {
-                wpn->Misc[__EWI_WORK]*=-0.5;
-                wpn->Step*=0.75;
-            }
-            // Not fast enough
-            else
-                done=true;
-        }
-        // Don't bounce
-        else
-            done=true;
-        
-        // Movement ended; stop or die?
-        if(done)
-        {
-            if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_DIE)!=0)
-            {
-                wpn->Z=0;
-                KillEWeapon(wpn);
-            }
-            else
-            {
-                wpn->Misc[__EWI_MOVEMENT]=0;
-                wpn->Step=0;
-            }
-        }
-    }
+				// Bounce
+				if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_BOUNCE)!=0)
+				{
+					// Falling fast enough?
+					if(wpn->Misc[__EWI_WORK]<-0.5) // Jump<=-0.5
+					{
+						wpn->Misc[__EWI_WORK]*=-0.5;
+						wpn->Step*=0.75;
+					}
+					// Not fast enough
+					else
+					{
+						done=true;
+					}
+				}
+				// Don't bounce
+				else
+				{
+					done=true;
+				}
+				// Movement ended; stop or die?
+				if(done)
+				{
+					if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_DIE))
+					{
+						wpn->Z=0;
+						KillEWeapon(wpn);
+					}
+					else
+					{
+						wpn->Misc[__EWI_MOVEMENT]=0;
+						wpn->Step=0;
+					}
+				}
+			}
+		}
+	}
+	else
+	{
+		if(wpn->Misc[__EWI_WORK_2]<=0)
+		{
+			bool done=false;
+		
+			// Bounce
+			if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_BOUNCE))
+			{
+				// Falling fast enough?
+				if(wpn->Misc[__EWI_WORK]<-0.5) // Jump<=-0.5
+				{
+					wpn->Misc[__EWI_WORK]*=-0.5;
+					wpn->Step*=0.75;
+				}
+				// Not fast enough
+				else
+				{
+					done=true;
+				}
+			}
+			// Don't bounce
+			else
+			{
+				done=true;
+			}
+			// Movement ended; stop or die?
+			if(done)
+			{
+				if((wpn->Misc[__EWI_MOVEMENT_ARG_2]&EWMF_DIE))
+				{
+					wpn->Z=0;
+					KillEWeapon(wpn);
+				}
+				else
+				{
+					wpn->Misc[__EWI_MOVEMENT]=0;
+					wpn->Step=0;
+				}
+			}
+		}
+	}
 }
 
 void __UpdateEWMDrift(eweapon wpn)

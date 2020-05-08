@@ -1,5 +1,87 @@
 ghost.zh
-Version 2.8.8
+Version 2.8.15
+
+2.8.15
+	( 2020-19-APRIL )
+* Added __GH_FIX_255_ANONE to fix issues where the tiles for enemies
+* 	using Animation Style 'None' in 2.55.0 (and possibly in 2.53.1)
+*	do not have visual bugs. 
+
+2.8.14
+	( 2020-23-MARCH )
+	* Added some YuuRand-specific fixes. 
+2.8.13
+	( 2020-28-JAN )
+* Further optimised AutoGHost, plus tabbing/spacing clean-up.
+* Optimised int __AutoGhostParseName() and __IsScriptNameChar()
+
+2.8.12
+	(2020-27-JAN)
+* Removed AutoGhost.txt: This file was deprecated by autoGhostReadme.txt.
+* Fixed some docs typos and searching for new additions.
+* 	Search keywords need two spaces on either side of them
+*	in search_index.json.
+* Updated the Docs (txt, html, and md) with new configs, and 
+*	to the 2.53.1 spec for use of '#include'.
+* Fixed some bugs when using EWM_FALL and EWM_THROW in sideview. 
+*	-ywkls provided the base fixes.
+* Added the following config values:
+*	__GH_WEAPONS_HIT_PLATFORMS
+*		If set to 1, weapons in sideview will die when 
+*		they hit a solid sideview platform.
+*		
+*	__GH_FIX_EWM_FALL
+*		If set to 1, this will patch bugs where falling 
+*		weapons can be inappropriately destroyed because 
+*		of their position.
+*
+*	__GH_FIX_EWM_THROW
+*		If set to 1, this will patch bugs where thrown 
+*		weapons can be inappropriately destroyed because 
+*		of their position.
+*
+* These configs default on:
+* 	Set any of these to 0 if this causes bugs in legacy quests/scripts.
+*
+* Patched the compatibility file for 2.50.x and 2.53.0
+* Updated the demo quest anddemo npcs to use include, the new '.zs'
+*	extension, and to show ghost enemies behind layers.
+*	The demo quest main script is now in the demo path, instead
+*	of the buffer.
+* Try to fix bugs caused by changes in 2.8.10.
+* Added a config, __GH_ETHEREAL, defaulted to 1 to user settings.
+*	This forces ffcs used to control ghost npcs to Ethereal.
+
+2.8.11 
+	(2020-23-JAN)
+* Fixed __GhCleanUp() to reset the ffc positions to 0,0.
+
+2.8.10 (2020-18/19-JAN)
+* Fixed sanity check in ghost_create functions to use consts.
+* Fix a logic bug in Ghost_InitAutoGhost
+* Add sanity checks to Ghost_InitCreate, Ghost_InitCreateAt to legal ranges.
+* Added Ghost_InitCreateAt(ffc this, int enemyID, int x, int y)
+* Don't continue in Autoghost() until after we are ready to kill
+*	invalid enemies, deallocating them.
+* Optimised some function calls.
+* Changed void __AutoGhostParseName() to int __AutoGhostParseName
+* 	return 1 on success; or 0.
+* FindUnusedFFC is optimised now and has an extra sanity check.
+* Fixed bad logging caused by some kind of ZASM quirk in 2.53+. 
+*	Apparently ZASM doesn't want to return before the traces?!
+* Optimised Ghost_InitAutoGhost()
+
+
+2.8.9 
+	(2020-18-JAN)
+* Optimised Ghost_InitAutoGhost().
+* Fixed bad logging caused by some kind of ZASM quirk in 2.53+.
+* Apparently ZASM doesn't want to return before the traces?!
+	(2020-16-JAN)
+* Deleted ghost.cfg:
+* I added ghost.cfg to bypass a issue with the YR wrapper, but ultimately
+*	it was not needed, so the settings are once again in ghost.zh.
+
 
 2.8.8 (2020-12-JAN)
 * Removed dummy functions and added new YuuRand specific functions to ghost2_yuurand.zh

@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.8
+// Version 2.8.15
 
 
 int FindSpawnPoint(bool landOK, bool wallsOK, bool waterOK, bool pitsOK)
@@ -224,21 +224,48 @@ npc SpawnNPC(int id)
 
 int FindUnusedFFC()
 {
-    return FindUnusedFFC(0);
+    ffc f;
+    
+    for(int i=1; i<33; ++i)
+    {
+        f=Screen->LoadFFC(i);
+        
+        if((!(f->Data) || f->Data==GH_INVISIBLE_COMBO) )
+	{
+	
+           if (!(f->Script))
+	   {
+		if(!(f->Flags[FFCF_CHANGER]))
+		{
+			return i;
+		}
+	    }
+	}
+    }
+    
+    // Couldn't find one
+    return 0;
 }
 
 int FindUnusedFFC(int startingFrom)
 {
     ffc f;
     
-    for(int i=Max(startingFrom+1, AUTOGHOST_MIN_FFC); i<=AUTOGHOST_MAX_FFC; i++)
+    for(int i=Max(startingFrom+1, AUTOGHOST_MIN_FFC); i<=(Min(AUTOGHOST_MAX_FFC,32)); ++i)
     {
         f=Screen->LoadFFC(i);
         
-        if((f->Data==0 || f->Data==GH_INVISIBLE_COMBO) &&
-           f->Script==0 &&
-           !f->Flags[FFCF_CHANGER])
-            return i;
+        if((!(f->Data) || f->Data==GH_INVISIBLE_COMBO) )
+	{
+	
+           if (!(f->Script))
+	   {
+		if(!(f->Flags[FFCF_CHANGER]))
+		{
+			return i;
+		}
+	    }
+	}
     }
     
     // Couldn't find one
@@ -625,6 +652,8 @@ bool __Ghost_IsFlickering(npc ghost)
 void __GhCleanUp(ffc this)
 {
     this->Data=0;
+    this->X = 0;
+    this->Y = 0;
     this->Vx=0;
     this->Vy=0;
     this->Ax=0;

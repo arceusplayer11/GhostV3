@@ -1,4 +1,4 @@
-//Yuurand Functions
+//Yuurand Functions v2.8.15
 
 void UpdateGhostZH1_YR()
 {
@@ -50,7 +50,7 @@ void UpdateEWeapons_YR()
 
 void Ghost_CheckHit_YR(ffc this, npc ghost)
 {
-    // Just got hit
+     // Just got hit
     if(ghost->HP<Ghost_HP)
     {
         // Remember HP and start flashing
@@ -64,22 +64,31 @@ void Ghost_CheckHit_YR(ffc this, npc ghost)
         {
             int xDiff=Link->X-Ghost_X;
             int yDiff=Link->Y-Ghost_Y;
+			int P2switch;
             
             // The correct way to find the knockback direction would be to check
             // the direction of the weapon, but that's not possible. Instead,
             // Link's position and direction are used.
-		
-	    if(Distance(Ghost_X, Ghost_Y, Link->X, Link->Y) >Distance(Ghost_X, Ghost_Y, G[G_PLAYER_TWO_X], G[G_PLAYER_TWO_Y])){
+            
+			 if(G[G_MULTIPLAYER_ENABLED] == 1 && Distance(Ghost_X, Ghost_Y, Link->X, Link->Y) >Distance(Ghost_X, Ghost_Y, G[G_PLAYER_TWO_X], G[G_PLAYER_TWO_Y])){
 				xDiff=G[G_PLAYER_TWO_X]-Ghost_X;
 				yDiff=G[G_PLAYER_TWO_Y]-Ghost_Y;
+				P2switch = 1;
 			}
-            
+			
             // If Link is close, use his direction
             if(Abs(xDiff)<(Ghost_TileWidth+1)*16 && Abs(yDiff)<(Ghost_TileHeight+1)*16)
             {
-                if((Link->Dir&10b)==(Ghost_Dir&10b) || Ghost_Dir>3 || // Both horizontal or vertical, or enemy diagonal?
-                   Ghost_FlagIsSet(GHF_KNOCKBACK_4WAY))
-                    __Ghost_KnockbackCounter=Link->Dir<<12|__GH_KNOCKBACK_TIME; // Direction and timer are stored together
+				if(P2switch == 0){
+					if((Link->Dir&10b)==(Ghost_Dir&10b) || Ghost_Dir>3 || // Both horizontal or vertical, or enemy diagonal?
+					   Ghost_FlagIsSet(GHF_KNOCKBACK_4WAY))
+						__Ghost_KnockbackCounter=Link->Dir<<12|__GH_KNOCKBACK_TIME; // Direction and timer are stored together
+				}
+				else{
+					if((G[G_PLAYER_TWO_DIR]&10b)==(Ghost_Dir&10b) || Ghost_Dir>3 || // Both horizontal or vertical, or enemy diagonal?
+					   Ghost_FlagIsSet(GHF_KNOCKBACK_4WAY))
+						__Ghost_KnockbackCounter=G[G_PLAYER_TWO_DIR]<<12|__GH_KNOCKBACK_TIME; // Direction and timer are stored together
+				}
             }
             
             // If Link is far, use the direction from him to the enemy
@@ -199,7 +208,7 @@ void Ghost_CheckHit_YR(ffc this, npc ghost)
 
 
 
-
+const int EWL_NEAR_P2	   = 4;
 // Update a weapon's movement, lifespan, and death effects
 void UpdateEWeapon_YR(eweapon wpn)
 {
@@ -288,6 +297,11 @@ void UpdateEWeapon_YR(eweapon wpn)
             {
                 wpn->Step=Max(0, wpn->Step-wpn->Misc[__EWI_LIFESPAN_ARG]);
                 if(wpn->Step<=0)
+                    KillEWeapon(wpn);
+            }
+			else if(wpn->Misc[__EWI_LIFESPAN]==EWL_NEAR_P2)
+            {
+                if(Distance(wpn->X, wpn->Y, G[G_PLAYER_TWO_X], G[G_PLAYER_TWO_Y])<wpn->Misc[__EWI_LIFESPAN_ARG])
                     KillEWeapon(wpn);
             }
         } // End lifespan updates

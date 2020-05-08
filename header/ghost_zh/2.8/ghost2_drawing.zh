@@ -1,5 +1,5 @@
 // ghost.zh
-// Version 2.8.8
+// Version 2.8.15
 
 int __ghzhDrawData[1000];
 

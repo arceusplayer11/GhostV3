@@ -531,7 +531,7 @@ bool Ghost_CheckFreeze(ffc this, npc ghost)
             else
                 this->Data=Ghost_Data;
             
-            Ghost_CheckHit(this, ghost);
+            Ghost_CheckHit(this, ghost, G,  G_PLAYER_TWO_X, G_PLAYER_TWO_Y);
         }
         
         // Restore movement
@@ -688,7 +688,7 @@ bool __Ghost_WaitframePart2(ffc this, npc ghost, bool clearOnDeath, bool quitOnD
     // Not dead; was it hit, stunned, or frozen?
     if(!dead)
     {
-        Ghost_CheckHit(this, ghost);
+        Ghost_CheckHit(this, ghost, G,  G_PLAYER_TWO_X, G_PLAYER_TWO_Y);
         dead=!Ghost_CheckFreeze(this, ghost);
     }
     
