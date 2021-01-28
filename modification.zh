@@ -1,0 +1,177 @@
+// ghost.zh
+// Version 2.8.15
+
+
+void Ghost_Transform(npc ghost, int combo, int cset, int tileWidth, int tileHeight)
+{
+	int diff;
+	ghost->Extend = 3;
+	
+	if(combo>=0)
+	{
+		ghost->Misc[GH_DATA] = combo;
+		ghost->Tile = Game->ComboTile(ghost->Misc[GH_DATA]);
+	}
+	
+	if(cset>=0)
+		ghost->CSet=cset;
+	
+	if(tileWidth>0)
+	{
+		diff=8*(ghost->TileWidth-tileWidth);
+		ghost->TileWidth=tileWidth;
+
+		ghost->X+=diff;
+	}
+	
+	if(tileHeight>0)
+	{
+		diff=8*(ghost->TileHeight-tileHeight);
+		ghost->TileHeight=tileHeight;
+
+		ghost->Y+=diff;
+	}
+	
+	Ghost_SetHitOffsets(ghost, 0, 0, 0, 0);
+}
+
+
+void Ghost_SetSize(npc ghost, int tileWidth, int tileHeight)
+{
+	ghost->Extend = 3;
+	if(tileWidth>0)
+	ghost->TileWidth=tileWidth;
+	
+	if(tileHeight>0)
+		ghost->TileHeight=tileHeight;
+	
+	Ghost_SetHitOffsets(ghost, 0, 0, 0, 0);
+}
+
+
+void Ghost_SetHitOffsets(npc ghost, float top, float bottom, float left, float right)
+{
+	if(top>0 && top<1)
+		top=Round(top*ghost->TileHeight*16);
+	if(bottom>0 && bottom<1)
+		bottom=Round(bottom*ghost->TileHeight*16);
+	if(left>0 && left<1)
+		left=Round(left*ghost->TileWidth*16);
+	if(right>0 && right<1)
+		right=Round(right*ghost->TileWidth*16);
+
+	top=Clamp(top, 0, ghost->TileHeight*16);
+	bottom=Clamp(bottom, 0, ghost->TileHeight*16);
+	left=Clamp(left, 0, ghost->TileWidth*16);
+	right=Clamp(right, 0, ghost->TileWidth*16);
+
+	ghost->HitXOffset=left;
+	ghost->HitYOffset=top;
+	ghost->HitWidth=16*ghost->TileWidth-(left+right);
+	ghost->HitHeight=16*ghost->TileHeight-(top+bottom);
+}
+
+
+void Ghost_SwapNPC(npc oldGhost, npc newGhost, bool copyHP)
+{
+	newGhost->X=oldGhost->X;
+	newGhost->Y=oldGhost->Y;
+	newGhost->Z=oldGhost->Z;
+	newGhost->Jump=oldGhost->Jump;
+	newGhost->Dir=oldGhost->Dir;
+
+	newGhost->Extend=oldGhost->Extend;
+	newGhost->TileWidth=oldGhost->TileWidth;
+	newGhost->TileHeight=oldGhost->TileHeight;
+	newGhost->HitWidth=oldGhost->HitWidth;
+	newGhost->HitHeight=oldGhost->HitHeight;
+	newGhost->HitXOffset=oldGhost->HitXOffset;
+	newGhost->HitYOffset=oldGhost->HitYOffset;
+	newGhost->CollDetection=oldGhost->CollDetection;
+
+	for(int i=0; i<16; i++)
+		newGhost->Misc[i]=oldGhost->Misc[i];
+
+	if(copyHP)
+		newGhost->HP=oldGhost->HP;
+
+	// Move the old ghost out of the way
+	oldGhost->CollDetection=false;
+	oldGhost->X=256;
+	oldGhost->Y=176;
+}
+
+
+void Ghost_ReplaceNPC(npc oldGhost, npc newGhost, bool copyHP)
+{
+	Ghost_SwapNPC(oldGhost, newGhost, copyHP);
+
+	oldGhost->X=384;
+	oldGhost->HP=-1000;
+}
+
+
+void Ghost_StoreDefenses(npc ghost, int storedDefense)
+{
+	for(int i=0; i<18; i++)
+		storedDefense[i]=ghost->Defense[i];
+}
+
+
+void Ghost_SetDefenses(npc ghost, int defense)
+{
+	for(int i=0; i<18; i++)
+		ghost->Defense[i]=defense[i];
+}
+
+
+void Ghost_SetAllDefenses(npc ghost, int defType)
+{
+	for(int i=0; i<18; i++)
+		ghost->Defense[i]=defType;
+}
+
+
+void Ghost_ForceDir(npc ghost, int dir)
+{
+	ghost->Dir=dir;
+	Ghost_SetIFlag(ghost, __GHFI_DIR_FORCED);
+}
+
+
+void Ghost_ForceCSet(npc ghost, int cset)
+{
+	ghost->CSet=cset;
+	Ghost_SetIFlag(ghost, __GHFI_CSET_FORCED);
+}
+
+//TBA
+
+void Ghost_StartFlashing(npc ghost)
+{
+	ghost->MiscFlags|=1000000b;
+}
+
+
+void Ghost_StartFlashing(npc ghost, int time)
+{
+	//__Ghost_FlashCounter=time;
+}
+
+
+void Ghost_StopFlashing(npc ghost)
+{
+	ghost->MiscFlags|=~1000000b;
+}
+
+
+void Ghost_StopKnockback(npc ghost)
+{
+/*
+	if(__Ghost_KnockbackCounter>0)
+	{
+		__Ghost_KnockbackCounter=0;
+		ghost->Misc[GH_INTERNAL][GHI_IFLAGS]|=__GHFI_KNOCKBACK_INTERRUPTED;
+	}
+*/
+}
