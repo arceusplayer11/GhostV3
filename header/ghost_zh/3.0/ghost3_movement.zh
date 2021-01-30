@@ -1,565 +1,566 @@
 // ghost.zh
-// Version 2.8.15
+// Version 3.0.0 - Alpha 1
 
-
-void Ghost_MoveXY(npc ghost, float xStep, float yStep, int imprecision)
+namespace ghost3
 {
-	// If this is sideview, most enemies can't move upward
-	if(yStep<0 && IsSideview() && !Ghost_FlagIsSet(ghost, GHF_NO_FALL))
-		yStep=0;
+	void Ghost_MoveXY(npc ghost, float xStep, float yStep, int imprecision)
+	{
+		// If this is sideview, most enemies can't move upward
+		if(yStep<0 && IsSideview() && !Ghost_FlagIsSet(ghost, GHF_NO_FALL))
+			yStep=0;
 
-	// If moving more than 8 pixels along either axis, go 8 at a time
-	while(Abs(xStep)>8 || Abs(yStep)>8)
-	{
-		if(Abs(xStep)>=Abs(yStep))
+		// If moving more than 8 pixels along either axis, go 8 at a time
+		while(Abs(xStep)>8 || Abs(yStep)>8)
 		{
-			if(xStep>0)
+			if(Abs(xStep)>=Abs(yStep))
 			{
-				Ghost_MoveXY(ghost, 8, 0, imprecision);
-				xStep-=8;
-			}
-			else
-			{
-				Ghost_MoveXY(ghost, -8, 0, imprecision);
-				xStep+=8;
-			}
-		}
-		else // yStep>=xStep
-		{
-			if(yStep>0)
-			{
-				Ghost_MoveXY(ghost, 0, 8, imprecision);
-				yStep-=8;
-			}
-			else
-			{
-				Ghost_MoveXY(ghost, 0, -8, imprecision);
-				yStep+=8;
-			}
-		}
-	}
-	
-	int edge; // Position of leading edge
-	int edgeDiff; // Difference between Ghost_X/Ghost_Y and edge
-	int startHT; // The half-tile position where the edge starts
-	int endHT; // And where it ends up
-	
-	if(xStep<0) // Left
-	{
-		edgeDiff=ghost->HitXOffset;
-		edge=ghost->X+edgeDiff;
-		
-		startHT=Floor(edge/8);
-		endHT=Floor((edge+xStep)/8);
-		
-		// If the edge ends up on the same half-tile line it's already on,
-		// there's no need to check walkability
-		if(Ghost_CanMove(ghost, DIR_LEFT, -xStep, imprecision))
-			edge+=xStep;
-		else // Can't move all the way; snap to the grid
-			edge=(edge>>3)<<3;
-		
-		ghost->X=edge-edgeDiff;
-	}
-	else if(xStep>0) // Right
-	{
-		edgeDiff=ghost->HitXOffset+ghost->HitWidth-1;
-		edge=ghost->X+edgeDiff;
-		
-		startHT=Floor(edge/8);
-		endHT=Floor((edge+xStep)/8);
-		
-		if(Ghost_CanMove(ghost, DIR_RIGHT, xStep, imprecision))
-			edge+=xStep;
-		else
-			edge=(edge+6)-((edge+6)%8);
-		
-		ghost->X=edge-edgeDiff;
-	}
-	
-	if(yStep<0) // Up
-	{
-		edgeDiff=ghost->HitYOffset;
-		edge=ghost->Y+edgeDiff;
-		
-		startHT=Floor(edge/8);
-		endHT=Floor((edge+yStep)/8);
-		
-		// If the edge ends up on the same half-tile line it's already on,
-		// there's no need to check walkability
-		if(Ghost_CanMove(ghost, DIR_UP, -yStep, imprecision))
-			edge+=yStep;
-		else // Can't move all the way; snap to the grid
-			edge=(edge>>3)<<3;
-		
-		ghost->Y=edge-edgeDiff;
-	}
-	else if(yStep>0) // Down
-	{
-		edgeDiff=ghost->TileHeight+ghost->HitYOffset-1;
-		edge=ghost->Y+edgeDiff;
-		
-		startHT=Floor(edge/8);
-		endHT=Floor((edge+yStep)/8);
-		
-		if(Ghost_CanMove(ghost, DIR_DOWN, yStep, imprecision))
-			edge+=yStep;
-		else
-			edge=(edge+6)-((edge+6)%8);
-		
-		ghost->Y=edge-edgeDiff;
-	}
-	
-	if(Ghost_FlagIsSet(ghost, GHF_SET_DIRECTION) && (ghost->Misc[GH_INTERNAL][GHI_IFLAGS]&__GHFI_DIR_FORCED)==0)
-	{
-		// Use 8 directions if 8-way flag is set
-		if(Ghost_FlagIsSet(ghost, GHF_8WAY))
-			ghost->Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
-		
-		// Otherwise, 4 directions
-		else
-		{
-			if(Abs(xStep)<Abs(yStep))
-			{
-				if(yStep<0)
-					ghost->Dir=DIR_UP;
+				if(xStep>0)
+				{
+					Ghost_MoveXY(ghost, 8, 0, imprecision);
+					xStep-=8;
+				}
 				else
-					ghost->Dir=DIR_DOWN;
+				{
+					Ghost_MoveXY(ghost, -8, 0, imprecision);
+					xStep+=8;
+				}
 			}
-			else
+			else // yStep>=xStep
 			{
-				if(xStep<0)
-					ghost->Dir=DIR_LEFT;
+				if(yStep>0)
+				{
+					Ghost_MoveXY(ghost, 0, 8, imprecision);
+					yStep-=8;
+				}
 				else
-					ghost->Dir=DIR_RIGHT;
+				{
+					Ghost_MoveXY(ghost, 0, -8, imprecision);
+					yStep+=8;
+				}
 			}
 		}
 		
-		Ghost_SetInternal(ghost, GHI_PREVX, ghost->X);
-		Ghost_SetInternal(ghost, GHI_PREVY, ghost->Y);
-	}
-}
-
-void Ghost_Move(npc ghost, int dir, float step, int imprecision)
-{
-	float xStep=0;
-	float yStep=0;
-
-	if(dir==DIR_UP)
-		yStep=-step;
-	else if(dir==DIR_DOWN)
-		yStep=step;
-	else if(dir==DIR_LEFT)
-		xStep=-step;
-	else if(dir==DIR_RIGHT)
-		xStep=step;
-	else if(dir==DIR_LEFTUP)
-	{
-		xStep=-step*0.7071;
-		yStep=-step*0.7071;
-	}
-	else if(dir==DIR_RIGHTUP)
-	{
-		xStep=step*0.7071;
-		yStep=-step*0.7071;
-	}
-	else if(dir==DIR_LEFTDOWN)
-	{
-		xStep=-step*0.7071;
-		yStep=step*0.7071;
-	}
-	else if(dir==DIR_RIGHTDOWN)
-	{
-		xStep=step*0.7071;
-		yStep=step*0.7071;
-	}
-	else
-		return;
-
-	Ghost_MoveXY(ghost, xStep, yStep, imprecision);
-}
-
-void Ghost_MoveAtAngle(npc ghost, float angle, float step, int imprecision)
-{
-	Ghost_MoveXY(ghost, VectorX(step, angle), VectorY(step, angle), imprecision);
-}
-
-void Ghost_MoveTowardLink(npc ghost, float step, int imprecision)
-{
-	float angle=Angle(ghost->X+ghost->TileWidth*8, ghost->Y+ghost->TileHeight*8, Link->X+8, Link->Y+8);
-	Ghost_MoveXY(ghost, VectorX(step, angle), VectorY(step, angle), imprecision);
-}
-
-bool Ghost_CanMove(npc ghost, int dir, float step, int imprecision, bool inAir)
-{
-	if(step==0)
-		return true;
-	
-	if(dir>=4) // Diagonal
-		step*=0.7071;
-	
-	dir=__NormalizeDir(dir);
-	
-	// More than 8 pixels? Step 8 at a time
-	while(step>8)
-	{
-		if(!__Ghost_CanMoveSingle(ghost, dir, step-8, imprecision, inAir))
-			return false;
-		step-=8;
-	}
-	
-	return __Ghost_CanMoveSingle(ghost, dir, step, imprecision, inAir);
-}
-
-
-// Check a single line for movability; needed when checking CanMove
-// over more than 8 pixels
-bool __Ghost_CanMoveSingle(npc ghost, int dir, float step, int imprecision, bool inAir)
-{
-	int i;
-	float leadingEdge; // X or Y position of the leading edge
-	int edgeSize; // Length of that edge (ignoring imprecision)
-	float edgeStart; // X or Y at the top or left end of the leading edge
-	int numCheckPoints; // Number of points to check, excluding endpoints
-	
-	if(dir==DIR_LEFT)
-	{
-		// The edge size is hitheight, because what the fuck saffith
-	// That was not okay. My eyes hurt now.
-		edgeSize=ghost->HitHeight;
+		int edge; // Position of leading edge
+		int edgeDiff; // Difference between Ghost_X/Ghost_Y and edge
+		int startHT; // The half-tile position where the edge starts
+		int endHT; // And where it ends up
 		
-		// The leading edge is the left edge of the hitbox
-		leadingEdge=ghost->X+ghost->HitXOffset-step;
-		
-		// The edge starts at the top of the hitbox
-		edgeStart=ghost->Y+ghost->HitYOffset;
-		
-		// Check every eight pixels; -1 cuts off the last point
-		numCheckPoints=edgeSize/8-1;
-		
-		// Check the non-end points
-		for(i=1; i<=numCheckPoints; i++)
+		if(xStep<0) // Left
 		{
-			if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+i*8, inAir))
-				return false;
-		}
-		
-		// Then the endpoints
-		if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+imprecision, inAir))
-			return false;
-		if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+edgeSize-imprecision-1, inAir))
-			return false;
-		
-		return true;
-	}
-	else if(dir==DIR_RIGHT)
-	{
-		edgeSize=ghost->HitHeight;
-		leadingEdge=ghost->X+ghost->HitWidth+ghost->HitXOffset-1+step;
-		edgeStart=ghost->Y+ghost->HitYOffset;
-		numCheckPoints=edgeSize/8-1;
-		
-		for(i=1; i<=numCheckPoints; i++)
-		{
-			Screen->PutPixel(4, leadingEdge, edgeStart+i*8, 0x04, 0, 0, 0, OP_OPAQUE);
-			if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+i*8, inAir))
-				return false;
-		}
-		Screen->PutPixel(4, leadingEdge, edgeStart+imprecision, 0x04, 0, 0, 0, OP_OPAQUE);
-		Screen->PutPixel(4, leadingEdge, edgeStart+edgeSize-imprecision, 0x04, 0, 0, 0, OP_OPAQUE);
-		if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+imprecision, inAir))
-			return false;
-		if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+edgeSize-imprecision-1, inAir))
-			return false;
-		
-		return true;
-	}
-	else if(dir==DIR_UP)
-	{
-		// Most enemies can't move upward on sideview screens
-		if(IsSideview() && !Ghost_FlagIsSet(ghost, GHF_NO_FALL))
-
-			return false;
-		
-		edgeSize=ghost->HitWidth;
-		leadingEdge=ghost->Y+ghost->HitYOffset-step;
-		edgeStart=ghost->X+ghost->HitXOffset;
-		numCheckPoints=edgeSize/8-1;
-		
-		for(i=1; i<=numCheckPoints; i++)
-		{
-			if(!Ghost_CanMovePixel(ghost, edgeStart+i*8, leadingEdge, inAir))
-				return false;
-		}
-		
-		if(!Ghost_CanMovePixel(ghost, edgeStart+imprecision, leadingEdge, inAir))
-			return false;
-		if(!Ghost_CanMovePixel(ghost, edgeStart+edgeSize-imprecision-1, leadingEdge, inAir))
-			return false;
-		
-		return true;
-	}
-	else if(dir==DIR_DOWN)
-	{
-		edgeSize=ghost->HitWidth;
-		leadingEdge=ghost->Y+ghost->HitHeight+ghost->HitYOffset-1+step;
-		edgeStart=ghost->X+ghost->HitXOffset;
-		numCheckPoints=edgeSize/8-1;
-		
-		for(i=1; i<=numCheckPoints; i++)
-		{
-			Screen->PutPixel(4, edgeStart+i*8, leadingEdge, 0x03, 0, 0, 0, OP_OPAQUE);
-			if(!Ghost_CanMovePixel(ghost, edgeStart+i*8, leadingEdge, inAir))
-				return false;
-		}
-		
-		if(!Ghost_CanMovePixel(ghost, edgeStart+imprecision, leadingEdge, inAir))
-			return false;
-		if(!Ghost_CanMovePixel(ghost, edgeStart+edgeSize-imprecision-1, leadingEdge, inAir))
-			return false;
-		
-		return true;
-	}
-	
-	// Diagonal directions - move along one axis and test the other
-	else if(dir==DIR_LEFTUP)
-	{
-		bool ret;
-		
-		ghost->X-=step;
-		ret=Ghost_CanMove(ghost, DIR_UP, step, imprecision, inAir);
-		ghost->X+=step;
-		if(!ret)
-			return false;
-		
-		ghost->Y-=step;
-		ret=Ghost_CanMove(ghost, DIR_LEFT, step, imprecision, inAir);
-		ghost->Y+=step;
-		return ret;
-	}
-	else if(dir==DIR_RIGHTUP)
-	{
-		bool ret;
-		
-		ghost->X+=step;
-		ret=Ghost_CanMove(ghost, DIR_UP, step, imprecision, inAir);
-		ghost->X-=step;
-		if(!ret)
-			return false;
-		
-		ghost->Y-=step;
-		ret=Ghost_CanMove(ghost, DIR_RIGHT, step, imprecision, inAir);
-		ghost->Y+=step;
-		return ret;
-	}
-	else if(dir==DIR_LEFTDOWN)
-	{
-		bool ret;
-		
-		ghost->X-=step;
-		ret=Ghost_CanMove(ghost, DIR_DOWN, step, imprecision, inAir);
-		ghost->X+=step;
-		if(!ret)
-			return false;
-		
-		ghost->Y+=step;
-		ret=Ghost_CanMove(ghost, DIR_LEFT, step, imprecision, inAir);
-		ghost->Y-=step;
-		return ret;
-	}
-	else if(dir==DIR_RIGHTDOWN)
-	{
-		bool ret;
-		
-		ghost->X+=step;
-		ret=Ghost_CanMove(ghost, DIR_DOWN, step, imprecision, inAir);
-		ghost->X-=step;
-		if(!ret)
-			return false;
-		
-		ghost->Y+=step;
-		ret=Ghost_CanMove(ghost, DIR_RIGHT, step, imprecision, inAir);
-		ghost->Y-=step;
-		return ret;
-	}
-	else // Invalid direction
-		return false;
-}
-
-bool Ghost_CanMove(npc ghost, int dir, float step, int imprecision)
-{
-	return Ghost_CanMove(ghost, dir, step, imprecision, ghost->Z>0);
-}
-
-bool Ghost_CanMovePixel(npc ghost, int x, int y, bool inAir)
-{
-	if(x<0 || x>255 || y<0 || y>175)
-		return Ghost_FlagIsSet(ghost, GHF_MOVE_OFFSCREEN);
-	
-	int combo=ComboAt(x, y);
-	
-	
-	// "No enemy" flags and combos
-	if(!Ghost_FlagIsSet(ghost, GHF_IGNORE_NO_ENEMY))
-	{
-		if(Screen->ComboT[combo]==CT_NOENEMY)
-			return false;
-		if(Screen->ComboF[combo]==CF_NOENEMY)
-			return false;
-		if(Screen->ComboI[combo]==CF_NOENEMY)
-			return false;
+			edgeDiff=ghost->HitXOffset;
+			edge=ghost->X+edgeDiff;
 			
+			startHT=Floor(edge/8);
+			endHT=Floor((edge+xStep)/8);
+			
+			// If the edge ends up on the same half-tile line it's already on,
+			// there's no need to check walkability
+			if(Ghost_CanMove(ghost, DIR_LEFT, -xStep, imprecision))
+				edge+=xStep;
+			else // Can't move all the way; snap to the grid
+				edge=(edge>>3)<<3;
+			
+			ghost->X=edge-edgeDiff;
+		}
+		else if(xStep>0) // Right
+		{
+			edgeDiff=ghost->HitXOffset+ghost->HitWidth-1;
+			edge=ghost->X+edgeDiff;
+			
+			startHT=Floor(edge/8);
+			endHT=Floor((edge+xStep)/8);
+			
+			if(Ghost_CanMove(ghost, DIR_RIGHT, xStep, imprecision))
+				edge+=xStep;
+			else
+				edge=(edge+6)-((edge+6)%8);
+			
+			ghost->X=edge-edgeDiff;
+		}
 		
-		// Flying
-		if(Ghost_FlagIsSet(ghost, GHF_FLYING_ENEMY))
+		if(yStep<0) // Up
 		{
-			if(Screen->ComboT[combo]==CT_NOFLYZONE)
-				return false;
+			edgeDiff=ghost->HitYOffset;
+			edge=ghost->Y+edgeDiff;
+			
+			startHT=Floor(edge/8);
+			endHT=Floor((edge+yStep)/8);
+			
+			// If the edge ends up on the same half-tile line it's already on,
+			// there's no need to check walkability
+			if(Ghost_CanMove(ghost, DIR_UP, -yStep, imprecision))
+				edge+=yStep;
+			else // Can't move all the way; snap to the grid
+				edge=(edge>>3)<<3;
+			
+			ghost->Y=edge-edgeDiff;
 		}
-		// Jumping
-		else if(inAir)
+		else if(yStep>0) // Down
 		{
-			if(Screen->ComboT[combo]==CT_NOJUMPZONE)
-				return false;
+			edgeDiff=ghost->TileHeight+ghost->HitYOffset-1;
+			edge=ghost->Y+edgeDiff;
+			
+			startHT=Floor(edge/8);
+			endHT=Floor((edge+yStep)/8);
+			
+			if(Ghost_CanMove(ghost, DIR_DOWN, yStep, imprecision))
+				edge+=yStep;
+			else
+				edge=(edge+6)-((edge+6)%8);
+			
+			ghost->Y=edge-edgeDiff;
 		}
-		// Ground
-		else
-		{
-			if(Screen->ComboT[combo]==CT_NOGROUNDENEMY)
-				return false;
-			if(Screen->ComboF[combo]==CF_NOGROUNDENEMY)
-				return false;
-			if(Screen->ComboI[combo]==CF_NOGROUNDENEMY)
-				return false;
-		}
-	}
-	// Restricted to water
-	if(Ghost_FlagIsSet(ghost, GHF_DEEP_WATER_ONLY))
-		return IsWater(combo);
-	
-	if(Ghost_FlagIsSet(ghost, GHF_WATER_ONLY))
-		return IsWater(combo) || Screen->ComboT[combo]==CT_SHALLOWWATER;
-	
-	// Water and pit walkability override solidity checking
-	if(IsWater(combo))
-		return Ghost_FlagIsSet(ghost, GHF_IGNORE_WATER);
-	
-	if(__IsPit(combo))
-		return Ghost_FlagIsSet(ghost, GHF_IGNORE_PITS);
-	
-	// Ignore solidity: always OK
-	if(Ghost_FlagIsSet(ghost, GHF_IGNORE_SOLIDITY))
-		return true;
-	
-	// Full tile movement: Only if the whole tile is walkable
-	else 
-	{
-		if(Ghost_FlagIsSet(ghost, GHF_FULL_TILE_MOVEMENT))
-		return __FullTileWalkable(x, y, Ghost_FlagIsSet(ghost, GHF_MOVE_OFFSCREEN));
-	
 		
-		// All others: Only if the pixel is walkable
-		else
+		if(Ghost_FlagIsSet(ghost, GHF_SET_DIRECTION) && (ghost->Misc[GH_INTERNAL][GHI_IFLAGS]&__GHFI_DIR_FORCED)==0)
 		{
-			return !Screen->isSolid(x, y);
-		}
-	}
-}
-
-bool Ghost_CanMovePixel(npc ghost, int x, int y)
-{
-	return Ghost_CanMovePixel(ghost, x, y, ghost->Z>0);
-}
-
-// Determines the direction to Link
-int __Ghost_LinedUp(npc ghost, int range, bool eightWay)
-{
-	// Up or down
-	if(Abs(Link->X-ghost->X)<=range)
-	{
-		if(Link->Y<ghost->Y)
-			return DIR_UP;
-		else
-			return DIR_DOWN;
-	}
-	// Left or right
-	else if(Abs(Link->Y-ghost->Y)<=range)
-	{
-		if(Link->X<ghost->X)
-			return DIR_LEFT;
-		else
-			return DIR_RIGHT;
-	}
-
-	// Diagonal
-	if (eightWay)
-	{
-		if (Abs(Link->X-ghost->X)-Abs(Link->Y-ghost->Y)<=range)
-		{
-			if (Link->Y<ghost->Y)
-			{
-				if (Link->X<ghost->X)
-					return DIR_LEFTUP;
-				else
-					return DIR_RIGHTUP;
-			}
+			// Use 8 directions if 8-way flag is set
+			if(Ghost_FlagIsSet(ghost, GHF_8WAY))
+				ghost->Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
+			
+			// Otherwise, 4 directions
 			else
 			{
-				if (Link->X<ghost->X)
-					return DIR_LEFTDOWN;
+				if(Abs(xStep)<Abs(yStep))
+				{
+					if(yStep<0)
+						ghost->Dir=DIR_UP;
+					else
+						ghost->Dir=DIR_DOWN;
+				}
 				else
-					return DIR_RIGHTDOWN;
+				{
+					if(xStep<0)
+						ghost->Dir=DIR_LEFT;
+					else
+						ghost->Dir=DIR_RIGHT;
+				}
+			}
+			
+			Ghost_SetInternal(ghost, GHI_PREVX, ghost->X);
+			Ghost_SetInternal(ghost, GHI_PREVY, ghost->Y);
+		}
+	}
+
+	void Ghost_Move(npc ghost, int dir, float step, int imprecision)
+	{
+		float xStep=0;
+		float yStep=0;
+
+		if(dir==DIR_UP)
+			yStep=-step;
+		else if(dir==DIR_DOWN)
+			yStep=step;
+		else if(dir==DIR_LEFT)
+			xStep=-step;
+		else if(dir==DIR_RIGHT)
+			xStep=step;
+		else if(dir==DIR_LEFTUP)
+		{
+			xStep=-step*0.7071;
+			yStep=-step*0.7071;
+		}
+		else if(dir==DIR_RIGHTUP)
+		{
+			xStep=step*0.7071;
+			yStep=-step*0.7071;
+		}
+		else if(dir==DIR_LEFTDOWN)
+		{
+			xStep=-step*0.7071;
+			yStep=step*0.7071;
+		}
+		else if(dir==DIR_RIGHTDOWN)
+		{
+			xStep=step*0.7071;
+			yStep=step*0.7071;
+		}
+		else
+			return;
+
+		Ghost_MoveXY(ghost, xStep, yStep, imprecision);
+	}
+
+	void Ghost_MoveAtAngle(npc ghost, float angle, float step, int imprecision)
+	{
+		Ghost_MoveXY(ghost, VectorX(step, angle), VectorY(step, angle), imprecision);
+	}
+
+	void Ghost_MoveTowardLink(npc ghost, float step, int imprecision)
+	{
+		float angle=Angle(ghost->X+ghost->TileWidth*8, ghost->Y+ghost->TileHeight*8, Link->X+8, Link->Y+8);
+		Ghost_MoveXY(ghost, VectorX(step, angle), VectorY(step, angle), imprecision);
+	}
+
+	bool Ghost_CanMove(npc ghost, int dir, float step, int imprecision, bool inAir)
+	{
+		if(step==0)
+			return true;
+		
+		if(dir>=4) // Diagonal
+			step*=0.7071;
+		
+		dir=__NormalizeDir(dir);
+		
+		// More than 8 pixels? Step 8 at a time
+		while(step>8)
+		{
+			if(!__Ghost_CanMoveSingle(ghost, dir, step-8, imprecision, inAir))
+				return false;
+			step-=8;
+		}
+		
+		return __Ghost_CanMoveSingle(ghost, dir, step, imprecision, inAir);
+	}
+
+
+	// Check a single line for movability; needed when checking CanMove
+	// over more than 8 pixels
+	bool __Ghost_CanMoveSingle(npc ghost, int dir, float step, int imprecision, bool inAir)
+	{
+		int i;
+		float leadingEdge; // X or Y position of the leading edge
+		int edgeSize; // Length of that edge (ignoring imprecision)
+		float edgeStart; // X or Y at the top or left end of the leading edge
+		int numCheckPoints; // Number of points to check, excluding endpoints
+		
+		if(dir==DIR_LEFT)
+		{
+			// The edge size is hitheight, because what the fuck saffith
+		// That was not okay. My eyes hurt now.
+			edgeSize=ghost->HitHeight;
+			
+			// The leading edge is the left edge of the hitbox
+			leadingEdge=ghost->X+ghost->HitXOffset-step;
+			
+			// The edge starts at the top of the hitbox
+			edgeStart=ghost->Y+ghost->HitYOffset;
+			
+			// Check every eight pixels; -1 cuts off the last point
+			numCheckPoints=edgeSize/8-1;
+			
+			// Check the non-end points
+			for(i=1; i<=numCheckPoints; i++)
+			{
+				if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+i*8, inAir))
+					return false;
+			}
+			
+			// Then the endpoints
+			if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+imprecision, inAir))
+				return false;
+			if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+edgeSize-imprecision-1, inAir))
+				return false;
+			
+			return true;
+		}
+		else if(dir==DIR_RIGHT)
+		{
+			edgeSize=ghost->HitHeight;
+			leadingEdge=ghost->X+ghost->HitWidth+ghost->HitXOffset-1+step;
+			edgeStart=ghost->Y+ghost->HitYOffset;
+			numCheckPoints=edgeSize/8-1;
+			
+			for(i=1; i<=numCheckPoints; i++)
+			{
+				Screen->PutPixel(4, leadingEdge, edgeStart+i*8, 0x04, 0, 0, 0, OP_OPAQUE);
+				if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+i*8, inAir))
+					return false;
+			}
+			Screen->PutPixel(4, leadingEdge, edgeStart+imprecision, 0x04, 0, 0, 0, OP_OPAQUE);
+			Screen->PutPixel(4, leadingEdge, edgeStart+edgeSize-imprecision, 0x04, 0, 0, 0, OP_OPAQUE);
+			if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+imprecision, inAir))
+				return false;
+			if(!Ghost_CanMovePixel(ghost, leadingEdge, edgeStart+edgeSize-imprecision-1, inAir))
+				return false;
+			
+			return true;
+		}
+		else if(dir==DIR_UP)
+		{
+			// Most enemies can't move upward on sideview screens
+			if(IsSideview() && !Ghost_FlagIsSet(ghost, GHF_NO_FALL))
+
+				return false;
+			
+			edgeSize=ghost->HitWidth;
+			leadingEdge=ghost->Y+ghost->HitYOffset-step;
+			edgeStart=ghost->X+ghost->HitXOffset;
+			numCheckPoints=edgeSize/8-1;
+			
+			for(i=1; i<=numCheckPoints; i++)
+			{
+				if(!Ghost_CanMovePixel(ghost, edgeStart+i*8, leadingEdge, inAir))
+					return false;
+			}
+			
+			if(!Ghost_CanMovePixel(ghost, edgeStart+imprecision, leadingEdge, inAir))
+				return false;
+			if(!Ghost_CanMovePixel(ghost, edgeStart+edgeSize-imprecision-1, leadingEdge, inAir))
+				return false;
+			
+			return true;
+		}
+		else if(dir==DIR_DOWN)
+		{
+			edgeSize=ghost->HitWidth;
+			leadingEdge=ghost->Y+ghost->HitHeight+ghost->HitYOffset-1+step;
+			edgeStart=ghost->X+ghost->HitXOffset;
+			numCheckPoints=edgeSize/8-1;
+			
+			for(i=1; i<=numCheckPoints; i++)
+			{
+				Screen->PutPixel(4, edgeStart+i*8, leadingEdge, 0x03, 0, 0, 0, OP_OPAQUE);
+				if(!Ghost_CanMovePixel(ghost, edgeStart+i*8, leadingEdge, inAir))
+					return false;
+			}
+			
+			if(!Ghost_CanMovePixel(ghost, edgeStart+imprecision, leadingEdge, inAir))
+				return false;
+			if(!Ghost_CanMovePixel(ghost, edgeStart+edgeSize-imprecision-1, leadingEdge, inAir))
+				return false;
+			
+			return true;
+		}
+		
+		// Diagonal directions - move along one axis and test the other
+		else if(dir==DIR_LEFTUP)
+		{
+			bool ret;
+			
+			ghost->X-=step;
+			ret=Ghost_CanMove(ghost, DIR_UP, step, imprecision, inAir);
+			ghost->X+=step;
+			if(!ret)
+				return false;
+			
+			ghost->Y-=step;
+			ret=Ghost_CanMove(ghost, DIR_LEFT, step, imprecision, inAir);
+			ghost->Y+=step;
+			return ret;
+		}
+		else if(dir==DIR_RIGHTUP)
+		{
+			bool ret;
+			
+			ghost->X+=step;
+			ret=Ghost_CanMove(ghost, DIR_UP, step, imprecision, inAir);
+			ghost->X-=step;
+			if(!ret)
+				return false;
+			
+			ghost->Y-=step;
+			ret=Ghost_CanMove(ghost, DIR_RIGHT, step, imprecision, inAir);
+			ghost->Y+=step;
+			return ret;
+		}
+		else if(dir==DIR_LEFTDOWN)
+		{
+			bool ret;
+			
+			ghost->X-=step;
+			ret=Ghost_CanMove(ghost, DIR_DOWN, step, imprecision, inAir);
+			ghost->X+=step;
+			if(!ret)
+				return false;
+			
+			ghost->Y+=step;
+			ret=Ghost_CanMove(ghost, DIR_LEFT, step, imprecision, inAir);
+			ghost->Y-=step;
+			return ret;
+		}
+		else if(dir==DIR_RIGHTDOWN)
+		{
+			bool ret;
+			
+			ghost->X+=step;
+			ret=Ghost_CanMove(ghost, DIR_DOWN, step, imprecision, inAir);
+			ghost->X-=step;
+			if(!ret)
+				return false;
+			
+			ghost->Y+=step;
+			ret=Ghost_CanMove(ghost, DIR_RIGHT, step, imprecision, inAir);
+			ghost->Y-=step;
+			return ret;
+		}
+		else // Invalid direction
+			return false;
+	}
+
+	bool Ghost_CanMove(npc ghost, int dir, float step, int imprecision)
+	{
+		return Ghost_CanMove(ghost, dir, step, imprecision, ghost->Z>0);
+	}
+
+	bool Ghost_CanMovePixel(npc ghost, int x, int y, bool inAir)
+	{
+		if(x<0 || x>255 || y<0 || y>175)
+			return Ghost_FlagIsSet(ghost, GHF_MOVE_OFFSCREEN);
+		
+		int combo=ComboAt(x, y);
+		
+		
+		// "No enemy" flags and combos
+		if(!Ghost_FlagIsSet(ghost, GHF_IGNORE_NO_ENEMY))
+		{
+			if(Screen->ComboT[combo]==CT_NOENEMY)
+				return false;
+			if(Screen->ComboF[combo]==CF_NOENEMY)
+				return false;
+			if(Screen->ComboI[combo]==CF_NOENEMY)
+				return false;
+				
+			
+			// Flying
+			if(Ghost_FlagIsSet(ghost, GHF_FLYING_ENEMY))
+			{
+				if(Screen->ComboT[combo]==CT_NOFLYZONE)
+					return false;
+			}
+			// Jumping
+			else if(inAir)
+			{
+				if(Screen->ComboT[combo]==CT_NOJUMPZONE)
+					return false;
+			}
+			// Ground
+			else
+			{
+				if(Screen->ComboT[combo]==CT_NOGROUNDENEMY)
+					return false;
+				if(Screen->ComboF[combo]==CF_NOGROUNDENEMY)
+					return false;
+				if(Screen->ComboI[combo]==CF_NOGROUNDENEMY)
+					return false;
+			}
+		}
+		// Restricted to water
+		if(Ghost_FlagIsSet(ghost, GHF_DEEP_WATER_ONLY))
+			return IsWater(combo);
+		
+		if(Ghost_FlagIsSet(ghost, GHF_WATER_ONLY))
+			return IsWater(combo) || Screen->ComboT[combo]==CT_SHALLOWWATER;
+		
+		// Water and pit walkability override solidity checking
+		if(IsWater(combo))
+			return Ghost_FlagIsSet(ghost, GHF_IGNORE_WATER);
+		
+		if(ghost3::IsPit(combo))
+			return Ghost_FlagIsSet(ghost, GHF_IGNORE_PITS);
+		
+		// Ignore solidity: always OK
+		if(Ghost_FlagIsSet(ghost, GHF_IGNORE_SOLIDITY))
+			return true;
+		
+		// Full tile movement: Only if the whole tile is walkable
+		else 
+		{
+			if(Ghost_FlagIsSet(ghost, GHF_FULL_TILE_MOVEMENT))
+			return __FullTileWalkable(x, y, Ghost_FlagIsSet(ghost, GHF_MOVE_OFFSCREEN));
+		
+			
+			// All others: Only if the pixel is walkable
+			else
+			{
+				return !Screen->isSolid(x, y);
 			}
 		}
 	}
 
-	// Not in range
-	return -1;
-}
+	bool Ghost_CanMovePixel(npc ghost, int x, int y)
+	{
+		return Ghost_CanMovePixel(ghost, x, y, ghost->Z>0);
+	}
 
-// Returns true if the only if the full tile at the given location is walkable
-bool __FullTileWalkable(int x, int y, bool offscreen)
-{
-	// Offscreen?
-	if(x<0 || y<0 || x>=256 || y>=176)
-		return offscreen;
-	
-	// Get the exact coordinate of the top-left pixel
-	x-=x%16;
-	y-=y%16;
-	
-	if(Screen->isSolid(x, y) ||
-	   Screen->isSolid(x+8, y) ||
-	   Screen->isSolid(x, y+8) ||
-	   Screen->isSolid(x+8, y+8))
+	// Determines the direction to Link
+	int __Ghost_LinedUp(npc ghost, int range, bool eightWay)
+	{
+		// Up or down
+		if(Abs(Link->X-ghost->X)<=range)
+		{
+			if(Link->Y<ghost->Y)
+				return DIR_UP;
+			else
+				return DIR_DOWN;
+		}
+		// Left or right
+		else if(Abs(Link->Y-ghost->Y)<=range)
+		{
+			if(Link->X<ghost->X)
+				return DIR_LEFT;
+			else
+				return DIR_RIGHT;
+		}
+
+		// Diagonal
+		if (eightWay)
+		{
+			if (Abs(Link->X-ghost->X)-Abs(Link->Y-ghost->Y)<=range)
+			{
+				if (Link->Y<ghost->Y)
+				{
+					if (Link->X<ghost->X)
+						return DIR_LEFTUP;
+					else
+						return DIR_RIGHTUP;
+				}
+				else
+				{
+					if (Link->X<ghost->X)
+						return DIR_LEFTDOWN;
+					else
+						return DIR_RIGHTDOWN;
+				}
+			}
+		}
+
+		// Not in range
+		return -1;
+	}
+
+	// Returns true if the only if the full tile at the given location is walkable
+	bool __FullTileWalkable(int x, int y, bool offscreen)
+	{
+		// Offscreen?
+		if(x<0 || y<0 || x>=256 || y>=176)
+			return offscreen;
+		
+		// Get the exact coordinate of the top-left pixel
+		x-=x%16;
+		y-=y%16;
+		
+		if(Screen->isSolid(x, y) ||
+		   Screen->isSolid(x+8, y) ||
+		   Screen->isSolid(x, y+8) ||
+		   Screen->isSolid(x+8, y+8))
+			return false;
+		
+		return true;
+	}
+
+	//this assumes that a step of 2.5 pixels per frame is 2.5, not 250
+	bool Ghost_CanMoveAtAngle(npc ghost, float angle, float step, int imprecision)
+	{
+		for ( int q = Max((step), 1); q > 0; --q )
+		{
+			if(Ghost_CanMovePixel(ghost, VectorX(q, angle), VectorY(q, angle), ghost->Z>0))
+			{
+				return true;
+			}
+		}
 		return false;
-	
-	return true;
-}
-
-//this assumes that a step of 2.5 pixels per frame is 2.5, not 250
-bool Ghost_CanMoveAtAngle(npc ghost, float angle, float step, int imprecision)
-{
-	for ( int q = Max((step), 1); q > 0; --q )
-	{
-		if(Ghost_CanMovePixel(ghost, VectorX(q, angle), VectorY(q, angle), ghost->Z>0))
-		{
-			return true;
-		}
 	}
-	return false;
-}
 
-bool Ghost_CanMoveAtAngle(npc ghost, float angle, float step)
-{
-	for ( int q = Max((step), 1); q > 0; --q )
+	bool Ghost_CanMoveAtAngle(npc ghost, float angle, float step)
 	{
-		if(!Ghost_CanMovePixel(ghost, VectorX(q, angle), VectorY(q, angle), ghost->Z>0))
+		for ( int q = Max((step), 1); q > 0; --q )
 		{
-			return true;
+			if(!Ghost_CanMovePixel(ghost, VectorX(q, angle), VectorY(q, angle), ghost->Z>0))
+			{
+				return true;
+			}
 		}
+		return false;
 	}
-	return false;
 }
-
 
