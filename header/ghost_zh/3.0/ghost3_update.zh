@@ -1,0 +1,289 @@
+const int GH_VX = 26;
+const int GH_VY = 27;
+const int GH_AX = 28;
+const int GH_AY = 29;
+const int GH_DATA = 30;
+const int GH_INTERNAL = 31;
+
+enum
+{
+	GHI_FLAGS,
+	GHI_FLAGS2,
+	GHI_IFLAGS,
+	GHI_PREVX,
+	GHI_PREVY,
+	GHI_DIR
+};
+
+bool GhostInit(npc ghost, int internal)
+{
+	ghost->Misc[GH_INTERNAL] = internal;
+}
+
+int Ghost_GetInternal(npc ghost, int index)
+{
+	int flags = ghost->Misc[GH_INTERNAL];
+	return flags[index];
+}
+void Ghost_SetInternal(npc ghost, int index, int value)
+{
+	int flags = ghost->Misc[GH_INTERNAL];
+	flags[index] = value;
+}
+
+bool Ghost_Waitframe(npc ghost, bool clearOnDeath, bool quitOnDeath)
+{
+	// Handle gravity first
+	int jump = ghost->Jump;
+	ghost->Jump=0;
+	if(!Ghost_FlagIsSet(ghost, GHF_NO_FALL))
+	{
+		// Sideview: Jump/fall on Y axis
+		if(IsSideview())
+		{
+			// Use Ghost_CanMove to check for platforms
+			if(jump!=0 || Ghost_CanMove(ghost, DIR_DOWN, 1, __GH_DEFAULT_IMPRECISION))
+			{
+				// Temporarily unset GHF_SET_DIRECTION so that Ghost_Move doesn't
+				// change the enemy's direction here
+				bool setDir=Ghost_FlagIsSet(ghost, GHF_SET_DIRECTION);
+				Ghost_UnsetFlag(ghost, GHF_SET_DIRECTION);
+				
+				// Jumping
+				if(jump>0)
+				{
+					// Set GHF_NO_FALL temporarily so Ghost_CanMove(DIR_UP) can return true
+					Ghost_SetFlag(ghost, GHF_NO_FALL);
+					
+					Ghost_Move(ghost, DIR_UP, jump, __GH_DEFAULT_IMPRECISION);
+					jump=Max(jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+					
+					// If it's still jumping, check if it can move any farther;
+					// if it can't, it's hit something and should start falling
+					if(jump>0 && !Ghost_CanMove(ghost, DIR_UP, 1, __GH_DEFAULT_IMPRECISION))
+						jump=0;
+					
+					Ghost_UnsetFlag(ghost, GHF_NO_FALL);
+				}
+				// Falling
+				else
+				{
+					Ghost_Move(ghost, DIR_DOWN, -jump, __GH_DEFAULT_IMPRECISION);
+					
+					// Can it fall farther?
+					if(Ghost_CanMove(ghost, DIR_DOWN, 1, __GH_DEFAULT_IMPRECISION))
+						jump=Max(jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+					// If not, stop falling
+					else
+						jump=0;
+				}
+				
+				// Restore the flag
+				if(setDir)
+					Ghost_SetFlag(ghost, GHF_SET_DIRECTION);
+			}
+		}
+		// Top-down: Jump/fall on Z axis
+		else
+		{
+			if(jump!=0 || ghost->Z>0)
+			{
+				if(ghost->Z+jump<=0)
+				{
+					ghost->Z=0;
+					jump=0;
+				}
+				else
+				{
+					ghost->Z+=jump;
+					jump=Max(jump-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+				}
+			}
+		}
+	}
+
+	// Then velocity and acceleration
+	if(ghost->Misc[GH_VX]!=0 || ghost->Misc[GH_VY]!=0 || ghost->Misc[GH_AX]!=0 || ghost->Misc[GH_AY]!=0)
+	{
+		ghost->Misc[GH_VX]+=ghost->Misc[GH_AX];
+		ghost->Misc[GH_VY]+=ghost->Misc[GH_AY];
+
+		Ghost_MoveXY(ghost, ghost->Misc[GH_VX], ghost->Misc[GH_VY], __GH_DEFAULT_IMPRECISION);
+		Ghost_ForceDir(ghost, ghost->Dir);
+	}
+
+	__Ghost_WaitframePart1(ghost, false);
+	Ghost_WaitframeLight(ghost);
+	Ghost_ClearIFlags(ghost);
+	return __Ghost_WaitframePart2(ghost, clearOnDeath, quitOnDeath);
+}
+
+// Before waiting: Update direction, set combo, set overlay flag, draw shadow
+void __Ghost_WaitframePart1(npc ghost, bool useNPCDir)
+{
+	// Direction forced - set the npc's direction
+	if((ghost->Misc[GH_INTERNAL][GHI_IFLAGS]&__GHFI_DIR_FORCED)!=0)
+		ghost->Dir=ghost->Misc[GH_INTERNAL][GHI_DIR];
+
+	// Set direction based on movement
+	else if(Ghost_FlagIsSet(ghost, GHF_SET_DIRECTION) && (ghost->Misc[GH_INTERNAL][GHI_PREVX]!=ghost->X || ghost->Misc[GH_INTERNAL][GHI_PREVY]!=ghost->Y))
+	{	
+		float xStep=ghost->X-ghost->Misc[GH_INTERNAL][GHI_PREVX];
+		float yStep=ghost->Y-ghost->Misc[GH_INTERNAL][GHI_PREVY];
+
+		// Use 8 directions if 8-way flag is set
+		if(Ghost_FlagIsSet(ghost, GHF_8WAY))
+			ghost->Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
+
+
+		// Otherwise, 4 directions
+		else
+		{
+			if(Abs(xStep)>Abs(yStep))
+			{
+				if(xStep<0)
+					ghost->Dir=DIR_LEFT;
+				else
+					ghost->Dir=DIR_RIGHT;
+			}
+			else
+			{
+				if(yStep<0)
+					ghost->Dir=DIR_UP;
+				else
+					ghost->Dir=DIR_DOWN;
+			}
+		}
+	}
+	Ghost_SetInternal(ghost, GHI_PREVX, ghost->X);
+	Ghost_SetInternal(ghost, GHI_PREVY, ghost->Y);
+	
+	// Set combo
+	if(ghost->Misc[GH_DATA]==GH_INVISIBLE_COMBO)
+	{
+		ghost->Tile = Game->ComboTile(ghost->Misc[GH_DATA]);
+	}
+	else if(ghost->Misc[GH_DATA] > 0)
+	{
+		if(Ghost_FlagIsSet(ghost, GHF_8WAY) || Ghost_FlagIsSet(ghost, GHF_4WAY))
+		{
+			if(ghost->Tile!=Game->ComboTile(ghost->Misc[GH_DATA]+ghost->Dir))
+				ghost->Tile=Game->ComboTile(ghost->Misc[GH_DATA]+__NormalizeDir(ghost->Dir));
+		}
+		else
+		{
+			if(ghost->Tile!=Game->ComboTile(ghost->Misc[GH_DATA]))
+				ghost->Tile=Game->ComboTile(ghost->Misc[GH_DATA]);
+		}
+	}
+}
+
+// After waiting: Check whether the enemy was hit, stunned, or killed
+bool __Ghost_WaitframePart2(npc ghost, bool clearOnDeath, bool quitOnDeath)
+{
+	// Is it dead?
+	bool dead=false;
+	
+	if(ghost->HP<=0)
+		dead=true;
+	
+	// Not dead; was it hit, stunned, or frozen?
+	if(!dead)
+	{
+		dead=!Ghost_CheckFreeze(ghost);
+	}
+	
+	// Dead; clean up
+	if(dead)
+	{
+		if(quitOnDeath)
+			Quit();
+
+		return false;
+	}
+	
+	return true;
+}
+
+bool Ghost_CheckFreeze(npc ghost)
+{
+	if((Ghost_FlagIsSet(ghost,GHF_CLOCK) && ClockIsActive()) ||
+	   (Ghost_FlagIsSet(ghost,GHF_STUN) && ghost->Stun>0))
+	{
+		
+		Ghost_SetIFlag(ghost, __GHFI_WAS_FROZEN);
+		
+		// Do nothing except get hit until recovered
+		while((Ghost_FlagIsSet(ghost,GHF_CLOCK) && ClockIsActive()) ||
+			  (Ghost_FlagIsSet(ghost,GHF_STUN) && ghost->Stun>0))
+		{
+			Ghost_WaitframeLight(ghost);
+			
+			if(!ghost->isValid())
+				return false;
+			else if(ghost->HP<=0)
+				return false;
+			
+			if(ghost->Misc[GH_DATA] > 0)
+			{
+				if(Ghost_FlagIsSet(ghost, GHF_8WAY) || Ghost_FlagIsSet(ghost, GHF_4WAY))
+				{
+					if(ghost->Tile!=Game->ComboTile(ghost->Misc[GH_DATA]+ghost->Dir))
+						ghost->Tile=Game->ComboTile(ghost->Misc[GH_DATA]+__NormalizeDir(ghost->Dir));
+				}
+				else
+				{
+					if(ghost->Tile!=Game->ComboTile(ghost->Misc[GH_DATA]))
+						ghost->Tile=Game->ComboTile(ghost->Misc[GH_DATA]);
+				}
+			}
+		}
+	}
+	
+	return true;
+}
+
+void Ghost_WaitframeLight(npc ghost)
+{
+	Waitframe(); //yup. This might get expanded later, but I doubt it.
+}
+
+bool Ghost_Waitframes(npc ghost, bool clearOnDeath, bool quitOnDeath, int numFrames)
+{
+    for(; numFrames>0; numFrames--)
+    {
+        if(!Ghost_Waitframe(ghost, clearOnDeath, quitOnDeath))
+            return false;
+    }
+    return true;
+}
+
+void Ghost_WaitframesLight(npc ghost, int numFrames)
+{
+    for(; numFrames>0; numFrames--)
+        Ghost_WaitframeLight(ghost);
+}
+
+void Ghost_Waitframe(npc ghost)
+{
+    Ghost_Waitframe(ghost, true, true);
+}
+
+void Ghost_Waitframes(npc ghost, int numFrames)
+{
+    Ghost_Waitframes(ghost, true, true, numFrames);
+}
+
+
+bool Ghost_Waitframe(npc ghost, int deathAnimation, bool quitOnDeath)
+{
+    if(!Ghost_Waitframe(ghost, false, false))
+    {
+        Ghost_DeathAnimation(ghost, deathAnimation, quitOnDeath);
+        if(quitOnDeath)
+            Quit();
+        return false;
+    }
+    
+    return true;
+}
