@@ -222,6 +222,11 @@ namespace ghost3
 	    theNPC->Y=ComboY(spawnCombo);
 	    return theNPC;
 	}
+	
+	bool isDead(npc n)
+	{
+		return n->HP <= 0 && !n->Immortal;
+	}
 
 	int FindUnusedFFC()
 	{
@@ -276,22 +281,29 @@ namespace ghost3
 
 	bool Ghost_GotHit(npc ghost)
 	{
-	    return Ghost_IFlagIsSet(ghost, __GHFI_GOT_HIT);
+	    return Ghost_IFlagIsSet(ghost, GHFI_GOT_HIT);
 	}
 
 	bool Ghost_WasFrozen(npc ghost)
 	{
-	    return Ghost_IFlagIsSet(ghost, __GHFI_WAS_FROZEN);
+	    return Ghost_IFlagIsSet(ghost, GHFI_WAS_FROZEN);
 	}
 
 	void Ghost_DeathAnimation(npc ghost, int type, bool kill)
 	{
-	    if(type==GHD_EXPLODE)
-		__Ghost_Explode(ghost, kill, false);
-	    else if(type==GHD_EXPLODE_FLASH)
-		__Ghost_Explode(ghost, kill, true);
-	    else if(type==GHD_SHRINK)
-		__Ghost_ShrinkAway(ghost, kill);
+		switch(type)
+		{
+			case GHD_NONE: return;
+			case GHD_EXPLODE:
+				__Ghost_Explode(ghost, kill, false);
+				break;
+			case GHD_EXPLODE_FLASH:
+				__Ghost_Explode(ghost, kill, true);
+				break;
+			case GHD_SHRINK:
+				__Ghost_ShrinkAway(ghost, kill);
+				break;
+		}
 	}
 
 	float Ghost_GetAttribute(npc ghost, int index, float defaultVal, float min, float max)
@@ -324,17 +336,17 @@ namespace ghost3
 
 	bool ClockIsActive()
 	{
-	    //__ghzhData[__GHI_CLOCK_TIMER]!=0;
+	    //ghzhData[GHI_CLOCK_TIMER]!=0;
 	}
 
 	void SuspendGhostZHScripts()
 	{
-	    //__ghzhData[__GHI_GLOBAL_FLAGS]|=__GHGF_SUSPEND;
+	    //ghzhData[GHI_GLOBAL_FLAGS]|=GHGF_SUSPEND;
 	}
 
 	void ResumeGhostZHScripts()
 	{
-	    //__ghzhData[__GHI_GLOBAL_FLAGS]&=~__GHGF_SUSPEND;
+	    //ghzhData[GHI_GLOBAL_FLAGS]&=~GHGF_SUSPEND;
 	}
 
 	void __Ghost_Explode(npc ghost, bool kill, bool flash)

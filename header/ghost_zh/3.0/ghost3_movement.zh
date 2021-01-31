@@ -111,11 +111,11 @@ namespace ghost3
 			ghost->Y=edge-edgeDiff;
 		}
 		
-		if(Ghost_FlagIsSet(ghost, GHF_SET_DIRECTION) && (ghost->Misc[GH_INTERNAL][GHI_IFLAGS]&__GHFI_DIR_FORCED)==0)
+		if(Ghost_FlagIsSet(ghost, GHF_SET_DIRECTION) && (ghost->Misc[GH_INTERNAL][GHI_IFLAGS]&GHFI_DIR_FORCED)==0)
 		{
 			// Use 8 directions if 8-way flag is set
 			if(Ghost_FlagIsSet(ghost, GHF_8WAY))
-				ghost->Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep))*57.2958);
+				ghost->Dir=AngleDir8(WrapAngle(ArcTan(xStep, yStep)) * RADIAN);
 			
 			// Otherwise, 4 directions
 			else
@@ -199,7 +199,7 @@ namespace ghost3
 		if(dir>=4) // Diagonal
 			step*=0.7071;
 		
-		dir=__NormalizeDir(dir);
+		dir=NormalizeDir(dir);
 		
 		// More than 8 pixels? Step 8 at a time
 		while(step>8)

@@ -164,7 +164,7 @@ namespace ghost3
 				
 				case EWM_FALL:
 					args[GWI_MISC2]=movarg1;
-					args[GWI_MISC1]=GH_GRAVITY;
+					args[GWI_MISC1]=Game->Gravity[GR_STRENGTH];
 					break;
 					
 				default:
@@ -180,7 +180,7 @@ namespace ghost3
 		// Update a weapon's movement, lifespan, and death effects
 		void UpdateEWeapon(eweapon this, int args)
 		{
-			if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_SUSPEND)!=0)
+			if((ghzhData[GHI_GLOBAL_FLAGS]&GHGF_SUSPEND)!=0)
 				return;
 			
 			// Needed for EWF_ROTATE_360
@@ -349,7 +349,7 @@ namespace ghost3
 				
 				// Flickering? Nothing to do here.
 				if((args[GWI_FLAGS]&EWF_FLICKER)!=0 &&
-				   (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+				   (ghzhData[GHI_GLOBAL_FLAGS]&GHGF_FLICKER)!=0)
 					return;
 				
 				float endX;
@@ -361,7 +361,7 @@ namespace ghost3
 					angle=RadtoDeg(this->Angle);
 				else
 				{
-					int dir=__NormalizeDir(this->Dir);
+					int dir=NormalizeDir(this->Dir);
 					
 					if(dir==DIR_UP)
 						angle=-90;
@@ -414,7 +414,7 @@ namespace ghost3
 				if((args[GWI_FLAGS]&EWF_FLICKER)!=0)
 				{
 					// Weapons can't be made invisible; use DrawXOffset instead
-					if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+					if((ghzhData[GHI_GLOBAL_FLAGS]&GHGF_FLICKER)!=0)
 						this->DrawXOffset=1000;
 					else
 						this->DrawXOffset=0;
@@ -424,7 +424,7 @@ namespace ghost3
 					SetEWeaponRotation(this);
 			}
 			
-			if((args[GWI_FLAGS]&EWF_FAKE_Z)!=0 || __GH_FAKE_EWEAPON_Z!=0)
+			if((args[GWI_FLAGS]&EWF_FAKE_Z)!=0 || GH_FAKE_EWEAPON_Z!=0)
 			{
 				// For some reason, DrawZOffset is also HitZOffset,
 				// so Y offsets also have to be used.
@@ -699,12 +699,12 @@ namespace ghost3
 									this->HitHeight,this->HitWidth)
 					)
 					{
-						args[GWI_MISC1]=Max(args[GWI_MISC1]-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+						args[GWI_MISC1]=Max(args[GWI_MISC1]-Game->Gravity[GR_STRENGTH], -Game->Gravity[GR_TERMINALV]);
 					}
 				}
 				else 
 				{
-					args[GWI_MISC1]=Max(args[GWI_MISC1]-GH_GRAVITY, -GH_TERMINAL_VELOCITY);
+					args[GWI_MISC1]=Max(args[GWI_MISC1]-Game->Gravity[GR_STRENGTH], -Game->Gravity[GR_TERMINALV]);
 				}
 			}
 			
@@ -765,12 +765,12 @@ namespace ghost3
 					this->HitYOffset= args[GWI_MISC2];
 					this->DrawYOffset=args[GWI_MISC2];
 				}
-				args[GWI_MISC1]=Min(args[GWI_MISC1]+GH_GRAVITY, GH_TERMINAL_VELOCITY);
+				args[GWI_MISC1]=Min(args[GWI_MISC1]+Game->Gravity[GR_STRENGTH], Game->Gravity[GR_TERMINALV]);
 			}
 			else
 			{
 				this->Z=args[GWI_MISC2];
-				args[GWI_MISC1]=Min(args[GWI_MISC1]+GH_GRAVITY, GH_TERMINAL_VELOCITY);
+				args[GWI_MISC1]=Min(args[GWI_MISC1]+Game->Gravity[GR_STRENGTH], Game->Gravity[GR_TERMINALV]);
 			}
 			
 			// Hit the ground?
@@ -1451,7 +1451,7 @@ namespace ghost3
 			{
 				wpn->Z=arg;
 				args[GWI_MISC2]=arg;
-				args[GWI_MISC1]=GH_GRAVITY;
+				args[GWI_MISC1]=Game->Gravity[GR_STRENGTH];
 			}
 		}
 	}
@@ -1472,23 +1472,23 @@ namespace ghost3
 		float travelTime=dist/step;
 		float ret=0;
 		
-		// Every increase in velocity of GH_GRAVITY means two frames in the air.
+		// Every increase in velocity of the gravity value means two frames in the air.
 		// This might overshoot by a frame, but that's all right.
-		while(ret<=GH_TERMINAL_VELOCITY)
+		while(ret<=Game->Gravity[GR_TERMINALV])
 		{
-			ret+=GH_GRAVITY;
+			ret += Game->Gravity[GR_STRENGTH];
 			travelTime-=2;
 			if(travelTime<=0)
 				return ret;
 		}
 		
 		// Needs to exceed terminal velocity. Slightly trickier here, because
-		// an increase of GH_GRAVITY may mean more than two more frames in the air.
+		// an increase of the gravity value may mean more than two more frames in the air.
 		float excess=0; // Distance left to fall after reaching TV
-		while(travelTime>excess/GH_TERMINAL_VELOCITY)
+		while(travelTime>excess/Game->Gravity[GR_TERMINALV])
 		{
-			ret+=GH_GRAVITY;
-			excess+=ret-GH_TERMINAL_VELOCITY;
+			ret += Game->Gravity[GR_STRENGTH];
+			excess+=ret-Game->Gravity[GR_TERMINALV];
 			travelTime-=2;
 		}
 		
@@ -1577,7 +1577,7 @@ namespace ghost3
 			
 			// Flickering? Nothing to do here.
 			if((args[GWI_FLAGS]&EWF_FLICKER)!=0 &&
-			   (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+			   (ghzhData[GHI_GLOBAL_FLAGS]&GHGF_FLICKER)!=0)
 				return;
 			
 			// This works a little differently than in UpdateEWeapon(). Since
@@ -1590,7 +1590,7 @@ namespace ghost3
 				angle=RadtoDeg(wpn->Angle);
 			else
 			{
-				int dir=__NormalizeDir(wpn->Dir);
+				int dir=NormalizeDir(wpn->Dir);
 				
 				if(dir==DIR_UP)
 					angle=-90;
@@ -1626,7 +1626,7 @@ namespace ghost3
 			if((args[GWI_FLAGS]&EWF_FLICKER)!=0)
 			{
 				// Weapons can't be made invisible; use DrawXOffset instead
-				if((__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+				if((ghzhData[GHI_GLOBAL_FLAGS]&GHGF_FLICKER)!=0)
 					wpn->DrawXOffset=1000;
 				else
 					wpn->DrawXOffset=0;
@@ -1694,7 +1694,7 @@ namespace ghost3
 		}
 		else
 		{
-			int dir=__NormalizeDir(wpn->Dir);
+			int dir=NormalizeDir(wpn->Dir);
 			if(dir==DIR_UP || dir==DIR_RIGHTUP || dir==DIR_LEFTUP)
 				wpn->Flip=0;
 			else if(dir==DIR_DOWN || dir==DIR_RIGHTDOWN || dir==DIR_LEFTDOWN)
@@ -1710,7 +1710,7 @@ namespace ghost3
 	// Flip the weapon's sprite to match the given direction
 	void SetEWeaponRotation(eweapon wpn, int dir)
 	{
-		dir=__NormalizeDir(dir);
+		dir=NormalizeDir(dir);
 		if(dir==DIR_UP || dir==DIR_RIGHTUP || dir==DIR_LEFTUP)
 			wpn->Flip=0;
 		else if(dir==DIR_DOWN || dir==DIR_RIGHTDOWN || dir==DIR_LEFTDOWN)
@@ -1734,17 +1734,17 @@ namespace ghost3
 	// Draw a shadow under an eweapon
 	void DrawEWeaponShadow(eweapon wpn)
 	{
-		if(GH_SHADOW_FLICKER>0 && (__ghzhData[__GHI_GLOBAL_FLAGS]&__GHGF_FLICKER)!=0)
+		if(GH_SHADOW_FLICKER>0 && (ghzhData[GHI_GLOBAL_FLAGS]&GHGF_FLICKER)!=0)
 			return;
 		
 		int x=CenterX(wpn)-8+wpn->DrawXOffset;
 		int y=wpn->Y+(wpn->TileHeight-1)*16+wpn->DrawYOffset-wpn->DrawZOffset;
 
 		if(GH_SHADOW_TRANSLUCENT>0)
-			Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GHI_SHADOW_FRAME],
+			Screen->DrawTile(1, x, y, GH_SHADOW_TILE+ghzhData[GHI_SHADOW_FRAME],
 							 1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 64);
 		else
-			Screen->DrawTile(1, x, y, GH_SHADOW_TILE+__ghzhData[__GHI_SHADOW_FRAME],
+			Screen->DrawTile(1, x, y, GH_SHADOW_TILE+ghzhData[GHI_SHADOW_FRAME],
 							 1, 1, GH_SHADOW_CSET, -1, -1, 0, 0, 0, 0, true, 128);
 	}
 

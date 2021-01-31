@@ -33,13 +33,13 @@ namespace ghost3
 	const int GHF_STATIC_SHADOW   = 0x10004;
 
 	// Internal enemy flags
-	const int __GHFI_GOT_HIT			   = 000001b;
-	const int __GHFI_WAS_FROZEN			= 000010b;
-	const int __GHFI_DIR_FORCED			= 000100b;
-	const int __GHFI_CSET_FORCED		   = 001000b;
-	const int __GHFI_KNOCKBACK_INTERRUPTED = 010000b;
-	const int __GHFI_HIT_LINK			  = 100000b;
-	const int __GH_UNSET_FLAGS			 = 100000b; // AND to unset flags that last one frame
+	const int GHFI_GOT_HIT			   = 000001b;
+	const int GHFI_WAS_FROZEN			= 000010b;
+	const int GHFI_DIR_FORCED			= 000100b;
+	const int GHFI_CSET_FORCED		   = 001000b;
+	const int GHFI_KNOCKBACK_INTERRUPTED = 010000b;
+	const int GHFI_HIT_LINK			  = 100000b;
+	const int GH_UNSET_FLAGS			 = 100000b; // AND to unset flags that last one frame
 
 
 	void Ghost_SetFlag(npc ghost, int flag)
@@ -121,6 +121,6 @@ namespace ghost3
 	void Ghost_ClearIFlags(npc ghost)
 	{
 		int arr = ghost->Misc[GH_INTERNAL];
-		arr[GHI_IFLAGS]&=__GH_UNSET_FLAGS;
+		arr[GHI_IFLAGS]&=GH_UNSET_FLAGS;
 	}
 }

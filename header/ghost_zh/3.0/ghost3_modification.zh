@@ -136,14 +136,14 @@ namespace ghost3
 	void Ghost_ForceDir(npc ghost, int dir)
 	{
 		ghost->Dir=dir;
-		Ghost_SetIFlag(ghost, __GHFI_DIR_FORCED);
+		Ghost_SetIFlag(ghost, GHFI_DIR_FORCED);
 	}
 
 
 	void Ghost_ForceCSet(npc ghost, int cset)
 	{
 		ghost->CSet=cset;
-		Ghost_SetIFlag(ghost, __GHFI_CSET_FORCED);
+		Ghost_SetIFlag(ghost, GHFI_CSET_FORCED);
 	}
 
 	//TBA
@@ -172,7 +172,7 @@ namespace ghost3
 		if(__Ghost_KnockbackCounter>0)
 		{
 			__Ghost_KnockbackCounter=0;
-			ghost->Misc[GH_INTERNAL][GHI_IFLAGS]|=__GHFI_KNOCKBACK_INTERRUPTED;
+			ghost->Misc[GH_INTERNAL][GHI_IFLAGS]|=GHFI_KNOCKBACK_INTERRUPTED;
 		}
 	*/
 	}
